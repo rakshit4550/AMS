@@ -1,8 +1,9 @@
 import React from 'react'
+import Party from './pages/Party'
 
 const App = () => {
   return (
-    <div className='text-3xl font-bold underline '>App</div>
+    <Party/>
   )
 }
 
