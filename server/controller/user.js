@@ -4,17 +4,26 @@ import User from '../model/User.js';
 // Create default admin user
 export const createDefaultAdmin = async () => {
   try {
-    const adminExists = await User.findOne({ email: 'admin@example.com' });
+    const adminExists = await User.findOne({ email: 'admin1@gmail.com' });
 
     if (adminExists) {
-      adminExists.email = 'admin@gmail.com';
-      adminExists.password = 'admin123'; // Will be hashed by pre-save hook
-      adminExists.role = 'admin';
-      await adminExists.save();
-      console.log('Default admin updated');
+      // If admin exists, update password and role if necessary, but don't change email
+      if (adminExists.role !== 'admin') {
+        adminExists.role = 'admin';
+        await adminExists.save();
+        console.log('Default admin role updated');
+      }
+      // Optionally, reset password if needed
+      if (!(await adminExists.comparePassword('admin123'))) {
+        adminExists.password = 'admin123'; // Will be hashed by pre-save hook
+        await adminExists.save();
+        console.log('Default admin password reset');
+      }
+      console.log('Default admin already exists, no changes needed');
     } else {
+      // Create new admin if none exists
       const admin = new User({
-        email: 'admin@gmail.com',
+        email: 'admin1@gmail.com', // Use original email to avoid conflicts
         password: 'admin123',
         role: 'admin',
       });
@@ -30,7 +39,7 @@ export const createDefaultAdmin = async () => {
   }
 };
 
-createDefaultAdmin();
+
 
 // Login
 export const login = async (req, res) => {

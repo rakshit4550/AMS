@@ -1,20 +1,25 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { login, logout } from '../redux/authSlice';
+import { login, logout } from '../redux/authSlice'; // Ensure this path points to userSlice
 import { useNavigate } from 'react-router-dom';
 import 'tailwindcss/tailwind.css';
 
 const Login = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isAuthenticated, loading, error } = useSelector((state) => state.auth);
+  // Change state.auth to state.user to match userSlice
+  const { token, loading, error } = useSelector((state) => state.user);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  // Derive isAuthenticated from token
+  const isAuthenticated = !!token;
 
   const handleSubmit = (e) => {
     e.preventDefault();
     dispatch(login({ email, password })).then((result) => {
-      if (result.type === 'auth/login/fulfilled') {
+      // Update action type to match userSlice
+      if (result.type === 'user/login/fulfilled') {
         navigate('/parties');
       }
     });
@@ -40,7 +45,7 @@ const Login = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-md ">
+    <div className="container mx-auto p-4 max-w-md">
       <h1 className="text-2xl font-bold mb-4">Admin Login</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

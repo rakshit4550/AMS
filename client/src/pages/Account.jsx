@@ -1,23 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { fetchAccounts, createAccount, updateAccount, deleteAccount, fetchParties } from '../redux/accountSlice';
-
 
 const Account = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { accounts, parties, loading, error } = useSelector((state) => state.account);
   const [formData, setFormData] = useState({
     partyname: '',
     credit: '',
     debit: '',
-    remark: ''
+    remark: '',
   });
   const [editId, setEditId] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchParties());
-    dispatch(fetchAccounts());
-  }, [dispatch]);
+    dispatch(fetchParties()).unwrap().catch((err) => {
+      if (err === 'No token available' || err.includes('Invalid token')) {
+        navigate('/'); // Redirect to login if token is missing or invalid
+      }
+    });
+    dispatch(fetchAccounts()).unwrap().catch((err) => {
+      if (err === 'No token available' || err.includes('Invalid token')) {
+        navigate('/'); // Redirect to login
+      }
+    });
+  }, [dispatch, navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -34,13 +43,21 @@ const Account = () => {
       partyname: formData.partyname,
       credit: parseFloat(formData.credit) || 0,
       debit: parseFloat(formData.debit) || 0,
-      remark: formData.remark
+      remark: formData.remark,
     };
     if (editId) {
-      dispatch(updateAccount({ id: editId, ...accountData }));
+      dispatch(updateAccount({ id: editId, ...accountData })).unwrap().catch((err) => {
+        if (err === 'No token available' || err.includes('Invalid token')) {
+          navigate('/'); // Redirect to login
+        }
+      });
       setEditId(null);
     } else {
-      dispatch(createAccount(accountData));
+      dispatch(createAccount(accountData)).unwrap().catch((err) => {
+        if (err === 'No token available' || err.includes('Invalid token')) {
+          navigate('/'); // Redirect to login
+        }
+      });
     }
     setFormData({ partyname: '', credit: '', debit: '', remark: '' });
   };
@@ -50,23 +67,33 @@ const Account = () => {
       partyname: account.partyname._id,
       credit: account.credit || '',
       debit: account.debit || '',
-      remark: account.remark || ''
+      remark: account.remark || '',
     });
     setEditId(account._id);
   };
 
   const handleDelete = (id) => {
-    dispatch(deleteAccount(id));
+    dispatch(deleteAccount(id)).unwrap().catch((err) => {
+      if (err === 'No token available' || err.includes('Invalid token')) {
+        navigate('/'); // Redirect to login
+      }
+    });
   };
 
   const handleDownload = () => {
-    window.location.href = 'http://localhost:4050/api/accounts/statement/download';
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/');
+      return;
+    }
+    // Include token in the download request
+    window.location.href = `http://localhost:4050/api/accounts/statement/download?token=${token}`;
   };
 
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Account Management</h1>
-      
+
       <form onSubmit={handleSubmit} className="mb-6 space-y-4">
         <div>
           <label className="block mb-1">Party Name</label>
@@ -138,7 +165,7 @@ const Account = () => {
         {accounts.map((account) => (
           <li key={account._id} className="flex justify-between items-center border p-2 rounded">
             <div>
-              <p>Party: {account.partyname.partyname}</p>
+              <p>Party: {account.partyname?.partyname || 'Unknown'}</p>
               <p>Credit: {account.credit}</p>
               <p>Debit: {account.debit}</p>
               <p>Remark: {account.remark || 'N/A'}</p>
