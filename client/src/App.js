@@ -5,6 +5,7 @@ import 'tailwindcss/tailwind.css';
 import Login from './pages/Login';
 import Party from './pages/Party';
 import Sidebar from './components/Sidebar'; // Adjust path as needed
+import Account from './pages/Account'; // Adjust path as needed
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useSelector((state) => state.auth);
@@ -42,6 +43,16 @@ function App() {
             <Layout>
               <ProtectedRoute>
                 <Party />
+              </ProtectedRoute>
+            </Layout>
+          }
+        />
+           <Route
+          path="/account"
+          element={
+            <Layout>
+              <ProtectedRoute>
+                <Account/>
               </ProtectedRoute>
             </Layout>
           }

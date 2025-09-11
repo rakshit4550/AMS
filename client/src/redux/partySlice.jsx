@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:4050/api/parties';
+const API_URL = process.env.REACT_APP_API_URL
 
 // Async thunks for API calls
 export const fetchParties = createAsyncThunk('party/fetchParties', async () => {

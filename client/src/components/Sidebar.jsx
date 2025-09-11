@@ -25,12 +25,22 @@ const Sidebar = () => {
               <NavLink
                 to="/parties"
                 className={({ isActive }) =>
-                  `block p-2 rounded hover:bg-gray-200 transition-colors ${
-                    isActive ? 'bg-gray-200' : ''
+                  `block p-2 rounded hover:bg-gray-200 transition-colors ${isActive ? 'bg-gray-200' : ''
                   }`
                 }
               >
                 Parties
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to="/account"
+                className={({ isActive }) =>
+                  `block p-2 rounded hover:bg-gray-200 transition-colors ${isActive ? 'bg-gray-200' : ''
+                  }`
+                }
+              >
+                Account
               </NavLink>
             </li>
             <li>

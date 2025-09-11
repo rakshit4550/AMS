@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchAccounts, createAccount, updateAccount, deleteAccount, fetchParties } from '../redux/accountSlice';
-import 'tailwindcss/tailwind.css';
+
 
 const Account = () => {
   const dispatch = useDispatch();
