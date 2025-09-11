@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import partyRoutes from './route/party.js';
 import authRoutes from './route/user.js';
+import accountRoutes from './route/account.js';
 import dotenv from 'dotenv';
 import cors from 'cors'; // Import cors
 
@@ -17,6 +18,7 @@ app.use(express.json());
 // Routes
 app.use('/api/parties', partyRoutes);
 app.use('/api', authRoutes);
+app.use('/api/accounts', accountRoutes);
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
