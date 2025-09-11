@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchParties, createParty, updateParty, deleteParty } from './partySlice';
+import { fetchParties, createParty, updateParty, deleteParty } from '../redux/partySlice';
 import 'tailwindcss/tailwind.css';
 
 const Party = () => {
