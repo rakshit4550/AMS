@@ -1,13 +1,17 @@
 import express from 'express';
 import { createParty, getAllParties, getPartyById, updateParty, deleteParty } from '../controller/party.js';
+import { verifyToken } from '../controller/user.js';
 
 const router = express.Router();
 
+// Apply verifyToken middleware to all routes
+router.use(verifyToken);
+
 // Define routes
-router.post('/', createParty); // Create a new party
-router.get('/', getAllParties); // Get all parties
-router.get('/:id', getPartyById); // Get a party by ID
-router.put('/:id', updateParty); // Update a party
-router.delete('/:id', deleteParty); // Delete a party
+router.post('/', createParty);
+router.get('/', getAllParties);
+router.get('/:id', getPartyById);
+router.put('/:id', updateParty);
+router.delete('/:id', deleteParty);
 
 export default router;

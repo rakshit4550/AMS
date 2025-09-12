@@ -2,6 +2,7 @@
 // import { useSelector, useDispatch } from 'react-redux';
 // import { useNavigate } from 'react-router-dom';
 // import { fetchAccounts, createAccount, updateAccount, deleteAccount, fetchParties } from '../redux/accountSlice';
+// import { jsPDF } from 'jspdf';
 
 // const Account = () => {
 //   const dispatch = useDispatch();
@@ -47,22 +48,30 @@
 //       remark: formData.remark,
 //     };
 //     if (editId) {
-//       dispatch(updateAccount({ id: editId, ...accountData })).unwrap().then(() => {
-//         showMessages(accountData.credit, accountData.debit, formData.partyname);
-//       }).catch((err) => {
-//         if (err === 'No token available' || err.includes('Invalid token')) {
-//           navigate('/'); // Redirect to login
-//         }
-//       });
+//       dispatch(updateAccount({ id: editId, ...accountData }))
+//         .unwrap()
+//         .then(() => {
+//           showMessages(accountData.credit, accountData.debit, formData.partyname);
+//           dispatch(fetchAccounts());
+//         })
+//         .catch((err) => {
+//           if (err === 'No token available' || err.includes('Invalid token')) {
+//             navigate('/'); // Redirect to login
+//           }
+//         });
 //       setEditId(null);
 //     } else {
-//       dispatch(createAccount(accountData)).unwrap().then(() => {
-//         showMessages(accountData.credit, accountData.debit, formData.partyname);
-//       }).catch((err) => {
-//         if (err === 'No token available' || err.includes('Invalid token')) {
-//           navigate('/'); // Redirect to login
-//         }
-//       });
+//       dispatch(createAccount(accountData))
+//         .unwrap()
+//         .then(() => {
+//           showMessages(accountData.credit, accountData.debit, formData.partyname);
+//           dispatch(fetchAccounts());
+//         })
+//         .catch((err) => {
+//           if (err === 'No token available' || err.includes('Invalid token')) {
+//             navigate('/'); // Redirect to login
+//           }
+//         });
 //     }
 //     setFormData({ partyname: '', credit: '', debit: '', remark: '' });
 //   };
@@ -70,12 +79,6 @@
 //   const showMessages = (credit, debit, partyId) => {
 //     const selectedParty = parties.find((p) => p._id === partyId);
 //     const partyName = selectedParty ? selectedParty.partyname : 'this party';
-//     if (credit > 0) {
-//       // alert(`Aap ko ${credit} amount ${partyName} se lena hai`);
-//     }
-//     if (debit > 0) {
-//       // alert(`Aapko ${debit} amount ${partyName} ko dena hai`);
-//     }
 //   };
 
 //   const handleEdit = (account) => {
@@ -89,11 +92,16 @@
 //   };
 
 //   const handleDelete = (id) => {
-//     dispatch(deleteAccount(id)).unwrap().catch((err) => {
-//       if (err === 'No token available' || err.includes('Invalid token')) {
-//         navigate('/'); // Redirect to login
-//       }
-//     });
+//     dispatch(deleteAccount(id))
+//       .unwrap()
+//       .then(() => {
+//         dispatch(fetchAccounts());
+//       })
+//       .catch((err) => {
+//         if (err === 'No token available' || err.includes('Invalid token')) {
+//           navigate('/'); // Redirect to login
+//         }
+//       });
 //   };
 
 //   const handleDownload = async () => {
@@ -114,18 +122,194 @@
 //         },
 //       });
 //       if (!response.ok) {
-//         throw new Error('Failed to download');
+//         throw new Error('Failed to fetch statement data');
 //       }
-//       const blob = await response.blob();
-//       const downloadUrl = window.URL.createObjectURL(blob);
-//       const a = document.createElement('a');
-//       a.href = downloadUrl;
-//       a.download = 'account_statement.pdf';
-//       document.body.appendChild(a);
-//       a.click();
-//       a.remove();
+//       const grouped = await response.json();
+
+//       // Generate PDF using jsPDF with professional table design
+//       const doc = new jsPDF();
+//       let y = 20;
+//       let page = 1;
+
+//       const formatDate = (date) => {
+//         const options = { day: 'numeric', month: 'short', year: 'numeric' };
+//         return new Date(date).toLocaleDateString('en-GB', options);
+//       };
+
+//       Object.keys(grouped).forEach((pId, index) => {
+//         if (index > 0) {
+//           doc.addPage();
+//           y = 20;
+//           page++;
+//         }
+
+//         const group = grouped[pId];
+//         const party = parties.find((p) => p._id === pId);
+
+//         // Add top header with party name
+//         doc.setFillColor(0, 51, 102); // Dark blue
+//         doc.rect(0, 0, 210, 15, 'F');
+//         doc.setTextColor(255, 255, 255);
+//         doc.setFontSize(14);
+//         doc.setFont('helvetica', 'bold');
+//         doc.text(`${group.name} Statement`, 10, 10);
+
+//         if (!group.accounts || group.accounts.length === 0) return;
+
+//         // Party name and balance
+//         doc.setFontSize(12);
+//         doc.setTextColor(0, 0, 0);
+//         doc.setFont('helvetica', 'bold');
+//         y += 7;
+
+//         const balance = group.totalDebit - group.totalCredit;
+//         const balSign = balance > 0 ? 'Dr' : balance < 0 ? 'Cr' : '';
+//         const balValue = Math.abs(balance).toFixed(2);
+//         doc.setFontSize(10);
+//         doc.setTextColor(100, 100, 100);
+//         doc.text(`Balance: ₹${balValue} ${balSign}`, 10, y);
+//         if (balance !== 0) {
+//           doc.text(`(${group.name} will ${balance > 0 ? 'give' : 'receive'})`, 140, y);
+//         }
+//         y += 10;
+
+//         // Table setup
+//         const tableX = 10;
+//         const tableWidth = 190;
+//         const colWidths = [40, 40, 40, 40, 30]; // Date, Debit, Credit, Balance, Remark
+//         const rowHeight = 8;
+//         const tableStartY = y;
+
+//         // Table header
+//         doc.setFillColor(0, 51, 102);
+//         doc.rect(tableX, y, tableWidth, rowHeight, 'F');
+//         doc.setTextColor(255, 255, 255);
+//         doc.setFontSize(10);
+//         doc.setFont('helvetica', 'bold');
+//         doc.text('Date', tableX + 2, y + 6);
+//         doc.text('Debit (-)', tableX + 42, y + 6);
+//         doc.text('Credit (+)', tableX + 82, y + 6);
+//         doc.text('Balance', tableX + 122, y + 6);
+//         doc.text('Remark', tableX + 162, y + 6);
+//         y += rowHeight;
+
+//         // Table rows
+//         doc.setFont('helvetica', 'normal');
+//         doc.setTextColor(0, 0, 0);
+//         let currentBalance = 0;
+
+//         group.accounts.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach((acc, rowIndex) => {
+//           currentBalance += acc.debit - acc.credit;
+//           const curBalSign = currentBalance > 0 ? 'Dr' : currentBalance < 0 ? 'Cr' : '';
+//           const curBalValue = Math.abs(currentBalance).toFixed(2);
+
+//           // Alternate row background
+//           if (rowIndex % 2 === 0) {
+//             doc.setFillColor(240, 240, 240);
+//             doc.rect(tableX, y, tableWidth, rowHeight, 'F');
+//           }
+
+//           // Draw cell borders
+//           doc.setDrawColor(150, 150, 150);
+//           doc.rect(tableX, y, tableWidth, rowHeight);
+
+//           // Vertical lines for columns
+//           let x = tableX;
+//           colWidths.forEach((width, i) => {
+//             doc.rect(x, y, width, rowHeight);
+//             x += width;
+//           });
+
+//           // Cell content
+//           doc.setFontSize(9);
+//           doc.text(formatDate(acc.date), tableX + 2, y + 6);
+//           // Set red color for debit
+//           if (acc.debit > 0) {
+//             doc.setTextColor(255, 0, 0);
+//             doc.text(acc.debit.toFixed(2), tableX + 42, y + 6);
+//           }
+//           // Set green color for credit
+//           if (acc.credit > 0) {
+//             doc.setTextColor(0, 128, 0);
+//             doc.text(acc.credit.toFixed(2), tableX + 82, y + 6);
+//           }
+//           // Reset to black for other columns
+//           doc.setTextColor(0, 0, 0);
+//           doc.text(`${curBalValue} ${curBalSign}`, tableX + 122, y + 6);
+//           doc.text(acc.remark || '', tableX + 162, y + 6, { maxWidth: 28 });
+
+//           y += rowHeight;
+
+//           // Check for page overflow
+//           if (y > 260) {
+//             doc.addPage();
+//             y = 20;
+//             page++;
+//             // Re-add header
+//             doc.setFillColor(0, 51, 102);
+//             doc.rect(0, 0, 210, 15, 'F');
+//             doc.setTextColor(255, 255, 255);
+//             doc.setFontSize(14);
+//             doc.setFont('helvetica', 'bold');
+//             doc.text(`${group.name} Statement`, 10, 10);
+
+//             // Re-add table header
+//             y = tableStartY;
+//             doc.setFillColor(0, 51, 102);
+//             doc.rect(tableX, y, tableWidth, rowHeight, 'F');
+//             doc.setTextColor(255, 255, 255);
+//             doc.setFontSize(10);
+//             doc.setFont('helvetica', 'bold');
+//             doc.text('Date', tableX + 2, y + 6);
+//             doc.text('Debit (-)', tableX + 42, y + 6);
+//             doc.text('Credit (+)', tableX + 82, y + 6);
+//             doc.text('Balance', tableX + 122, y + 6);
+//             doc.text('Remark', tableX + 162, y + 6);
+//             y += rowHeight;
+//           }
+//         });
+
+//         // Grand Total row
+//         doc.setFillColor(200, 200, 200);
+//         doc.rect(tableX, y, tableWidth, rowHeight, 'F');
+//         doc.setFont('helvetica', 'bold');
+//         doc.text('Grand Total', tableX + 2, y + 6);
+//         // Set red color for total debit
+//         doc.setTextColor(255, 0, 0);
+//         doc.text(group.totalDebit.toFixed(2), tableX + 42, y + 6);
+//         // Set green color for total credit
+//         doc.setTextColor(0, 128, 0);
+//         doc.text(group.totalCredit.toFixed(2), tableX + 82, y + 6);
+//         // Reset to black for balance
+//         doc.setTextColor(0, 0, 0);
+//         doc.text(`${balValue} ${balSign}`, tableX + 122, y + 6);
+//         y += rowHeight + 10;
+
+//         // Report Generated
+//         const now = new Date();
+//         const hours = now.getHours() % 12 || 12;
+//         const minutes = String(now.getMinutes()).padStart(2, '0');
+//         const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
+//         const genDate = formatDate(now).replace(/\d{4}$/, `'${now.getFullYear().toString().slice(2)}`);
+//         const genTime = `${hours}:${minutes} ${ampm} | ${genDate}`;
+
+//         doc.setFontSize(9);
+//         doc.setTextColor(100, 100, 100);
+//         doc.text(`Report Generated: ${genTime}`, tableX, y);
+//         y += 15;
+
+//         // Footer
+//         doc.setFillColor(0, 51, 102);
+//         doc.rect(0, 280, 210, 17, 'F');
+//         doc.setTextColor(255, 255, 255);
+//         doc.setFontSize(9);
+//         doc.setTextColor(100, 100, 100);
+//         doc.text(`Page ${index + 1} of ${Object.keys(grouped).length}`, 180, 290);
+//       });
+
+//       doc.save('account_statement.pdf');
 //     } catch (error) {
-//       alert('Error downloading statement');
+//       alert('Error generating statement');
 //     }
 //   };
 
@@ -219,8 +403,8 @@
 //           <li key={account._id} className="flex justify-between items-center border p-2 rounded">
 //             <div>
 //               <p>Party: {account.partyname?.partyname || 'Unknown'}</p>
-//               <p>Credit: {account.credit}</p>
-//               <p>Debit: {account.debit}</p>
+//               <p className="text-green-600">Credit: {account.credit}</p>
+//               <p className="text-red-600">Debit: {account.debit}</p>
 //               <p>Remark: {account.remark || 'N/A'}</p>
 //               <p>Date: {new Date(account.date).toLocaleDateString()}</p>
 //             </div>
@@ -247,10 +431,12 @@
 
 // export default Account;
 
+
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchAccounts, createAccount, updateAccount, deleteAccount, fetchParties } from '../redux/accountSlice';
+import { jsPDF } from 'jspdf';
 
 const Account = () => {
   const dispatch = useDispatch();
@@ -265,15 +451,18 @@ const Account = () => {
   const [editId, setEditId] = useState(null);
   const [downloadParty, setDownloadParty] = useState('');
 
+const API_URL = process.env.REACT_APP_API_URL
+
+
   useEffect(() => {
     dispatch(fetchParties()).unwrap().catch((err) => {
       if (err === 'No token available' || err.includes('Invalid token')) {
-        navigate('/'); // Redirect to login if token is missing or invalid
+        navigate('/');
       }
     });
     dispatch(fetchAccounts()).unwrap().catch((err) => {
       if (err === 'No token available' || err.includes('Invalid token')) {
-        navigate('/'); // Redirect to login
+        navigate('/');
       }
     });
   }, [dispatch, navigate]);
@@ -298,28 +487,26 @@ const Account = () => {
     if (editId) {
       dispatch(updateAccount({ id: editId, ...accountData }))
         .unwrap()
-        .then((updatedAccount) => {
+        .then(() => {
           showMessages(accountData.credit, accountData.debit, formData.partyname);
-          // Refresh accounts to ensure populated data
           dispatch(fetchAccounts());
         })
         .catch((err) => {
           if (err === 'No token available' || err.includes('Invalid token')) {
-            navigate('/'); // Redirect to login
+            navigate('/');
           }
         });
       setEditId(null);
     } else {
       dispatch(createAccount(accountData))
         .unwrap()
-        .then((newAccount) => {
+        .then(() => {
           showMessages(accountData.credit, accountData.debit, formData.partyname);
-          // Refresh accounts to ensure populated data
           dispatch(fetchAccounts());
         })
         .catch((err) => {
           if (err === 'No token available' || err.includes('Invalid token')) {
-            navigate('/'); // Redirect to login
+            navigate('/');
           }
         });
     }
@@ -345,12 +532,11 @@ const Account = () => {
     dispatch(deleteAccount(id))
       .unwrap()
       .then(() => {
-        // Refresh accounts after deletion
         dispatch(fetchAccounts());
       })
       .catch((err) => {
         if (err === 'No token available' || err.includes('Invalid token')) {
-          navigate('/'); // Redirect to login
+          navigate('/');
         }
       });
   };
@@ -361,7 +547,7 @@ const Account = () => {
       navigate('/');
       return;
     }
-    let url = `http://localhost:4050/api/accounts/statement/download`;
+    let url = `${API_URL}/accounts/statement/download`;
     if (downloadParty) {
       url += `?party=${downloadParty}`;
     }
@@ -373,18 +559,172 @@ const Account = () => {
         },
       });
       if (!response.ok) {
-        throw new Error('Failed to download');
+        throw new Error('Failed to fetch statement data');
       }
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = 'account_statement.pdf';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      const grouped = await response.json();
+
+      const doc = new jsPDF();
+      let y = 20;
+      let page = 1;
+
+      const formatDate = (date) => {
+        const options = { day: 'numeric', month: 'short', year: 'numeric' };
+        return new Date(date).toLocaleDateString('en-GB', options);
+      };
+
+      Object.keys(grouped).forEach((pId, index) => {
+        if (index > 0) {
+          doc.addPage();
+          y = 20;
+          page++;
+        }
+
+        const group = grouped[pId];
+        const party = parties.find((p) => p._id === pId);
+
+        doc.setFillColor(0, 51, 102);
+        doc.rect(0, 0, 210, 15, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${group.name} Statement`, 10, 10);
+
+        if (!group.accounts || group.accounts.length === 0) return;
+
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'bold');
+        y += 7;
+
+        const balance = group.totalDebit - group.totalCredit;
+        const balSign = balance > 0 ? 'Dr' : balance < 0 ? 'Cr' : '';
+        const balValue = Math.abs(balance).toFixed(2);
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Balance: ₹${balValue} ${balSign}`, 10, y);
+        if (balance !== 0) {
+          doc.text(`(${group.name} will ${balance > 0 ? 'give' : 'receive'})`, 140, y);
+        }
+        y += 10;
+
+        const tableX = 10;
+        const tableWidth = 190;
+        const colWidths = [40, 40, 40, 40, 30];
+        const rowHeight = 8;
+        const tableStartY = y;
+
+        doc.setFillColor(0, 51, 102);
+        doc.rect(tableX, y, tableWidth, rowHeight, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Date', tableX + 2, y + 6);
+        doc.text('Debit (-)', tableX + 42, y + 6);
+        doc.text('Credit (+)', tableX + 82, y + 6);
+        doc.text('Balance', tableX + 122, y + 6);
+        doc.text('Remark', tableX + 162, y + 6);
+        y += rowHeight;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        let currentBalance = 0;
+
+        group.accounts.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach((acc, rowIndex) => {
+          currentBalance += acc.debit - acc.credit;
+          const curBalSign = currentBalance > 0 ? 'Dr' : currentBalance < 0 ? 'Cr' : '';
+          const curBalValue = Math.abs(currentBalance).toFixed(2);
+
+          if (rowIndex % 2 === 0) {
+            doc.setFillColor(240, 240, 240);
+            doc.rect(tableX, y, tableWidth, rowHeight, 'F');
+          }
+
+          doc.setDrawColor(150, 150, 150);
+          doc.rect(tableX, y, tableWidth, rowHeight);
+
+          let x = tableX;
+          colWidths.forEach((width, i) => {
+            doc.rect(x, y, width, rowHeight);
+            x += width;
+          });
+
+          doc.setFontSize(9);
+          doc.text(formatDate(acc.date), tableX + 2, y + 6);
+          if (acc.debit > 0) {
+            doc.setTextColor(255, 0, 0);
+            doc.text(acc.debit.toFixed(2), tableX + 42, y + 6);
+          }
+          if (acc.credit > 0) {
+            doc.setTextColor(0, 128, 0);
+            doc.text(acc.credit.toFixed(2), tableX + 82, y + 6);
+          }
+          doc.setTextColor(0, 0, 0);
+          doc.text(`${curBalValue} ${curBalSign}`, tableX + 122, y + 6);
+          doc.text(acc.remark || '', tableX + 162, y + 6, { maxWidth: 28 });
+
+          y += rowHeight;
+
+          if (y > 260) {
+            doc.addPage();
+            y = 20;
+            page++;
+            doc.setFillColor(0, 51, 102);
+            doc.rect(0, 0, 210, 15, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${group.name} Statement`, 10, 10);
+
+            y = tableStartY;
+            doc.setFillColor(0, 51, 102);
+            doc.rect(tableX, y, tableWidth, rowHeight, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Date', tableX + 2, y + 6);
+            doc.text('Debit (-)', tableX + 42, y + 6);
+            doc.text('Credit (+)', tableX + 82, y + 6);
+            doc.text('Balance', tableX + 122, y + 6);
+            doc.text('Remark', tableX + 162, y + 6);
+            y += rowHeight;
+          }
+        });
+
+        doc.setFillColor(200, 200, 200);
+        doc.rect(tableX, y, tableWidth, rowHeight, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.text('Grand Total', tableX + 2, y + 6);
+        doc.setTextColor(255, 0, 0);
+        doc.text(group.totalDebit.toFixed(2), tableX + 42, y + 6);
+        doc.setTextColor(0, 128, 0);
+        doc.text(group.totalCredit.toFixed(2), tableX + 82, y + 6);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`${balValue} ${balSign}`, tableX + 122, y + 6);
+        y += rowHeight + 10;
+
+        const now = new Date();
+        const hours = now.getHours() % 12 || 12;
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
+        const genDate = formatDate(now).replace(/\d{4}$/, `'${now.getFullYear().toString().slice(2)}`);
+        const genTime = `${hours}:${minutes} ${ampm} | ${genDate}`;
+
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Report Generated: ${genTime}`, tableX, y);
+        y += 15;
+
+        doc.setFillColor(0, 51, 102);
+        doc.rect(0, 280, 210, 17, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Page ${index + 1} of ${Object.keys(grouped).length}`, 180, 290);
+      });
+
+      doc.save('account_statement.pdf');
     } catch (error) {
-      alert('Error downloading statement');
+      alert('Error generating statement');
     }
   };
 
@@ -478,8 +818,8 @@ const Account = () => {
           <li key={account._id} className="flex justify-between items-center border p-2 rounded">
             <div>
               <p>Party: {account.partyname?.partyname || 'Unknown'}</p>
-              <p>Credit: {account.credit}</p>
-              <p>Debit: {account.debit}</p>
+              <p className="text-green-600">Credit: {account.credit}</p>
+              <p className="text-red-600">Debit: {account.debit}</p>
               <p>Remark: {account.remark || 'N/A'}</p>
               <p>Date: {new Date(account.date).toLocaleDateString()}</p>
             </div>

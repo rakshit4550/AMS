@@ -181,7 +181,7 @@ export const fetchAccounts = createAsyncThunk(
   'account/fetchAccounts',
   async (_, { getState, rejectWithValue }) => {
     try {
-      const { user: { token } } = getState(); // Access token from user slice
+      const { user: { token } } = getState();
       if (!token) {
         return rejectWithValue('No token available');
       }
@@ -273,7 +273,6 @@ const accountSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      // Fetch accounts
       .addCase(fetchAccounts.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -286,7 +285,6 @@ const accountSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // Create account
       .addCase(createAccount.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -299,7 +297,6 @@ const accountSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // Update account
       .addCase(updateAccount.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -315,7 +312,6 @@ const accountSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // Delete account
       .addCase(deleteAccount.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -328,7 +324,6 @@ const accountSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // Fetch parties
       .addCase(fetchParties.pending, (state) => {
         state.loading = true;
         state.error = null;

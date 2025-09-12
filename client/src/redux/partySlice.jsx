@@ -1,27 +1,51 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL + '/parties'
+const API_URL = process.env.REACT_APP_API_URL + '/parties';
 
 // Async thunks for API calls
-export const fetchParties = createAsyncThunk('party/fetchParties', async () => {
-  const response = await axios.get(API_URL);
-  return response.data;
+export const fetchParties = createAsyncThunk('party/fetchParties', async (_, { getState, rejectWithValue }) => {
+  try {
+    const { user: { token } } = getState();
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    const response = await axios.get(API_URL, config);
+    return response.data;
+  } catch (error) {
+    return rejectWithValue(error.response.data.message);
+  }
 });
 
-export const createParty = createAsyncThunk('party/createParty', async (partyData) => {
-  const response = await axios.post(API_URL, partyData);
-  return response.data.party;
+export const createParty = createAsyncThunk('party/createParty', async (partyData, { getState, rejectWithValue }) => {
+  try {
+    const { user: { token } } = getState();
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    const response = await axios.post(API_URL, partyData, config);
+    return response.data.party;
+  } catch (error) {
+    return rejectWithValue(error.response.data.message);
+  }
 });
 
-export const updateParty = createAsyncThunk('party/updateParty', async ({ id, partyname }) => {
-  const response = await axios.put(`${API_URL}/${id}`, { partyname });
-  return response.data.party;
+export const updateParty = createAsyncThunk('party/updateParty', async ({ id, partyname }, { getState, rejectWithValue }) => {
+  try {
+    const { user: { token } } = getState();
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    const response = await axios.put(`${API_URL}/${id}`, { partyname }, config);
+    return response.data.party;
+  } catch (error) {
+    return rejectWithValue(error.response.data.message);
+  }
 });
 
-export const deleteParty = createAsyncThunk('party/deleteParty', async (id) => {
-  await axios.delete(`${API_URL}/${id}`);
-  return id;
+export const deleteParty = createAsyncThunk('party/deleteParty', async (id, { getState, rejectWithValue }) => {
+  try {
+    const { user: { token } } = getState();
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    await axios.delete(`${API_URL}/${id}`, config);
+    return id;
+  } catch (error) {
+    return rejectWithValue(error.response.data.message);
+  }
 });
 
 const partySlice = createSlice({
@@ -34,7 +58,6 @@ const partySlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      // Fetch parties
       .addCase(fetchParties.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -45,9 +68,8 @@ const partySlice = createSlice({
       })
       .addCase(fetchParties.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload;
       })
-      // Create party
       .addCase(createParty.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -58,9 +80,8 @@ const partySlice = createSlice({
       })
       .addCase(createParty.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload;
       })
-      // Update party
       .addCase(updateParty.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -74,9 +95,8 @@ const partySlice = createSlice({
       })
       .addCase(updateParty.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload;
       })
-      // Delete party
       .addCase(deleteParty.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -87,7 +107,7 @@ const partySlice = createSlice({
       })
       .addCase(deleteParty.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload;
       });
   },
 });

@@ -69,16 +69,7 @@ const MENU = [
     roles: ['Admin'],
     submenu: [],
   },
-  {
-    title: 'Reports',
-    route: '/reports',
-    icon: 'TbReportAnalytics',
-    roles: ['Admin'],
-    submenu: [
-      { title: 'Financial Report', route: '/reports/financial' },
-      { title: 'Transaction Report', route: '/reports/transactions' },
-    ],
-  },
+
 ];
 
 const Sidebar = () => {

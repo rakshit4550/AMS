@@ -7,7 +7,7 @@ export const createParty = async (req, res) => {
     if (!partyname) {
       return res.status(400).json({ message: 'Party name is required' });
     }
-    const party = new Party({ partyname });
+    const party = new Party({ partyname, createdBy: req.user.id });
     await party.save();
     res.status(201).json({ message: 'Party created successfully', party });
   } catch (error) {
@@ -15,10 +15,10 @@ export const createParty = async (req, res) => {
   }
 };
 
-// Get all parties
+// Get all parties for the authenticated user
 export const getAllParties = async (req, res) => {
   try {
-    const parties = await Party.find();
+    const parties = await Party.find({ createdBy: req.user.id });
     res.status(200).json(parties);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -28,9 +28,9 @@ export const getAllParties = async (req, res) => {
 // Get a single party by ID
 export const getPartyById = async (req, res) => {
   try {
-    const party = await Party.findById(req.params.id);
+    const party = await Party.findOne({ _id: req.params.id, createdBy: req.user.id });
     if (!party) {
-      return res.status(404).json({ message: 'Party not found' });
+      return res.status(404).json({ message: 'Party not found or you do not have access' });
     }
     res.status(200).json(party);
   } catch (error) {
@@ -42,13 +42,13 @@ export const getPartyById = async (req, res) => {
 export const updateParty = async (req, res) => {
   try {
     const { partyname } = req.body;
-    const party = await Party.findByIdAndUpdate(
-      req.params.id,
+    const party = await Party.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user.id },
       { partyname },
       { new: true, runValidators: true }
     );
     if (!party) {
-      return res.status(404).json({ message: 'Party not found' });
+      return res.status(404).json({ message: 'Party not found or you do not have access' });
     }
     res.status(200).json({ message: 'Party updated successfully', party });
   } catch (error) {
@@ -59,9 +59,9 @@ export const updateParty = async (req, res) => {
 // Delete a party
 export const deleteParty = async (req, res) => {
   try {
-    const party = await Party.findByIdAndDelete(req.params.id);
+    const party = await Party.findOneAndDelete({ _id: req.params.id, createdBy: req.user.id });
     if (!party) {
-      return res.status(404).json({ message: 'Party not found' });
+      return res.status(404).json({ message: 'Party not found or you do not have access' });
     }
     res.status(200).json({ message: 'Party deleted successfully' });
   } catch (error) {
