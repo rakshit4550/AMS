@@ -342,6 +342,44 @@ export const deleteAccount = async (req, res) => {
 };
 
 // Fetch account statement data
+// export const downloadStatement = async (req, res) => {
+//   try {
+//     const partyId = req.query.party;
+//     const query = { createdBy: req.user.id };
+//     if (partyId) {
+//       const party = await Party.findOne({ _id: partyId, createdBy: req.user.id });
+//       if (!party) {
+//         return res.status(404).json({ message: 'Party not found or you do not have access' });
+//       }
+//       query.partyname = partyId;
+//     }
+//     const accounts = await Account.find(query).populate('partyname', 'partyname').sort({ date: 1 });
+
+//     // Group accounts by party
+//     const grouped = {};
+//     accounts.forEach((acc) => {
+//       const pId = acc.partyname._id.toString();
+//       const pName = acc.partyname.partyname;
+//       if (!grouped[pId]) {
+//         grouped[pId] = { name: pName, accounts: [], totalCredit: 0, totalDebit: 0 };
+//       }
+//       grouped[pId].accounts.push({
+//         date: acc.date.toISOString(),  // Ensure full ISO string for frontend parsing
+//         credit: Number(acc.credit) || 0,  // Ensure numeric
+//         debit: Number(acc.debit) || 0,    // Ensure numeric
+//         remark: acc.remark || ''  // Empty string to avoid null/undefined
+//       });
+//       grouped[pId].totalCredit += Number(acc.credit) || 0;
+//       grouped[pId].totalDebit += Number(acc.debit) || 0;
+//     });
+
+//     res.status(200).json(grouped);
+//   } catch (error) {
+//     console.error('Backend error in downloadStatement:', error);
+//     res.status(500).json({ message: 'Server error', error: error.message });
+//   }
+// };
+
 export const downloadStatement = async (req, res) => {
   try {
     const partyId = req.query.party;
@@ -364,10 +402,10 @@ export const downloadStatement = async (req, res) => {
         grouped[pId] = { name: pName, accounts: [], totalCredit: 0, totalDebit: 0 };
       }
       grouped[pId].accounts.push({
-        date: acc.date.toISOString(),  // Ensure full ISO string for frontend parsing
-        credit: Number(acc.credit) || 0,  // Ensure numeric
-        debit: Number(acc.debit) || 0,    // Ensure numeric
-        remark: acc.remark || ''  // Empty string to avoid null/undefined
+        date: acc.date.toISOString(),  // Full ISO for frontend date parsing
+        credit: Number(acc.credit) || 0,
+        debit: Number(acc.debit) || 0,
+        remark: acc.remark || ''
       });
       grouped[pId].totalCredit += Number(acc.credit) || 0;
       grouped[pId].totalDebit += Number(acc.debit) || 0;

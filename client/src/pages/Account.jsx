@@ -412,6 +412,7 @@
 
 // export default Account;
 
+
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -540,6 +541,11 @@ const Account = () => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      // Check Content-Type to ensure it's JSON (prevents PDF binary parse errors)
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Invalid response: Expected JSON data, but received binary (e.g., PDF). Check backend.');
+      }
       const grouped = await response.json();
 
       // Validate data structure
@@ -653,9 +659,9 @@ const Account = () => {
           }
           doc.setTextColor(0, 0, 0);
           doc.text(`${curBalValue} ${curBalSign}`, tableX + 122, y + 6);
-          // Truncate long remarks and remove maxWidth to avoid jsPDF rendering errors
+          // Truncate long remarks to avoid jsPDF rendering issues
           const remarkText = (acc.remark || '').length > 20 ? `${acc.remark.substring(0, 20)}...` : acc.remark || '';
-          doc.text(remarkText, tableX + 162, y + 6);  // No maxWidth
+          doc.text(remarkText, tableX + 162, y + 6);
 
           y += rowHeight;
 
