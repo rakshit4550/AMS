@@ -364,17 +364,18 @@ export const downloadStatement = async (req, res) => {
         grouped[pId] = { name: pName, accounts: [], totalCredit: 0, totalDebit: 0 };
       }
       grouped[pId].accounts.push({
-        date: acc.date,
-        credit: acc.credit,
-        debit: acc.debit,
-        remark: acc.remark || 'N/A'
+        date: acc.date.toISOString(),  // Ensure full ISO string for frontend parsing
+        credit: Number(acc.credit) || 0,  // Ensure numeric
+        debit: Number(acc.debit) || 0,    // Ensure numeric
+        remark: acc.remark || ''  // Empty string to avoid null/undefined
       });
-      grouped[pId].totalCredit += acc.credit;
-      grouped[pId].totalDebit += acc.debit;
+      grouped[pId].totalCredit += Number(acc.credit) || 0;
+      grouped[pId].totalDebit += Number(acc.debit) || 0;
     });
 
     res.status(200).json(grouped);
   } catch (error) {
+    console.error('Backend error in downloadStatement:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

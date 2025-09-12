@@ -17,15 +17,18 @@
 //   const [editId, setEditId] = useState(null);
 //   const [downloadParty, setDownloadParty] = useState('');
 
+// const API_URL = process.env.REACT_APP_API_URL
+
+
 //   useEffect(() => {
 //     dispatch(fetchParties()).unwrap().catch((err) => {
 //       if (err === 'No token available' || err.includes('Invalid token')) {
-//         navigate('/'); // Redirect to login if token is missing or invalid
+//         navigate('/');
 //       }
 //     });
 //     dispatch(fetchAccounts()).unwrap().catch((err) => {
 //       if (err === 'No token available' || err.includes('Invalid token')) {
-//         navigate('/'); // Redirect to login
+//         navigate('/');
 //       }
 //     });
 //   }, [dispatch, navigate]);
@@ -56,7 +59,7 @@
 //         })
 //         .catch((err) => {
 //           if (err === 'No token available' || err.includes('Invalid token')) {
-//             navigate('/'); // Redirect to login
+//             navigate('/');
 //           }
 //         });
 //       setEditId(null);
@@ -69,7 +72,7 @@
 //         })
 //         .catch((err) => {
 //           if (err === 'No token available' || err.includes('Invalid token')) {
-//             navigate('/'); // Redirect to login
+//             navigate('/');
 //           }
 //         });
 //     }
@@ -99,7 +102,7 @@
 //       })
 //       .catch((err) => {
 //         if (err === 'No token available' || err.includes('Invalid token')) {
-//           navigate('/'); // Redirect to login
+//           navigate('/');
 //         }
 //       });
 //   };
@@ -110,7 +113,7 @@
 //       navigate('/');
 //       return;
 //     }
-//     let url = `http://localhost:4050/api/accounts/statement/download`;
+//     let url = `${API_URL}/accounts/statement/download`;
 //     if (downloadParty) {
 //       url += `?party=${downloadParty}`;
 //     }
@@ -126,7 +129,6 @@
 //       }
 //       const grouped = await response.json();
 
-//       // Generate PDF using jsPDF with professional table design
 //       const doc = new jsPDF();
 //       let y = 20;
 //       let page = 1;
@@ -146,8 +148,7 @@
 //         const group = grouped[pId];
 //         const party = parties.find((p) => p._id === pId);
 
-//         // Add top header with party name
-//         doc.setFillColor(0, 51, 102); // Dark blue
+//         doc.setFillColor(0, 51, 102);
 //         doc.rect(0, 0, 210, 15, 'F');
 //         doc.setTextColor(255, 255, 255);
 //         doc.setFontSize(14);
@@ -156,7 +157,6 @@
 
 //         if (!group.accounts || group.accounts.length === 0) return;
 
-//         // Party name and balance
 //         doc.setFontSize(12);
 //         doc.setTextColor(0, 0, 0);
 //         doc.setFont('helvetica', 'bold');
@@ -173,14 +173,12 @@
 //         }
 //         y += 10;
 
-//         // Table setup
 //         const tableX = 10;
 //         const tableWidth = 190;
-//         const colWidths = [40, 40, 40, 40, 30]; // Date, Debit, Credit, Balance, Remark
+//         const colWidths = [40, 40, 40, 40, 30];
 //         const rowHeight = 8;
 //         const tableStartY = y;
 
-//         // Table header
 //         doc.setFillColor(0, 51, 102);
 //         doc.rect(tableX, y, tableWidth, rowHeight, 'F');
 //         doc.setTextColor(255, 255, 255);
@@ -193,7 +191,6 @@
 //         doc.text('Remark', tableX + 162, y + 6);
 //         y += rowHeight;
 
-//         // Table rows
 //         doc.setFont('helvetica', 'normal');
 //         doc.setTextColor(0, 0, 0);
 //         let currentBalance = 0;
@@ -203,49 +200,40 @@
 //           const curBalSign = currentBalance > 0 ? 'Dr' : currentBalance < 0 ? 'Cr' : '';
 //           const curBalValue = Math.abs(currentBalance).toFixed(2);
 
-//           // Alternate row background
 //           if (rowIndex % 2 === 0) {
 //             doc.setFillColor(240, 240, 240);
 //             doc.rect(tableX, y, tableWidth, rowHeight, 'F');
 //           }
 
-//           // Draw cell borders
 //           doc.setDrawColor(150, 150, 150);
 //           doc.rect(tableX, y, tableWidth, rowHeight);
 
-//           // Vertical lines for columns
 //           let x = tableX;
 //           colWidths.forEach((width, i) => {
 //             doc.rect(x, y, width, rowHeight);
 //             x += width;
 //           });
 
-//           // Cell content
 //           doc.setFontSize(9);
 //           doc.text(formatDate(acc.date), tableX + 2, y + 6);
-//           // Set red color for debit
 //           if (acc.debit > 0) {
 //             doc.setTextColor(255, 0, 0);
 //             doc.text(acc.debit.toFixed(2), tableX + 42, y + 6);
 //           }
-//           // Set green color for credit
 //           if (acc.credit > 0) {
 //             doc.setTextColor(0, 128, 0);
 //             doc.text(acc.credit.toFixed(2), tableX + 82, y + 6);
 //           }
-//           // Reset to black for other columns
 //           doc.setTextColor(0, 0, 0);
 //           doc.text(`${curBalValue} ${curBalSign}`, tableX + 122, y + 6);
 //           doc.text(acc.remark || '', tableX + 162, y + 6, { maxWidth: 28 });
 
 //           y += rowHeight;
 
-//           // Check for page overflow
 //           if (y > 260) {
 //             doc.addPage();
 //             y = 20;
 //             page++;
-//             // Re-add header
 //             doc.setFillColor(0, 51, 102);
 //             doc.rect(0, 0, 210, 15, 'F');
 //             doc.setTextColor(255, 255, 255);
@@ -253,7 +241,6 @@
 //             doc.setFont('helvetica', 'bold');
 //             doc.text(`${group.name} Statement`, 10, 10);
 
-//             // Re-add table header
 //             y = tableStartY;
 //             doc.setFillColor(0, 51, 102);
 //             doc.rect(tableX, y, tableWidth, rowHeight, 'F');
@@ -269,23 +256,18 @@
 //           }
 //         });
 
-//         // Grand Total row
 //         doc.setFillColor(200, 200, 200);
 //         doc.rect(tableX, y, tableWidth, rowHeight, 'F');
 //         doc.setFont('helvetica', 'bold');
 //         doc.text('Grand Total', tableX + 2, y + 6);
-//         // Set red color for total debit
 //         doc.setTextColor(255, 0, 0);
 //         doc.text(group.totalDebit.toFixed(2), tableX + 42, y + 6);
-//         // Set green color for total credit
 //         doc.setTextColor(0, 128, 0);
 //         doc.text(group.totalCredit.toFixed(2), tableX + 82, y + 6);
-//         // Reset to black for balance
 //         doc.setTextColor(0, 0, 0);
 //         doc.text(`${balValue} ${balSign}`, tableX + 122, y + 6);
 //         y += rowHeight + 10;
 
-//         // Report Generated
 //         const now = new Date();
 //         const hours = now.getHours() % 12 || 12;
 //         const minutes = String(now.getMinutes()).padStart(2, '0');
@@ -298,7 +280,6 @@
 //         doc.text(`Report Generated: ${genTime}`, tableX, y);
 //         y += 15;
 
-//         // Footer
 //         doc.setFillColor(0, 51, 102);
 //         doc.rect(0, 280, 210, 17, 'F');
 //         doc.setTextColor(255, 255, 255);
@@ -431,7 +412,6 @@
 
 // export default Account;
 
-
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -451,8 +431,7 @@ const Account = () => {
   const [editId, setEditId] = useState(null);
   const [downloadParty, setDownloadParty] = useState('');
 
-const API_URL = process.env.REACT_APP_API_URL
-
+  const API_URL = process.env.REACT_APP_API_URL
 
   useEffect(() => {
     dispatch(fetchParties()).unwrap().catch((err) => {
@@ -559,9 +538,16 @@ const API_URL = process.env.REACT_APP_API_URL
         },
       });
       if (!response.ok) {
-        throw new Error('Failed to fetch statement data');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       const grouped = await response.json();
+
+      // Validate data structure
+      if (!grouped || typeof grouped !== 'object' || Object.keys(grouped).length === 0) {
+        throw new Error('Invalid or empty data received from server');
+      }
+
+      console.log('Grouped data:', grouped);  // Debug: Check structure in console
 
       const doc = new jsPDF();
       let y = 20;
@@ -580,7 +566,16 @@ const API_URL = process.env.REACT_APP_API_URL
         }
 
         const group = grouped[pId];
+        if (!group || !group.accounts || group.accounts.length === 0) {
+          console.warn('Skipping empty group:', pId);
+          return;
+        }
+
         const party = parties.find((p) => p._id === pId);
+        if (!party) {
+          console.warn('Party not found for ID:', pId);
+          return;
+        }
 
         doc.setFillColor(0, 51, 102);
         doc.rect(0, 0, 210, 15, 'F');
@@ -588,8 +583,6 @@ const API_URL = process.env.REACT_APP_API_URL
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.text(`${group.name} Statement`, 10, 10);
-
-        if (!group.accounts || group.accounts.length === 0) return;
 
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
@@ -660,7 +653,9 @@ const API_URL = process.env.REACT_APP_API_URL
           }
           doc.setTextColor(0, 0, 0);
           doc.text(`${curBalValue} ${curBalSign}`, tableX + 122, y + 6);
-          doc.text(acc.remark || '', tableX + 162, y + 6, { maxWidth: 28 });
+          // Truncate long remarks and remove maxWidth to avoid jsPDF rendering errors
+          const remarkText = (acc.remark || '').length > 20 ? `${acc.remark.substring(0, 20)}...` : acc.remark || '';
+          doc.text(remarkText, tableX + 162, y + 6);  // No maxWidth
 
           y += rowHeight;
 
@@ -724,7 +719,8 @@ const API_URL = process.env.REACT_APP_API_URL
 
       doc.save('account_statement.pdf');
     } catch (error) {
-      alert('Error generating statement');
+      console.error('Detailed error in handleDownload:', error);  // Debug: Check console for exact error
+      alert('Error generating statement: ' + error.message);
     }
   };
 
