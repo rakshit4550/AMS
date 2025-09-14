@@ -1,7 +1,5 @@
 // import Account from '../model/Account.js';
 // import Party from '../model/Party.js';
-// import puppeteer from 'puppeteer'
-
 
 // // Create a new account
 // export const createAccount = async (req, res) => {
@@ -15,7 +13,7 @@
 //     if (!party) {
 //       return res.status(404).json({ message: 'Party not found or you do not have access' });
 //     }
-//     const account = new Account({ partyname, credit, debit, remark, createdBy: req.user.id });
+//     const account = new Account({ partyname, credit, debit, remark, createdBy: req.user.id, verified: false });
 //     await account.save();
 //     // Populate partyname in the response
 //     const populatedAccount = await Account.findById(account._id).populate('partyname', 'partyname');
@@ -54,21 +52,25 @@
 // export const updateAccount = async (req, res) => {
 //   try {
 //     const { partyname, credit = 0, debit = 0, remark } = req.body;
+//     const account = await Account.findOne({ _id: req.params.id, createdBy: req.user.id });
+//     if (!account) {
+//       return res.status(404).json({ message: 'Account not found or you do not have access' });
+//     }
+//     if (account.verified) {
+//       return res.status(403).json({ message: 'Cannot update a verified account' });
+//     }
 //     if (partyname) {
 //       const party = await Party.findOne({ _id: partyname, createdBy: req.user.id });
 //       if (!party) {
 //         return res.status(404).json({ message: 'Party not found or you do not have access' });
 //       }
 //     }
-//     const account = await Account.findOneAndUpdate(
+//     const updatedAccount = await Account.findOneAndUpdate(
 //       { _id: req.params.id, createdBy: req.user.id },
 //       { partyname, credit, debit, remark },
 //       { new: true, runValidators: true }
 //     ).populate('partyname', 'partyname');
-//     if (!account) {
-//       return res.status(404).json({ message: 'Account not found or you do not have access' });
-//     }
-//     res.status(200).json({ message: 'Account updated successfully', account });
+//     res.status(200).json({ message: 'Account updated successfully', account: updatedAccount });
 //   } catch (error) {
 //     res.status(500).json({ message: 'Server error', error: error.message });
 //   }
@@ -77,56 +79,42 @@
 // // Delete an account
 // export const deleteAccount = async (req, res) => {
 //   try {
-//     const account = await Account.findOneAndDelete({ _id: req.params.id, createdBy: req.user.id });
+//     const account = await Account.findOne({ _id: req.params.id, createdBy: req.user.id });
 //     if (!account) {
 //       return res.status(404).json({ message: 'Account not found or you do not have access' });
 //     }
+//     if (account.verified) {
+//       return res.status(403).json({ message: 'Cannot delete a verified account' });
+//     }
+//     await Account.findOneAndDelete({ _id: req.params.id, createdBy: req.user.id });
 //     res.status(200).json({ message: 'Account deleted successfully' });
 //   } catch (error) {
 //     res.status(500).json({ message: 'Server error', error: error.message });
 //   }
 // };
 
+// // Verify an account
+// export const verifyAccount = async (req, res) => {
+//   try {
+//     const account = await Account.findOne({ _id: req.params.id, createdBy: req.user.id });
+//     if (!account) {
+//       return res.status(404).json({ message: 'Account not found or you do not have access' });
+//     }
+//     if (account.verified) {
+//       return res.status(400).json({ message: 'Account is already verified' });
+//     }
+//     const updatedAccount = await Account.findOneAndUpdate(
+//       { _id: req.params.id, createdBy: req.user.id },
+//       { verified: true },
+//       { new: true }
+//     ).populate('partyname', 'partyname');
+//     res.status(200).json({ message: 'Account verified successfully', account: updatedAccount });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Server error', error: error.message });
+//   }
+// };
+
 // // Fetch account statement data
-// // export const downloadStatement = async (req, res) => {
-// //   try {
-// //     const partyId = req.query.party;
-// //     const query = { createdBy: req.user.id };
-// //     if (partyId) {
-// //       const party = await Party.findOne({ _id: partyId, createdBy: req.user.id });
-// //       if (!party) {
-// //         return res.status(404).json({ message: 'Party not found or you do not have access' });
-// //       }
-// //       query.partyname = partyId;
-// //     }
-// //     const accounts = await Account.find(query).populate('partyname', 'partyname').sort({ date: 1 });
-
-// //     // Group accounts by party
-// //     const grouped = {};
-// //     accounts.forEach((acc) => {
-// //       const pId = acc.partyname._id.toString();
-// //       const pName = acc.partyname.partyname;
-// //       if (!grouped[pId]) {
-// //         grouped[pId] = { name: pName, accounts: [], totalCredit: 0, totalDebit: 0 };
-// //       }
-// //       grouped[pId].accounts.push({
-// //         date: acc.date,
-// //         credit: acc.credit,
-// //         debit: acc.debit,
-// //         remark: acc.remark || 'N/A'
-// //       });
-// //       grouped[pId].totalCredit += acc.credit;
-// //       grouped[pId].totalDebit += acc.debit;
-// //     });
-
-// //     res.status(200).json(grouped);
-// //   } catch (error) {
-// //     res.status(500).json({ message: 'Server error', error: error.message });
-// //   }
-// // };
-
-
-
 // export const downloadStatement = async (req, res) => {
 //   try {
 //     const partyId = req.query.party;
@@ -149,107 +137,19 @@
 //         grouped[pId] = { name: pName, accounts: [], totalCredit: 0, totalDebit: 0 };
 //       }
 //       grouped[pId].accounts.push({
-//         date: acc.date.toISOString().split('T')[0],
-//         credit: acc.credit,
-//         debit: acc.debit,
-//         remark: acc.remark || 'N/A'
+//         date: acc.date.toISOString(),
+//         credit: Number(acc.credit) || 0,
+//         debit: Number(acc.debit) || 0,
+//         remark: acc.remark || '',
+//         verified: acc.verified || false
 //       });
-//       grouped[pId].totalCredit += acc.credit;
-//       grouped[pId].totalDebit += acc.debit;
+//       grouped[pId].totalCredit += Number(acc.credit) || 0;
+//       grouped[pId].totalDebit += Number(acc.debit) || 0;
 //     });
 
-//     // Generate HTML content for PDF
-//     let htmlContent = `
-//       <html>
-//         <head>
-//           <style>
-//             body { font-family: Arial, sans-serif; margin: 20px; }
-//             h1 { text-align: center; }
-//             table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-//             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-//             th { background-color: #f2f2f2; }
-//             .total { font-weight: bold; }
-//             .party-section { margin-bottom: 30px; }
-//           </style>
-//         </head>
-//         <body>
-//           <h1>Account Statement</h1>
-//     `;
-
-//     Object.keys(grouped).forEach((partyId) => {
-//       const party = grouped[partyId];
-//       htmlContent += `
-//         <div class="party-section">
-//           <h2>Party: ${party.name}</h2>
-//           <table>
-//             <tr>
-//               <th>Date</th>
-//               <th>Credit</th>
-//               <th>Debit</th>
-//               <th>Remark</th>
-//             </tr>
-//       `;
-//       party.accounts.forEach((account) => {
-//         htmlContent += `
-//           <tr>
-//             <td>${account.date}</td>
-//             <td>${account.credit.toFixed(2)}</td>
-//             <td>${account.debit.toFixed(2)}</td>
-//             <td>${account.remark}</td>
-//           </tr>
-//         `;
-//       });
-//       htmlContent += `
-//           <tr class="total">
-//             <td>Total</td>
-//             <td>${party.totalCredit.toFixed(2)}</td>
-//             <td>${party.totalDebit.toFixed(2)}</td>
-//             <td></td>
-//           </tr>
-//         </table>
-//         </div>
-//       `;
-//     });
-
-//     htmlContent += `
-//         </body>
-//       </html>
-//     `;
-
-//     // Launch Puppeteer and generate PDF
-//     const browser = await puppeteer.launch({
-//       executablePath: '/snap/bin/chromium',
-//       headless: true,
-//       args: ['--no-sandbox', '--disable-setuid-sandbox']
-//     });
-//     const page = await browser.newPage();
-//     await page.setContent(htmlContent);
-    
-//     const pdfBuffer = await page.pdf({
-//       format: 'A4',
-//       printBackground: true,
-//       margin: {
-//         top: '20mm',
-//         right: '20mm',
-//         bottom: '20mm',
-//         left: '20mm'
-//       }
-//     });
-
-//     await browser.close();
-
-//     // Set response headers for PDF download
-//     res.set({
-//       'Content-Type': 'application/pdf',
-//       'Content-Disposition': 'attachment; filename="statement.pdf"',
-//       'Content-Length': pdfBuffer.length
-//     });
-
-//     // Send PDF buffer
-//     res.status(200).send(pdfBuffer);
-
+//     res.status(200).json(grouped);
 //   } catch (error) {
-//     console.error('Error generating PDF:', error);
+//     console.error('Backend error in downloadStatement:', error);
 //     res.status(500).json({ message: 'Server error', error: error.message });
 //   }
 // };
@@ -260,16 +160,27 @@ import Party from '../model/Party.js';
 // Create a new account
 export const createAccount = async (req, res) => {
   try {
-    const { partyname, credit = 0, debit = 0, remark } = req.body;
+    const { partyname, credit = 0, debit = 0, remark, date } = req.body;
     if (!partyname) {
       return res.status(400).json({ message: 'Party name is required' });
+    }
+    if (!date) {
+      return res.status(400).json({ message: 'Date is required' });
     }
     // Verify party exists and belongs to the authenticated user
     const party = await Party.findOne({ _id: partyname, createdBy: req.user.id });
     if (!party) {
       return res.status(404).json({ message: 'Party not found or you do not have access' });
     }
-    const account = new Account({ partyname, credit, debit, remark, createdBy: req.user.id });
+    const account = new Account({ 
+      partyname, 
+      credit, 
+      debit, 
+      remark, 
+      date: new Date(date).toISOString(), 
+      createdBy: req.user.id, 
+      verified: false 
+    });
     await account.save();
     // Populate partyname in the response
     const populatedAccount = await Account.findById(account._id).populate('partyname', 'partyname');
@@ -307,22 +218,29 @@ export const getAccountById = async (req, res) => {
 // Update an account
 export const updateAccount = async (req, res) => {
   try {
-    const { partyname, credit = 0, debit = 0, remark } = req.body;
+    const { partyname, credit = 0, debit = 0, remark, date } = req.body;
+    const account = await Account.findOne({ _id: req.params.id, createdBy: req.user.id });
+    if (!account) {
+      return res.status(404).json({ message: 'Account not found or you do not have access' });
+    }
+    if (account.verified) {
+      return res.status(403).json({ message: 'Cannot update a verified account' });
+    }
+    if (!date) {
+      return res.status(400).json({ message: 'Date is required' });
+    }
     if (partyname) {
       const party = await Party.findOne({ _id: partyname, createdBy: req.user.id });
       if (!party) {
         return res.status(404).json({ message: 'Party not found or you do not have access' });
       }
     }
-    const account = await Account.findOneAndUpdate(
+    const updatedAccount = await Account.findOneAndUpdate(
       { _id: req.params.id, createdBy: req.user.id },
-      { partyname, credit, debit, remark },
+      { partyname, credit, debit, remark, date: new Date(date).toISOString() },
       { new: true, runValidators: true }
     ).populate('partyname', 'partyname');
-    if (!account) {
-      return res.status(404).json({ message: 'Account not found or you do not have access' });
-    }
-    res.status(200).json({ message: 'Account updated successfully', account });
+    res.status(200).json({ message: 'Account updated successfully', account: updatedAccount });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -331,55 +249,42 @@ export const updateAccount = async (req, res) => {
 // Delete an account
 export const deleteAccount = async (req, res) => {
   try {
-    const account = await Account.findOneAndDelete({ _id: req.params.id, createdBy: req.user.id });
+    const account = await Account.findOne({ _id: req.params.id, createdBy: req.user.id });
     if (!account) {
       return res.status(404).json({ message: 'Account not found or you do not have access' });
     }
+    if (account.verified) {
+      return res.status(403).json({ message: 'Cannot delete a verified account' });
+    }
+    await Account.findOneAndDelete({ _id: req.params.id, createdBy: req.user.id });
     res.status(200).json({ message: 'Account deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
+// Verify an account
+export const verifyAccount = async (req, res) => {
+  try {
+    const account = await Account.findOne({ _id: req.params.id, createdBy: req.user.id });
+    if (!account) {
+      return res.status(404).json({ message: 'Account not found or you do not have access' });
+    }
+    if (account.verified) {
+      return res.status(400).json({ message: 'Account is already verified' });
+    }
+    const updatedAccount = await Account.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user.id },
+      { verified: true },
+      { new: true }
+    ).populate('partyname', 'partyname');
+    res.status(200).json({ message: 'Account verified successfully', account: updatedAccount });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // Fetch account statement data
-// export const downloadStatement = async (req, res) => {
-//   try {
-//     const partyId = req.query.party;
-//     const query = { createdBy: req.user.id };
-//     if (partyId) {
-//       const party = await Party.findOne({ _id: partyId, createdBy: req.user.id });
-//       if (!party) {
-//         return res.status(404).json({ message: 'Party not found or you do not have access' });
-//       }
-//       query.partyname = partyId;
-//     }
-//     const accounts = await Account.find(query).populate('partyname', 'partyname').sort({ date: 1 });
-
-//     // Group accounts by party
-//     const grouped = {};
-//     accounts.forEach((acc) => {
-//       const pId = acc.partyname._id.toString();
-//       const pName = acc.partyname.partyname;
-//       if (!grouped[pId]) {
-//         grouped[pId] = { name: pName, accounts: [], totalCredit: 0, totalDebit: 0 };
-//       }
-//       grouped[pId].accounts.push({
-//         date: acc.date.toISOString(),  // Ensure full ISO string for frontend parsing
-//         credit: Number(acc.credit) || 0,  // Ensure numeric
-//         debit: Number(acc.debit) || 0,    // Ensure numeric
-//         remark: acc.remark || ''  // Empty string to avoid null/undefined
-//       });
-//       grouped[pId].totalCredit += Number(acc.credit) || 0;
-//       grouped[pId].totalDebit += Number(acc.debit) || 0;
-//     });
-
-//     res.status(200).json(grouped);
-//   } catch (error) {
-//     console.error('Backend error in downloadStatement:', error);
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-
 export const downloadStatement = async (req, res) => {
   try {
     const partyId = req.query.party;
@@ -402,10 +307,11 @@ export const downloadStatement = async (req, res) => {
         grouped[pId] = { name: pName, accounts: [], totalCredit: 0, totalDebit: 0 };
       }
       grouped[pId].accounts.push({
-        date: acc.date.toISOString(),  // Full ISO for frontend date parsing
+        date: acc.date.toISOString(),
         credit: Number(acc.credit) || 0,
         debit: Number(acc.debit) || 0,
-        remark: acc.remark || ''
+        remark: acc.remark || '',
+        verified: acc.verified || false
       });
       grouped[pId].totalCredit += Number(acc.credit) || 0;
       grouped[pId].totalDebit += Number(acc.debit) || 0;

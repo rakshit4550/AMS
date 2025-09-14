@@ -23,6 +23,15 @@
 //   date: {
 //     type: Date,
 //     default: Date.now
+//   },
+//   createdBy: {
+//     type: mongoose.Schema.Types.ObjectId,
+//     ref: 'User',
+//     required: true
+//   },
+//   verified: {
+//     type: Boolean,
+//     default: false
 //   }
 // }, {
 //   timestamps: true
@@ -64,12 +73,16 @@ const accountSchema = new mongoose.Schema({
   },
   date: {
     type: Date,
-    default: Date.now
+    required: true
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  verified: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

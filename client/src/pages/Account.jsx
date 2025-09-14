@@ -1,9 +1,114 @@
 // import React, { useEffect, useState } from 'react';
 // import { useSelector, useDispatch } from 'react-redux';
 // import { useNavigate } from 'react-router-dom';
-// import { fetchAccounts, createAccount, updateAccount, deleteAccount, fetchParties } from '../redux/accountSlice';
+// import { fetchAccounts, createAccount, updateAccount, deleteAccount, fetchParties, verifyAccount } from '../redux/accountSlice';
 // import { jsPDF } from 'jspdf';
+// import Select from 'react-select';
 
+// // PartyAccountTable Component
+// const PartyAccountTable = ({ partyname, accounts, onEdit, onDelete, onVerify, entriesPerPage }) => {
+//   const [currentPage, setCurrentPage] = useState(1);
+
+//   // Ensure accounts are sorted by date in descending order (newest first)
+//   const sortedAccounts = [...(accounts || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+//   const totalPages = Math.ceil((accounts?.length || 0) / entriesPerPage);
+//   const indexOfLast = currentPage * entriesPerPage;
+//   const indexOfFirst = indexOfLast - entriesPerPage;
+//   const currentAccounts = sortedAccounts.slice(indexOfFirst, indexOfLast);
+//   const totalDebit = (accounts || []).reduce((sum, account) => sum + (account.debit || 0), 0);
+//   const totalCredit = (accounts || []).reduce((sum, account) => sum + (account.credit || 0), 0);
+//   const balance = totalDebit - totalCredit;
+//   const balSign = balance > 0 ? 'Dr' : balance < 0 ? 'Cr' : '';
+//   const balValue = Math.abs(balance).toFixed(2);
+//   const balanceColor = balance > 0 ? 'text-red-600' : balance < 0 ? 'text-green-600' : 'text-gray-800';
+
+//   if (!accounts || accounts.length === 0) {
+//     return <p className="text-gray-600">No accounts available for {partyname}.</p>;
+//   }
+
+//   return (
+//     <div className="mb-8 overflow-x-auto">
+//       <h3 className="text-lg font-semibold mb-2 text-gray-800">{partyname}</h3>
+//       <table className="w-full border-collapse bg-white shadow-md rounded-lg">
+//         <thead>
+//           <tr className="bg-blue-900 text-white">
+//             <th className="border p-2">Date</th>
+//             <th className="border p-2">Debit (-)</th>
+//             <th className="border p-2">Credit (+)</th>
+//             <th className="border p-2">Remark</th>
+//             <th className="border p-2">Actions</th>
+//           </tr>
+//         </thead>
+//         <tbody>
+//           {currentAccounts.map((account, index) => (
+//             <tr key={account._id} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
+//               <td className="border p-2">{new Date(account.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+//               <td className="border p-2 text-red-600">{account.debit > 0 ? account.debit.toFixed(2) : ''}</td>
+//               <td className="border p-2 text-green-600">{account.credit > 0 ? account.credit.toFixed(2) : ''}</td>
+//               <td className="border p-2">{account.remark || 'N/A'}</td>
+//               <td className="border p-2">
+//                 <button
+//                   onClick={() => !account.verified && onEdit(account)}
+//                   className={`bg-yellow-500 text-white px-2 py-1 rounded mr-2 hover:bg-yellow-600 transition duration-200 ${account.verified ? 'opacity-50 cursor-not-allowed' : ''}`}
+//                   disabled={account.verified}
+//                 >
+//                   Edit
+//                 </button>
+//                 <button
+//                   onClick={() => !account.verified && onDelete(account._id)}
+//                   className={`bg-red-500 text-white px-2 py-1 rounded mr-2 hover:bg-red-600 transition duration-200 ${account.verified ? 'opacity-50 cursor-not-allowed' : ''}`}
+//                   disabled={account.verified}
+//                 >
+//                   Delete
+//                 </button>
+//                 <button
+//                   onClick={() => onVerify(account._id)}
+//                   className={`bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition duration-200 ${account.verified ? 'opacity-50 cursor-not-allowed' : ''}`}
+//                   disabled={account.verified}
+//                 >
+//                   {account.verified ? 'Verified' : 'Verify'}
+//                 </button>
+//               </td>
+//             </tr>
+//           ))}
+//           <tr className="bg-gray-200 font-bold">
+//             <td className="border p-2">Total</td>
+//             <td className="border p-2 text-red-600">{totalDebit.toFixed(2)}</td>
+//             <td className="border p-2 text-green-600">{totalCredit.toFixed(2)}</td>
+//             <td className="border p-2"></td>
+//             <td className="border p-2"></td>
+//           </tr>
+//           <tr className="bg-gray-300 font-bold">
+//             <td className="border p-2">Balance</td>
+//             <td className={`border p-2 ${balanceColor}`} colSpan="4">₹{balValue} {balSign}</td>
+//           </tr>
+//         </tbody>
+//       </table>
+//       <div className="flex justify-between mt-4">
+//         <p>Showing {indexOfFirst + 1} to {Math.min(indexOfLast, sortedAccounts.length)} of {accounts.length} entries</p>
+//         <div>
+//           <button
+//             disabled={currentPage === 1}
+//             onClick={() => setCurrentPage(currentPage - 1)}
+//             className="bg-gray-300 text-gray-800 px-2 py-1 rounded mr-2 hover:bg-gray-400 disabled:opacity-50"
+//           >
+//             Previous
+//           </button>
+//           <span>Page {currentPage} of {totalPages}</span>
+//           <button
+//             disabled={currentPage === totalPages}
+//             onClick={() => setCurrentPage(currentPage + 1)}
+//             className="bg-gray-300 text-gray-800 px-2 py-1 rounded ml-2 hover:bg-gray-400 disabled:opacity-50"
+//           >
+//             Next
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// // Account Component
 // const Account = () => {
 //   const dispatch = useDispatch();
 //   const navigate = useNavigate();
@@ -13,10 +118,17 @@
 //     amount: '',
 //     transactionType: 'credit',
 //     remark: '',
+//     date: new Date().toISOString().split('T')[0], // Default to today's date
 //   });
 //   const [editId, setEditId] = useState(null);
-//   const [downloadParty, setDownloadParty] = useState('');
+//   const [entriesPerPage] = useState(10); // Fixed to 10 entries as per requirement
 //   const API_URL = process.env.REACT_APP_API_URL;
+
+//   // Prepare options for react-select
+//   const partyOptions = [
+//     { value: '', label: 'Select a Party' },
+//     ...parties.map((party) => ({ value: party._id, label: party.partyname })),
+//   ];
 
 //   useEffect(() => {
 //     dispatch(fetchParties()).unwrap().catch((err) => {
@@ -36,10 +148,14 @@
 //     setFormData({ ...formData, [name]: value });
 //   };
 
+//   const handlePartyInputChange = (selectedOption) => {
+//     setFormData({ ...formData, partyname: selectedOption ? selectedOption.value : '' });
+//   };
+
 //   const handleSubmit = (e) => {
 //     e.preventDefault();
-//     if (!formData.partyname || !formData.amount) {
-//       alert('Party name and amount are required');
+//     if (!formData.partyname || !formData.amount || !formData.date) {
+//       alert('Party name, amount, and date are required');
 //       return;
 //     }
 //     const accountData = {
@@ -47,6 +163,7 @@
 //       credit: formData.transactionType === 'credit' ? parseFloat(formData.amount) : 0,
 //       debit: formData.transactionType === 'debit' ? parseFloat(formData.amount) : 0,
 //       remark: formData.remark,
+//       date: formData.date, // Send date as-is from the form
 //     };
 //     if (editId) {
 //       dispatch(updateAccount({ id: editId, ...accountData }))
@@ -54,19 +171,21 @@
 //         .then(() => {
 //           showMessages(accountData.credit, accountData.debit, formData.partyname);
 //           dispatch(fetchAccounts());
+//           setFormData({ partyname: formData.partyname, amount: '', transactionType: 'credit', remark: '', date: formData.date });
+//           setEditId(null);
 //         })
 //         .catch((err) => {
 //           if (err === 'No token available' || err.includes('Invalid token')) {
 //             navigate('/');
 //           }
 //         });
-//       setEditId(null);
 //     } else {
 //       dispatch(createAccount(accountData))
 //         .unwrap()
 //         .then(() => {
 //           showMessages(accountData.credit, accountData.debit, formData.partyname);
 //           dispatch(fetchAccounts());
+//           setFormData({ partyname: formData.partyname, amount: '', transactionType: 'credit', remark: '', date: formData.date });
 //         })
 //         .catch((err) => {
 //           if (err === 'No token available' || err.includes('Invalid token')) {
@@ -74,7 +193,6 @@
 //           }
 //         });
 //     }
-//     setFormData({ partyname: '', amount: '', transactionType: 'credit', remark: '' });
 //   };
 
 //   const showMessages = (credit, debit, partyId) => {
@@ -83,17 +201,40 @@
 //   };
 
 //   const handleEdit = (account) => {
+//     if (account.verified) {
+//       alert('This account is verified and cannot be edited.');
+//       return;
+//     }
 //     setFormData({
 //       partyname: account.partyname._id,
 //       amount: account.credit > 0 ? account.credit : account.debit,
 //       transactionType: account.credit > 0 ? 'credit' : 'debit',
 //       remark: account.remark || '',
+//       date: new Date(account.date).toISOString().split('T')[0],
 //     });
 //     setEditId(account._id);
 //   };
 
 //   const handleDelete = (id) => {
+//     const account = accounts.find((acc) => acc._id === id);
+//     if (account.verified) {
+//       alert('This account is verified and cannot be deleted.');
+//       return;
+//     }
 //     dispatch(deleteAccount(id))
+//       .unwrap()
+//       .then(() => {
+//         dispatch(fetchAccounts());
+//       })
+//       .catch((err) => {
+//         if (err === 'No token available' || err.includes('Invalid token')) {
+//           navigate('/');
+//         }
+//       });
+//   };
+
+//   const handleVerify = (id) => {
+//     dispatch(verifyAccount(id))
 //       .unwrap()
 //       .then(() => {
 //         dispatch(fetchAccounts());
@@ -112,8 +253,8 @@
 //       return;
 //     }
 //     let url = `${API_URL}/accounts/statement/download`;
-//     if (downloadParty) {
-//       url += `?party=${downloadParty}`;
+//     if (formData.partyname) {
+//       url += `?party=${formData.partyname}`;
 //     }
 //     try {
 //       const response = await fetch(url, {
@@ -280,204 +421,134 @@
 //     }
 //   };
 
-//   // Filter last 10 entries for selected party
-//   const selectedPartyAccounts = formData.partyname
-//     ? accounts
-//         .filter((account) => account.partyname._id === formData.partyname)
-//         .sort((a, b) => new Date(b.date) - new Date(a.date))
-//         .slice(0, 10)
-//     : [];
-
-//   // Group accounts by party for separate tables
-//   const groupedAccounts = parties.reduce((acc, party) => {
-//     const partyAccounts = accounts.filter((account) => account.partyname?._id === party._id);
-//     if (partyAccounts.length > 0) {
-//       const totalDebit = partyAccounts.reduce((sum, account) => sum + account.debit, 0);
-//       const totalCredit = partyAccounts.reduce((sum, account) => sum + account.credit, 0);
-//       acc[party._id] = {
-//         partyname: party.partyname,
-//         accounts: partyAccounts,
-//         totalDebit,
-//         totalCredit,
-//       };
-//     }
-//     return acc;
-//   }, {});
+//   // Group accounts by party for selected party
+//   const groupedAccounts = formData.partyname
+//     ? parties.reduce((acc, party) => {
+//         if (party._id === formData.partyname) {
+//           const partyAccounts = accounts.filter((account) => account.partyname?._id === party._id);
+//           if (partyAccounts.length > 0) {
+//             acc[party._id] = {
+//               partyname: party.partyname,
+//               accounts: partyAccounts,
+//             };
+//           }
+//         }
+//         return acc;
+//       }, {})
+//     : {};
 
 //   return (
-//     <div className="container mx-auto p-4">
-//       <h1 className="text-2xl font-bold mb-4">Account Management</h1>
-//       <form onSubmit={handleSubmit} className="mb-6 space-y-4">
+//     <div className="container mx-auto p-4 bg-white shadow-lg rounded-lg">
+//       {/* Form */}
+//       <form onSubmit={handleSubmit} className="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 items-end">
 //         <div>
-//           <label className="block mb-1">Party Name</label>
-//           <select
-//             name="partyname"
-//             value={formData.partyname}
-//             onChange={handleInputChange}
-//             className="border p-2 rounded w-full"
-//             required
-//           >
-//             <option value="">Select Party</option>
-//             {parties.map((party) => (
-//               <option key={party._id} value={party._id}>{party.partyname}</option>
-//             ))}
-//           </select>
+//           <label className="block mb-1 font-medium text-gray-700">Party Name</label>
+//           <Select
+//             options={partyOptions.filter(option => option.value !== '')}
+//             value={partyOptions.find(option => option.value === formData.partyname) || null}
+//             onChange={handlePartyInputChange}
+//             placeholder="Select or type to search party"
+//             className="w-full"
+//             classNamePrefix="select"
+//             isClearable
+//             isSearchable
+//             styles={{
+//               control: (base) => ({
+//                 ...base,
+//                 borderColor: '#d1d5db',
+//                 padding: '2px',
+//                 borderRadius: '0.375rem',
+//                 boxShadow: 'none',
+//                 '&:hover': {
+//                   borderColor: '#3b82f6',
+//                 },
+//                 '&:focus': {
+//                   borderColor: '#3b82f6',
+//                   boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.5)',
+//                 },
+//               }),
+//             }}
+//           />
 //         </div>
 //         <div>
-//           <label className="block mb-1">Transaction Type</label>
+//           <label className="block mb-1 font-medium text-gray-700">Transaction Type</label>
 //           <select
 //             name="transactionType"
 //             value={formData.transactionType}
 //             onChange={handleInputChange}
-//             className="border p-2 rounded w-full"
+//             className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
 //           >
-//             <option value="credit">Credit</option>
-//             <option value="debit">Debit</option>
+//             <option value="credit">Credit(Dena)</option>
+//             <option value="debit">Debit(Lena)</option>
 //           </select>
 //         </div>
 //         <div>
-//           <label className="block mb-1">Amount</label>
+//           <label className="block mb-1 font-medium text-gray-700">Amount</label>
 //           <input
 //             type="number"
 //             name="amount"
 //             value={formData.amount}
 //             onChange={handleInputChange}
 //             placeholder="Enter amount"
-//             className="border p-2 rounded w-full"
+//             className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
 //             required
 //           />
 //         </div>
 //         <div>
-//           <label className="block mb-1">Remark (Optional)</label>
+//           <label className="block mb-1 font-medium text-gray-700">Date</label>
+//           <input
+//             type="date"
+//             name="date"
+//             value={formData.date}
+//             onChange={handleInputChange}
+//             className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+//             required
+//           />
+//         </div>
+//         <div>
+//           <label className="block mb-1 font-medium text-gray-700">Remark (Optional)</label>
 //           <input
 //             type="text"
 //             name="remark"
 //             value={formData.remark}
 //             onChange={handleInputChange}
 //             placeholder="Enter remark"
-//             className="border p-2 rounded w-full"
+//             className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
 //           />
 //         </div>
-//         <button
-//           type="submit"
-//           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-//         >
-//           {editId ? 'Update Account' : 'Add Account'}
-//         </button>
-//       </form>
-//       {formData.partyname && selectedPartyAccounts.length > 0 && (
-//         <div className="mb-6">
-//           <h2 className="text-xl font-bold mb-2">Last 10 Entries for Selected Party</h2>
-//           <table className="w-full border-collapse">
-//             <thead>
-//               <tr className="bg-blue-900 text-white">
-//                 <th className="border p-2">Date</th>
-//                 <th className="border p-2">Debit (-)</th>
-//                 <th className="border p-2">Credit (+)</th>
-//                 <th className="border p-2">Remark</th>
-//                 <th className="border p-2">Actions</th>
-//               </tr>
-//             </thead>
-//             <tbody>
-//               {selectedPartyAccounts.map((account, index) => (
-//                 <tr key={account._id} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
-//                   <td className="border p-2">{new Date(account.date).toLocaleDateString()}</td>
-//                   <td className="border p-2 text-red-600">{account.debit > 0 ? account.debit.toFixed(2) : ''}</td>
-//                   <td className="border p-2 text-green-600">{account.credit > 0 ? account.credit.toFixed(2) : ''}</td>
-//                   <td className="border p-2">{account.remark || 'N/A'}</td>
-//                   <td className="border p-2">
-//                     <button
-//                       onClick={() => handleEdit(account)}
-//                       className="bg-yellow-500 text-white px-2 py-1 rounded mr-2 hover:bg-yellow-600"
-//                     >
-//                       Edit
-//                     </button>
-//                     <button
-//                       onClick={() => handleDelete(account._id)}
-//                       className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-//                     >
-//                       Delete
-//                     </button>
-//                   </td>
-//                 </tr>
-//               ))}
-//             </tbody>
-//           </table>
+//         <div className="flex gap-2">
+//           <button
+//             type="submit"
+//             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition duration-200 col-span-1 md:col-auto"
+//           >
+//             {editId ? 'Update' : 'Submit'}
+//           </button>
+//           <button
+//             type="button"
+//             onClick={handleDownload}
+//             className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition duration-200 col-span-1 md:col-auto"
+//           >
+//             Download Statement
+//           </button>
 //         </div>
-//       )}
-//       <div className="mb-4">
-//         <label className="block mb-1">Download Statement for Party</label>
-//         <select
-//           value={downloadParty}
-//           onChange={(e) => setDownloadParty(e.target.value)}
-//           className="border p-2 rounded w-full"
-//         >
-//           <option value="">All Parties</option>
-//           {parties.map((party) => (
-//             <option key={party._id} value={party._id}>{party.partyname}</option>
-//           ))}
-//         </select>
-//       </div>
-//       <button
-//         onClick={handleDownload}
-//         className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mb-6"
-//       >
-//         Download Statement
-//       </button>
-//       {loading && <p>Loading...</p>}
-//       {error && <p className="text-red-500">{error}</p>}
+//       </form>
+
+//       {loading && <p className="text-blue-600">Loading...</p>}
+//       {error && <p className="text-red-600">{error}</p>}
 //       <div className="mb-6">
-//         <h2 className="text-xl font-bold mb-2">All Accounts</h2>
-//         {Object.keys(groupedAccounts).length > 0 ? (
-//           Object.keys(groupedAccounts).map((partyId) => (
-//             <div key={partyId} className="mb-8">
-//               <h3 className="text-lg font-semibold mb-2">{groupedAccounts[partyId].partyname}</h3>
-//               <table className="w-full border-collapse">
-//                 <thead>
-//                   <tr className="bg-blue-900 text-white">
-//                     <th className="border p-2">Date</th>
-//                     <th className="border p-2">Debit (-)</th>
-//                     <th className="border p-2">Credit (+)</th>
-//                     <th className="border p-2">Remark</th>
-//                     <th className="border p-2">Actions</th>
-//                   </tr>
-//                 </thead>
-//                 <tbody>
-//                   {groupedAccounts[partyId].accounts.map((account, index) => (
-//                     <tr key={account._id} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
-//                       <td className="border p-2">{new Date(account.date).toLocaleDateString()}</td>
-//                       <td className="border p-2 text-red-600">{account.debit > 0 ? account.debit.toFixed(2) : ''}</td>
-//                       <td className="border p-2 text-green-600">{account.credit > 0 ? account.credit.toFixed(2) : ''}</td>
-//                       <td className="border p-2">{account.remark || 'N/A'}</td>
-//                       <td className="border p-2">
-//                         <button
-//                           onClick={() => handleEdit(account)}
-//                           className="bg-yellow-500 text-white px-2 py-1 rounded mr-2 hover:bg-yellow-600"
-//                         >
-//                           Edit
-//                         </button>
-//                         <button
-//                           onClick={() => handleDelete(account._id)}
-//                           className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-//                         >
-//                           Delete
-//                         </button>
-//                       </td>
-//                     </tr>
-//                   ))}
-//                   <tr className="bg-gray-200 font-bold">
-//                     <td className="border p-2">Total</td>
-//                     <td className="border p-2 text-red-600">{groupedAccounts[partyId].totalDebit.toFixed(2)}</td>
-//                     <td className="border p-2 text-green-600">{groupedAccounts[partyId].totalCredit.toFixed(2)}</td>
-//                     <td className="border p-2"></td>
-//                     <td className="border p-2"></td>
-//                   </tr>
-//                 </tbody>
-//               </table>
-//             </div>
-//           ))
+//         {formData.partyname && groupedAccounts[formData.partyname] ? (
+//           <PartyAccountTable
+//             partyname={groupedAccounts[formData.partyname].partyname}
+//             accounts={groupedAccounts[formData.partyname].accounts}
+//             onEdit={handleEdit}
+//             onDelete={handleDelete}
+//             onVerify={handleVerify}
+//             entriesPerPage={entriesPerPage}
+//           />
+//         ) : formData.partyname ? (
+//           <p className="text-gray-600">No accounts available for selected party.</p>
 //         ) : (
-//           <p>No accounts available.</p>
+//           null
 //         )}
 //       </div>
 //     </div>
@@ -490,8 +561,9 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { fetchAccounts, createAccount, updateAccount, deleteAccount, fetchParties } from '../redux/accountSlice';
+import { fetchAccounts, createAccount, updateAccount, deleteAccount, fetchParties, verifyAccount } from '../redux/accountSlice';
 import { jsPDF } from 'jspdf';
+import Select from 'react-select';
 
 const Account = () => {
   const dispatch = useDispatch();
@@ -502,10 +574,18 @@ const Account = () => {
     amount: '',
     transactionType: 'credit',
     remark: '',
+    date: new Date().toISOString().split('T')[0], // Default to today's date
   });
   const [editId, setEditId] = useState(null);
-  const [downloadParty, setDownloadParty] = useState('');
+  const [entriesPerPage] = useState(10); // Fixed to 10 entries as per requirement
+  const [currentPage, setCurrentPage] = useState(1); // Pagination state
   const API_URL = process.env.REACT_APP_API_URL;
+
+  // Prepare options for react-select
+  const partyOptions = [
+    { value: '', label: 'Select a Party' },
+    ...parties.map((party) => ({ value: party._id, label: party.partyname })),
+  ];
 
   useEffect(() => {
     dispatch(fetchParties()).unwrap().catch((err) => {
@@ -525,10 +605,15 @@ const Account = () => {
     setFormData({ ...formData, [name]: value });
   };
 
+  const handlePartyInputChange = (selectedOption) => {
+    setFormData({ ...formData, partyname: selectedOption ? selectedOption.value : '' });
+    setCurrentPage(1); // Reset to first page when party changes
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.partyname || !formData.amount) {
-      alert('Party name and amount are required');
+    if (!formData.partyname || !formData.amount || !formData.date) {
+      alert('Party name, amount, and date are required');
       return;
     }
     const accountData = {
@@ -536,6 +621,7 @@ const Account = () => {
       credit: formData.transactionType === 'credit' ? parseFloat(formData.amount) : 0,
       debit: formData.transactionType === 'debit' ? parseFloat(formData.amount) : 0,
       remark: formData.remark,
+      date: formData.date,
     };
     if (editId) {
       dispatch(updateAccount({ id: editId, ...accountData }))
@@ -543,19 +629,21 @@ const Account = () => {
         .then(() => {
           showMessages(accountData.credit, accountData.debit, formData.partyname);
           dispatch(fetchAccounts());
+          setFormData({ partyname: formData.partyname, amount: '', transactionType: 'credit', remark: '', date: formData.date });
+          setEditId(null);
         })
         .catch((err) => {
           if (err === 'No token available' || err.includes('Invalid token')) {
             navigate('/');
           }
         });
-      setEditId(null);
     } else {
       dispatch(createAccount(accountData))
         .unwrap()
         .then(() => {
           showMessages(accountData.credit, accountData.debit, formData.partyname);
           dispatch(fetchAccounts());
+          setFormData({ partyname: formData.partyname, amount: '', transactionType: 'credit', remark: '', date: formData.date });
         })
         .catch((err) => {
           if (err === 'No token available' || err.includes('Invalid token')) {
@@ -563,7 +651,6 @@ const Account = () => {
           }
         });
     }
-    setFormData({ partyname: '', amount: '', transactionType: 'credit', remark: '' });
   };
 
   const showMessages = (credit, debit, partyId) => {
@@ -572,17 +659,40 @@ const Account = () => {
   };
 
   const handleEdit = (account) => {
+    if (account.verified) {
+      alert('This account is verified and cannot be edited.');
+      return;
+    }
     setFormData({
       partyname: account.partyname._id,
       amount: account.credit > 0 ? account.credit : account.debit,
       transactionType: account.credit > 0 ? 'credit' : 'debit',
       remark: account.remark || '',
+      date: new Date(account.date).toISOString().split('T')[0],
     });
     setEditId(account._id);
   };
 
   const handleDelete = (id) => {
+    const account = accounts.find((acc) => acc._id === id);
+    if (account.verified) {
+      alert('This account is verified and cannot be deleted.');
+      return;
+    }
     dispatch(deleteAccount(id))
+      .unwrap()
+      .then(() => {
+        dispatch(fetchAccounts());
+      })
+      .catch((err) => {
+        if (err === 'No token available' || err.includes('Invalid token')) {
+          navigate('/');
+        }
+      });
+  };
+
+  const handleVerify = (id) => {
+    dispatch(verifyAccount(id))
       .unwrap()
       .then(() => {
         dispatch(fetchAccounts());
@@ -601,8 +711,8 @@ const Account = () => {
       return;
     }
     let url = `${API_URL}/accounts/statement/download`;
-    if (downloadParty) {
-      url += `?party=${downloadParty}`;
+    if (formData.partyname) {
+      url += `?party=${formData.partyname}`;
     }
     try {
       const response = await fetch(url, {
@@ -769,254 +879,224 @@ const Account = () => {
     }
   };
 
-  // Filter last 10 entries for selected party
-  const selectedPartyAccounts = formData.partyname
-    ? accounts
-        .filter((account) => account.partyname._id === formData.partyname)
-        .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 10)
-    : [];
+  // Group accounts by party for selected party
+  const groupedAccounts = formData.partyname
+    ? parties.reduce((acc, party) => {
+        if (party._id === formData.partyname) {
+          const partyAccounts = accounts.filter((account) => account.partyname?._id === party._id);
+          if (partyAccounts.length > 0) {
+            acc[party._id] = {
+              partyname: party.partyname,
+              accounts: partyAccounts,
+            };
+          }
+        }
+        return acc;
+      }, {})
+    : {};
 
-  // Group accounts by party for separate tables
-  const groupedAccounts = parties.reduce((acc, party) => {
-    const partyAccounts = accounts.filter((account) => account.partyname?._id === party._id);
-    if (partyAccounts.length > 0) {
-      const totalDebit = partyAccounts.reduce((sum, account) => sum + account.debit, 0);
-      const totalCredit = partyAccounts.reduce((sum, account) => sum + account.credit, 0);
-      acc[party._id] = {
-        partyname: party.partyname,
-        accounts: partyAccounts,
-        totalDebit,
-        totalCredit,
-      };
-    }
-    return acc;
-  }, {});
+  // Table logic for selected party
+  const selectedPartyAccounts = formData.partyname && groupedAccounts[formData.partyname] ? groupedAccounts[formData.partyname].accounts : [];
+  const sortedAccounts = [...(selectedPartyAccounts || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const totalPages = Math.ceil((selectedPartyAccounts?.length || 0) / entriesPerPage);
+  const indexOfLast = currentPage * entriesPerPage;
+  const indexOfFirst = indexOfLast - entriesPerPage;
+  const currentAccounts = sortedAccounts.slice(indexOfFirst, indexOfLast);
+  const totalDebit = (selectedPartyAccounts || []).reduce((sum, account) => sum + (account.debit || 0), 0);
+  const totalCredit = (selectedPartyAccounts || []).reduce((sum, account) => sum + (account.credit || 0), 0);
+  const balance = totalDebit - totalCredit;
+  const balSign = balance > 0 ? 'Dr' : balance < 0 ? 'Cr' : '';
+  const balValue = Math.abs(balance).toFixed(2);
+  const balanceColor = balance > 0 ? 'text-red-600' : balance < 0 ? 'text-green-600' : 'text-gray-800';
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Account Management</h1>
-      <form onSubmit={handleSubmit} className="mb-6 space-y-4">
+    <div className="container mx-auto p-4 bg-white shadow-lg rounded-lg">
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 items-end">
         <div>
-          <label className="block mb-1">Party Name</label>
-          <select
-            name="partyname"
-            value={formData.partyname}
-            onChange={handleInputChange}
-            className="border p-2 rounded w-full"
-            required
-          >
-            <option value="">Select Party</option>
-            {parties.map((party) => (
-              <option key={party._id} value={party._id}>{party.partyname}</option>
-            ))}
-          </select>
+          <label className="block mb-1 font-medium text-gray-700">Party Name</label>
+          <Select
+            options={partyOptions.filter(option => option.value !== '')}
+            value={partyOptions.find(option => option.value === formData.partyname) || null}
+            onChange={handlePartyInputChange}
+            placeholder="Select or type to search party"
+            className="w-full"
+            classNamePrefix="select"
+            isClearable
+            isSearchable
+            styles={{
+              control: (base) => ({
+                ...base,
+                borderColor: '#d1d5db',
+                padding: '2px',
+                borderRadius: '0.375rem',
+                boxShadow: 'none',
+                '&:hover': {
+                  borderColor: '#3b82f6',
+                },
+                '&:focus': {
+                  borderColor: '#3b82f6',
+                  boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.5)',
+                },
+              }),
+            }}
+          />
         </div>
         <div>
-          <label className="block mb-1">Transaction Type</label>
+          <label className="block mb-1 font-medium text-gray-700">Transaction Type</label>
           <select
             name="transactionType"
             value={formData.transactionType}
             onChange={handleInputChange}
-            className="border p-2 rounded w-full"
+            className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="credit">Credit</option>
-            <option value="debit">Debit</option>
+            <option value="credit">Credit(Dena)</option>
+            <option value="debit">Debit(Lena)</option>
           </select>
         </div>
         <div>
-          <label className="block mb-1">Amount</label>
+          <label className="block mb-1 font-medium text-gray-700">Amount</label>
           <input
             type="number"
             name="amount"
             value={formData.amount}
             onChange={handleInputChange}
             placeholder="Enter amount"
-            className="border p-2 rounded w-full"
+            className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
         </div>
         <div>
-          <label className="block mb-1">Remark (Optional)</label>
+          <label className="block mb-1 font-medium text-gray-700">Date</label>
+          <input
+            type="date"
+            name="date"
+            value={formData.date}
+            onChange={handleInputChange}
+            className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block mb-1 font-medium text-gray-700">Remark (Optional)</label>
           <input
             type="text"
             name="remark"
             value={formData.remark}
             onChange={handleInputChange}
             placeholder="Enter remark"
-            className="border p-2 rounded w-full"
+            className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <button
-          type="submit"
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          {editId ? 'Update Account' : 'Add Account'}
-        </button>
-      </form>
-      {formData.partyname && selectedPartyAccounts.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-xl font-bold mb-2">Last 10 Entries for Selected Party</h2>
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-blue-900 text-white">
-                <th className="border p-2">Date</th>
-                <th className="border p-2">Debit (-)</th>
-                <th className="border p-2">Credit (+)</th>
-                <th className="border p-2">Remark</th>
-                <th className="border p-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {selectedPartyAccounts.map((account, index) => (
-                <tr key={account._id} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
-                  <td className="border p-2">{new Date(account.date).toLocaleDateString()}</td>
-                  <td className="border p-2 text-red-600">{account.debit > 0 ? account.debit.toFixed(2) : ''}</td>
-                  <td className="border p-2 text-green-600">{account.credit > 0 ? account.credit.toFixed(2) : ''}</td>
-                  <td className="border p-2">{account.remark || 'N/A'}</td>
-                  <td className="border p-2">
-                    <button
-                      onClick={() => handleEdit(account)}
-                      className="bg-yellow-500 text-white px-2 py-1 rounded mr-2 hover:bg-yellow-600"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(account._id)}
-                      className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition duration-200 col-span-1 md:col-auto"
+          >
+            {editId ? 'Update' : 'Submit'}
+          </button>
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition duration-200 col-span-1 md:col-auto"
+          >
+            Download Statement
+          </button>
         </div>
-      )}
-      <div className="mb-4">
-        <label className="block mb-1">Download Statement for Party</label>
-        <select
-          value={downloadParty}
-          onChange={(e) => setDownloadParty(e.target.value)}
-          className="border p-2 rounded w-full"
-        >
-          <option value="">All Parties</option>
-          {parties.map((party) => (
-            <option key={party._id} value={party._id}>{party.partyname}</option>
-          ))}
-        </select>
-      </div>
-      <button
-        onClick={handleDownload}
-        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mb-6"
-      >
-        Download Statement
-      </button>
-      {loading && <p>Loading...</p>}
-      {error && <p className="text-red-500">{error}</p>}
+      </form>
+
+      {loading && <p className="text-blue-600">Loading...</p>}
+      {error && <p className="text-red-600">{error}</p>}
       <div className="mb-6">
-        <h2 className="text-xl font-bold mb-2">All Accounts</h2>
-        {formData.partyname ? (
-          groupedAccounts[formData.partyname] ? (
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold mb-2">{groupedAccounts[formData.partyname].partyname}</h3>
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-blue-900 text-white">
-                    <th className="border p-2">Date</th>
-                    <th className="border p-2">Debit (-)</th>
-                    <th className="border p-2">Credit (+)</th>
-                    <th className="border p-2">Remark</th>
-                    <th className="border p-2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {groupedAccounts[formData.partyname].accounts.map((account, index) => (
-                    <tr key={account._id} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
-                      <td className="border p-2">{new Date(account.date).toLocaleDateString()}</td>
-                      <td className="border p-2 text-red-600">{account.debit > 0 ? account.debit.toFixed(2) : ''}</td>
-                      <td className="border p-2 text-green-600">{account.credit > 0 ? account.credit.toFixed(2) : ''}</td>
-                      <td className="border p-2">{account.remark || 'N/A'}</td>
-                      <td className="border p-2">
-                        <button
-                          onClick={() => handleEdit(account)}
-                          className="bg-yellow-500 text-white px-2 py-1 rounded mr-2 hover:bg-yellow-600"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(account._id)}
-                          className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                        >
-                          Delete
-                        </button>
-                      </td>
+        {formData.partyname && groupedAccounts[formData.partyname] ? (
+          <div className="mb-8 overflow-x-auto">
+            <h3 className="text-lg font-semibold mb-2 text-gray-800">{groupedAccounts[formData.partyname].partyname}</h3>
+            {selectedPartyAccounts.length === 0 ? (
+              <p className="text-gray-600">No accounts available for {groupedAccounts[formData.partyname].partyname}.</p>
+            ) : (
+              <>
+                <table className="w-full border-collapse bg-white shadow-md rounded-lg">
+                  <thead>
+                    <tr className="bg-blue-900 text-white">
+                      <th className="border p-2">Date</th>
+                      <th className="border p-2">Debit (-)</th>
+                      <th className="border p-2">Credit (+)</th>
+                      <th className="border p-2">Remark</th>
+                      <th className="border p-2">Actions</th>
                     </tr>
-                  ))}
-                  <tr className="bg-gray-200 font-bold">
-                    <td className="border p-2">Total</td>
-                    <td className="border p-2 text-red-600">{groupedAccounts[formData.partyname].totalDebit.toFixed(2)}</td>
-                    <td className="border p-2 text-green-600">{groupedAccounts[formData.partyname].totalCredit.toFixed(2)}</td>
-                    <td className="border p-2"></td>
-                    <td className="border p-2"></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p>No accounts available for selected party.</p>
-          )
-        ) : Object.keys(groupedAccounts).length > 0 ? (
-          Object.keys(groupedAccounts).map((partyId) => (
-            <div key={partyId} className="mb-8">
-              <h3 className="text-lg font-semibold mb-2">{groupedAccounts[partyId].partyname}</h3>
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-blue-900 text-white">
-                    <th className="border p-2">Date</th>
-                    <th className="border p-2">Debit (-)</th>
-                    <th className="border p-2">Credit (+)</th>
-                    <th className="border p-2">Remark</th>
-                    <th className="border p-2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {groupedAccounts[partyId].accounts.map((account, index) => (
-                    <tr key={account._id} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
-                      <td className="border p-2">{new Date(account.date).toLocaleDateString()}</td>
-                      <td className="border p-2 text-red-600">{account.debit > 0 ? account.debit.toFixed(2) : ''}</td>
-                      <td className="border p-2 text-green-600">{account.credit > 0 ? account.credit.toFixed(2) : ''}</td>
-                      <td className="border p-2">{account.remark || 'N/A'}</td>
-                      <td className="border p-2">
-                        <button
-                          onClick={() => handleEdit(account)}
-                          className="bg-yellow-500 text-white px-2 py-1 rounded mr-2 hover:bg-yellow-600"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(account._id)}
-                          className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                        >
-                          Delete
-                        </button>
-                      </td>
+                  </thead>
+                  <tbody>
+                    {currentAccounts.map((account, index) => (
+                      <tr key={account._id} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
+                        <td className="border p-2">{new Date(account.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                        <td className="border p-2 text-red-600">{account.debit > 0 ? account.debit.toFixed(2) : ''}</td>
+                        <td className="border p-2 text-green-600">{account.credit > 0 ? account.credit.toFixed(2) : ''}</td>
+                        <td className="border p-2">{account.remark || 'N/A'}</td>
+                        <td className="border p-2">
+                          <button
+                            onClick={() => !account.verified && handleEdit(account)}
+                            className={`bg-yellow-500 text-white px-2 py-1 rounded mr-2 hover:bg-yellow-600 transition duration-200 ${account.verified ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={account.verified}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => !account.verified && handleDelete(account._id)}
+                            className={`bg-red-500 text-white px-2 py-1 rounded mr-2 hover:bg-red-600 transition duration-200 ${account.verified ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={account.verified}
+                          >
+                            Delete
+                          </button>
+                          <button
+                            onClick={() => handleVerify(account._id)}
+                            className={`bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition duration-200 ${account.verified ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={account.verified}
+                          >
+                            {account.verified ? 'Verified' : 'Verify'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-200 font-bold">
+                      <td className="border p-2">Total</td>
+                      <td className="border p-2 text-red-600">{totalDebit.toFixed(2)}</td>
+                      <td className="border p-2 text-green-600">{totalCredit.toFixed(2)}</td>
+                      <td className="border p-2"></td>
+                      <td className="border p-2"></td>
                     </tr>
-                  ))}
-                  <tr className="bg-gray-200 font-bold">
-                    <td className="border p-2">Total</td>
-                    <td className="border p-2 text-red-600">{groupedAccounts[partyId].totalDebit.toFixed(2)}</td>
-                    <td className="border p-2 text-green-600">{groupedAccounts[partyId].totalCredit.toFixed(2)}</td>
-                    <td className="border p-2"></td>
-                    <td className="border p-2"></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          ))
+                    <tr className="bg-gray-300 font-bold">
+                      <td className="border p-2">Balance</td>
+                      <td className={`border p-2 ${balanceColor}`} colSpan="4">₹{balValue} {balSign}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div className="flex justify-between mt-4">
+                  <p>Showing {indexOfFirst + 1} to {Math.min(indexOfLast, sortedAccounts.length)} of {selectedPartyAccounts.length} entries</p>
+                  <div>
+                    <button
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      className="bg-gray-300 text-gray-800 px-2 py-1 rounded mr-2 hover:bg-gray-400 disabled:opacity-50"
+                    >
+                      Previous
+                    </button>
+                    <span>Page {currentPage} of {totalPages}</span>
+                    <button
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      className="bg-gray-300 text-gray-800 px-2 py-1 rounded ml-2 hover:bg-gray-400 disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        ) : formData.partyname ? (
+          <p className="text-gray-600">No accounts available for selected party.</p>
         ) : (
-          <p>No accounts available.</p>
+          null
         )}
       </div>
     </div>

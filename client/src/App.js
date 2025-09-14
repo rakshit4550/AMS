@@ -10,6 +10,7 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Account from './pages/Account';
 import User from './pages/User';
+import Report from './pages/Report';
 
 const ProtectedRoute = ({ children }) => {
   const { token } = useSelector((state) => state.user);
@@ -109,6 +110,16 @@ function App() {
             <Layout>
               <ProtectedRoute>
                 <User />
+              </ProtectedRoute>
+            </Layout>
+          }
+        />
+        <Route
+          path="/report"
+          element={
+            <Layout>
+              <ProtectedRoute>
+                <Report/>
               </ProtectedRoute>
             </Layout>
           }
