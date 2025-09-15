@@ -673,23 +673,29 @@ const Account = () => {
     setEditId(account._id);
   };
 
-  const handleDelete = (id) => {
-    const account = accounts.find((acc) => acc._id === id);
-    if (account.verified) {
-      alert('This account is verified and cannot be deleted.');
-      return;
-    }
-    dispatch(deleteAccount(id))
-      .unwrap()
-      .then(() => {
-        dispatch(fetchAccounts());
-      })
-      .catch((err) => {
-        if (err === 'No token available' || err.includes('Invalid token')) {
-          navigate('/');
-        }
-      });
-  };
+const handleDelete = (id) => {
+  const account = accounts.find((acc) => acc._id === id);
+  if (account.verified) {
+    alert('This account is verified and cannot be deleted.');
+    return;
+  }
+
+  // Add confirmation alert before deletion
+  if (!window.confirm('Are you sure you want to delete this account?')) {
+    return; // Exit if user cancels
+  }
+
+  dispatch(deleteAccount(id))
+    .unwrap()
+    .then(() => {
+      dispatch(fetchAccounts());
+    })
+    .catch((err) => {
+      if (err === 'No token available' || err.includes('Invalid token')) {
+        navigate('/');
+      }
+    });
+};
 
   const handleVerify = (id) => {
     dispatch(verifyAccount(id))
@@ -943,7 +949,7 @@ const Account = () => {
           />
         </div>
         <div>
-          <label className="block mb-1 font-medium text-gray-700">Transaction Type</label>
+          <label className="block mb-1 font-medium text-gray-700">Transaction Type*</label>
           <select
             name="transactionType"
             value={formData.transactionType}
@@ -955,7 +961,7 @@ const Account = () => {
           </select>
         </div>
         <div>
-          <label className="block mb-1 font-medium text-gray-700">Amount</label>
+          <label className="block mb-1 font-medium text-gray-700">Amount*</label>
           <input
             type="number"
             name="amount"
@@ -978,7 +984,7 @@ const Account = () => {
           />
         </div>
         <div>
-          <label className="block mb-1 font-medium text-gray-700">Remark (Optional)</label>
+          <label className="block mb-1 font-medium text-gray-700">Remark</label>
           <input
             type="text"
             name="remark"
