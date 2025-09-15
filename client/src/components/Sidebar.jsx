@@ -62,6 +62,13 @@ const MENU = [
     roles: ['User', 'Admin'],
     submenu: [],
   },
+      {
+    title: 'report',
+    route: '/Report',
+    icon: 'AiOutlineFileText',
+    roles: ['Admin'],
+    submenu: [],
+  },
   {
     title: 'Users',
     route: '/user',
@@ -69,13 +76,7 @@ const MENU = [
     roles: ['Admin'],
     submenu: [],
   },
-    {
-    title: 'report',
-    route: '/Report',
-    icon: 'AiOutlineFileText',
-    roles: ['Admin'],
-    submenu: [],
-  },
+
 
 ];
 
