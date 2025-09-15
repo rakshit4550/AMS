@@ -956,8 +956,8 @@ const handleDelete = (id) => {
             onChange={handleInputChange}
             className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="credit">Credit(Dena)</option>
-            <option value="debit">Debit(Lena)</option>
+            <option value="credit">Deposit(Dena)</option>
+            <option value="debit">Withdraw(Lena)</option>
           </select>
         </div>
         <div>
