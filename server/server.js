@@ -30,6 +30,7 @@ mongoose.connect(process.env.MONGO_URI)
     console.error('MongoDB connection error:', error.message);
     process.exit(1); 
   });
+console.log('server runing ho gya');
 
 
 app.listen(PORT, () => {

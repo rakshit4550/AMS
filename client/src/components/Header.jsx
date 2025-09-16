@@ -22,7 +22,7 @@ const Header = () => {
   }, []);
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-white px-4 py-2 lg:xml-[257px] shadow-md">
+    <div className="fixed top-0 left-0 right-0 z-50 bg-black px-4 py-2 lg:xml-[257px] shadow-md">
       <div className="mx-2 flex items-center justify-between lg:justify-end">
         <button
           className="h-6 w-6 text-black hover:bg-gray-100 focus:outline-none lg:hidden"
