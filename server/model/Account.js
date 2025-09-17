@@ -22,7 +22,7 @@
 //   },
 //   date: {
 //     type: Date,
-//     default: Date.now
+//     required: true
 //   },
 //   createdBy: {
 //     type: mongoose.Schema.Types.ObjectId,
@@ -48,6 +48,8 @@
 // const Account = mongoose.model('Account', accountSchema);
 
 // export default Account;
+
+
 
 import mongoose from 'mongoose';
 

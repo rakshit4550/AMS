@@ -39,7 +39,9 @@
 //   try {
 //     const parties = await Party.find({ createdBy: req.user.id }).select('_id');
 //     const partyIds = parties.map(party => party._id);
-//     const accounts = await Account.find({ partyname: { $in: partyIds } }).populate('partyname', 'partyname');
+//     const accounts = await Account.find({ partyname: { $in: partyIds } })
+//       .populate('partyname', 'partyname')
+//       .sort({ createdAt: -1 }); // Sort by createdAt descending
 //     res.status(200).json(accounts);
 //   } catch (error) {
 //     res.status(500).json({ message: 'Server error', error: error.message });
@@ -140,7 +142,9 @@
 //       }
 //       query.partyname = partyId;
 //     }
-//     const accounts = await Account.find(query).populate('partyname', 'partyname').sort({ date: 1 });
+//     const accounts = await Account.find(query)
+//       .populate('partyname', 'partyname')
+//       .sort({ createdAt: -1 }); // Sort by createdAt descending
 
 //     // Group accounts by party
 //     const grouped = {};
@@ -151,11 +155,13 @@
 //         grouped[pId] = { name: pName, accounts: [], totalCredit: 0, totalDebit: 0 };
 //       }
 //       grouped[pId].accounts.push({
+//         _id: acc._id,
 //         date: acc.date.toISOString(),
 //         credit: Number(acc.credit) || 0,
 //         debit: Number(acc.debit) || 0,
 //         remark: acc.remark || '',
-//         verified: acc.verified || false
+//         verified: acc.verified || false,
+//         createdAt: acc.createdAt.toISOString() // Include createdAt
 //       });
 //       grouped[pId].totalCredit += Number(acc.credit) || 0;
 //       grouped[pId].totalDebit += Number(acc.debit) || 0;
@@ -169,13 +175,14 @@
 // };
 
 
+
 import Account from '../model/Account.js';
 import Party from '../model/Party.js';
 
 // Create a new account
 export const createAccount = async (req, res) => {
   try {
-    const { partyname, credit = 0, debit = 0, remark, date } = req.body;
+    const { partyname, credit = 0, debit = 0, remark, date, to } = req.body;
     if (!partyname) {
       return res.status(400).json({ message: 'Party name is required' });
     }
@@ -187,16 +194,42 @@ export const createAccount = async (req, res) => {
     if (!party) {
       return res.status(404).json({ message: 'Party not found or you do not have access' });
     }
+    let toParty = null;
+    if (to) {
+      if (to === partyname) {
+        return res.status(400).json({ message: 'To party cannot be the same as the main party' });
+      }
+      toParty = await Party.findOne({ _id: to, createdBy: req.user.id });
+      if (!toParty) {
+        return res.status(404).json({ message: 'To party not found or you do not have access' });
+      }
+    }
+    const mainRemark = toParty ? `${remark || ''} (Transfer to ${toParty.partyname})`.trim() : remark;
     const account = new Account({ 
       partyname, 
       credit, 
       debit, 
-      remark, 
-      date: new Date(date).toISOString(), 
+      remark: mainRemark, 
+      date: new Date(date), 
       createdBy: req.user.id, 
       verified: false 
     });
     await account.save();
+    if (toParty) {
+      const toCredit = debit;
+      const toDebit = credit;
+      const toRemark = `${remark || ''} (Transfer from ${party.partyname})`.trim();
+      const toAccount = new Account({
+        partyname: to,
+        credit: toCredit,
+        debit: toDebit,
+        remark: toRemark,
+        date: new Date(date),
+        createdBy: req.user.id,
+        verified: false
+      });
+      await toAccount.save();
+    }
     // Populate partyname in the response
     const populatedAccount = await Account.findById(account._id).populate('partyname', 'partyname');
     res.status(201).json({ message: 'Account created successfully', account: populatedAccount });
@@ -254,7 +287,7 @@ export const updateAccount = async (req, res) => {
     }
     const updatedAccount = await Account.findOneAndUpdate(
       { _id: req.params.id, createdBy: req.user.id },
-      { partyname, credit, debit, remark, date: new Date(date).toISOString() },
+      { partyname, credit, debit, remark, date: new Date(date) },
       { new: true, runValidators: true }
     ).populate('partyname', 'partyname');
     res.status(200).json({ message: 'Account updated successfully', account: updatedAccount });
