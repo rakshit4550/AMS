@@ -54,7 +54,7 @@ const Header = () => {
         <div className="flex items-center space-x-4">
           <div className="flex items-center">
             <div className="text-sm mr-2">
-              <p>jay</p>
+              
               <span className="text-xs">USER</span>
             </div>
             <ProfileMenu />

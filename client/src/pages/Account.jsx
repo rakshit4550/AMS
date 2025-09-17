@@ -438,7 +438,7 @@ const Account = () => {
   const balanceColor = balance > 0 ? 'text-red-600' : balance < 0 ? 'text-green-600' : 'text-gray-800';
 
   return (
-    <div className="container mx-auto p-6 bg-gradient-to-br from-gray-100 to-blue-50 min-h-screen">
+    <div className="container mx-auto p-6 bg-white min-h-screen">
       <div className="bg-white shadow-xl rounded-lg p-6">
         <form onSubmit={handleSubmit} className="mb-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-4 items-end">
           <div>

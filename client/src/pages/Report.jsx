@@ -612,10 +612,8 @@ const Report = () => {
     : '';
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-white p-4 sm:p-6 lg:p-8">
       <div className="container mx-auto bg-white shadow-2xl rounded-xl p-6 sm:p-8 lg:p-10">
-        {/* Header Section */}
-        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">Account Report</h2>
 
         {/* Party Select, Filter Button, and Download Button */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-end gap-4">
