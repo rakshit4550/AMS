@@ -42,13 +42,6 @@ const getIconComponent = (iconName) => {
 
 const MENU = [
   {
-    title: 'Dashboard',
-    route: '/dashboard',
-    icon: 'AiOutlineDashboard',
-    roles: ['User', 'Admin'],
-    submenu: [],
-  },
-  {
     title: 'Parties',
     route: '/parties',
     icon: 'AiOutlineWallet',
