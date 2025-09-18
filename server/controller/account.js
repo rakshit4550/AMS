@@ -37,11 +37,13 @@
 //       verified: false 
 //     });
 //     await account.save();
+
+//     let toAccount = null;
 //     if (toParty) {
 //       const toCredit = debit;
 //       const toDebit = credit;
 //       const toRemark = `${remark || ''} (Transfer from ${party.partyname})`.trim();
-//       const toAccount = new Account({
+//       toAccount = new Account({
 //         partyname: to,
 //         credit: toCredit,
 //         debit: toDebit,
@@ -50,12 +52,26 @@
 //         createdBy: req.user.id,
 //         verified: false
 //       });
-//       await toAccount.save();
+//       try {
+//         await toAccount.save();
+//       } catch (error) {
+//         // Rollback: Delete the main account if toAccount save fails
+//         await Account.findByIdAndDelete(account._id);
+//         console.error('Error saving toAccount, rolled back main account:', error);
+//         return res.status(500).json({ message: 'Failed to save transfer account, transaction rolled back', error: error.message });
+//       }
 //     }
-//     // Populate partyname in the response
+
+//     // Populate both accounts in the response
 //     const populatedAccount = await Account.findById(account._id).populate('partyname', 'partyname');
-//     res.status(201).json({ message: 'Account created successfully', account: populatedAccount });
+//     const populatedToAccount = toAccount ? await Account.findById(toAccount._id).populate('partyname', 'partyname') : null;
+//     res.status(201).json({ 
+//       message: 'Account created successfully', 
+//       account: populatedAccount,
+//       toAccount: populatedToAccount 
+//     });
 //   } catch (error) {
+//     console.error('Error in createAccount:', error);
 //     res.status(500).json({ message: 'Server error', error: error.message });
 //   }
 // };
@@ -70,6 +86,7 @@
 //       .sort({ createdAt: -1 }); // Sort by createdAt descending
 //     res.status(200).json(accounts);
 //   } catch (error) {
+//     console.error('Error in getAllAccounts:', error);
 //     res.status(500).json({ message: 'Server error', error: error.message });
 //   }
 // };
@@ -83,6 +100,7 @@
 //     }
 //     res.status(200).json(account);
 //   } catch (error) {
+//     console.error('Error in getAccountById:', error);
 //     res.status(500).json({ message: 'Server error', error: error.message });
 //   }
 // };
@@ -114,6 +132,7 @@
 //     ).populate('partyname', 'partyname');
 //     res.status(200).json({ message: 'Account updated successfully', account: updatedAccount });
 //   } catch (error) {
+//     console.error('Error in updateAccount:', error);
 //     res.status(500).json({ message: 'Server error', error: error.message });
 //   }
 // };
@@ -131,6 +150,7 @@
 //     await Account.findOneAndDelete({ _id: req.params.id, createdBy: req.user.id });
 //     res.status(200).json({ message: 'Account deleted successfully' });
 //   } catch (error) {
+//     console.error('Error in deleteAccount:', error);
 //     res.status(500).json({ message: 'Server error', error: error.message });
 //   }
 // };
@@ -152,6 +172,7 @@
 //     ).populate('partyname', 'partyname');
 //     res.status(200).json({ message: 'Account verified successfully', account: updatedAccount });
 //   } catch (error) {
+//     console.error('Error in verifyAccount:', error);
 //     res.status(500).json({ message: 'Server error', error: error.message });
 //   }
 // };
@@ -200,6 +221,9 @@
 //   }
 // };
 
+
+
+// Create a new account
 import Account from '../model/Account.js';
 import Party from '../model/Party.js';
 
@@ -228,7 +252,22 @@ export const createAccount = async (req, res) => {
         return res.status(404).json({ message: 'To party not found or you do not have access' });
       }
     }
-    const mainRemark = toParty ? `${remark || ''} (Transfer to ${toParty.partyname})`.trim() : remark;
+    let mainRemark = remark || '';
+    let toRemarkVar = remark || '';
+    if (toParty) {
+      if (debit > 0 && credit === 0) {
+        mainRemark = `${remark || ''} (Transfer to ${toParty.partyname})`.trim();
+        toRemarkVar = `${remark || ''} (Transfer from ${party.partyname})`.trim();
+      } else if (credit > 0 && debit === 0) {
+        mainRemark = `${remark || ''} (Transfer from ${toParty.partyname})`.trim();
+        toRemarkVar = `${remark || ''} (Transfer to ${party.partyname})`.trim();
+      } else {
+        mainRemark = `${remark || ''} (Transfer involving ${toParty.partyname})`.trim();
+        toRemarkVar = `${remark || ''} (Transfer involving ${party.partyname})`.trim();
+      }
+    }
+
+    // Create and save the main account
     const account = new Account({ 
       partyname, 
       credit, 
@@ -244,12 +283,11 @@ export const createAccount = async (req, res) => {
     if (toParty) {
       const toCredit = debit;
       const toDebit = credit;
-      const toRemark = `${remark || ''} (Transfer from ${party.partyname})`.trim();
       toAccount = new Account({
         partyname: to,
         credit: toCredit,
         debit: toDebit,
-        remark: toRemark,
+        remark: toRemarkVar,
         date: new Date(date),
         createdBy: req.user.id,
         verified: false
