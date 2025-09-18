@@ -227,32 +227,38 @@ import Party from '../model/Party.js';
 // Create a new account
 export const createAccount = async (req, res) => {
   try {
-    console.log('req.body:', req.body);
+    console.log('createAccount - Request body:', JSON.stringify(req.body, null, 2));
     const { partyname, credit = 0, debit = 0, remark, date, to } = req.body;
     if (!partyname) {
+      console.log('createAccount - Error: Party name is required');
       return res.status(400).json({ message: 'Party name is required' });
     }
     if (!date) {
+      console.log('createAccount - Error: Date is required');
       return res.status(400).json({ message: 'Date is required' });
     }
     // Verify party exists and belongs to the authenticated user
     const party = await Party.findOne({ _id: partyname, createdBy: req.user.id });
     if (!party) {
+      console.log('createAccount - Error: Party not found for partyname:', partyname);
       return res.status(404).json({ message: 'Party not found or you do not have access' });
     }
+    console.log('createAccount - Main party found:', party._id.toString(), party.partyname);
     let toParty = null;
-    if (to) {
-      console.log('to provided:', to);
+    if (to && typeof to === 'string' && to.trim() !== '') {
+      console.log('createAccount - To party provided:', to);
       if (to === partyname) {
+        console.log('createAccount - Error: To party cannot be the same as the main party');
         return res.status(400).json({ message: 'To party cannot be the same as the main party' });
       }
       toParty = await Party.findOne({ _id: to, createdBy: req.user.id });
-      console.log('toParty found:', toParty ? toParty._id.toString() : 'null');
+      console.log('createAccount - toParty found:', toParty ? toParty._id.toString() : 'null');
       if (!toParty) {
+        console.log('createAccount - Error: To party not found for ID:', to);
         return res.status(404).json({ message: 'To party not found or you do not have access' });
       }
     } else {
-      console.log('No to provided');
+      console.log('createAccount - No valid to party provided');
     }
     let mainRemark = remark || '';
     let toRemarkVar = remark || '';
@@ -267,8 +273,8 @@ export const createAccount = async (req, res) => {
         mainRemark = `${remark || ''} (Transfer involving ${toParty.partyname})`.trim();
         toRemarkVar = `${remark || ''} (Transfer involving ${party.partyname})`.trim();
       }
-      console.log('mainRemark:', mainRemark);
-      console.log('toRemarkVar:', toRemarkVar);
+      console.log('createAccount - mainRemark:', mainRemark);
+      console.log('createAccount - toRemarkVar:', toRemarkVar);
     }
 
     // Create and save the main account
@@ -282,7 +288,7 @@ export const createAccount = async (req, res) => {
       verified: false 
     });
     await account.save();
-    console.log('Main account saved:', account._id.toString());
+    console.log('createAccount - Main account saved:', account._id.toString());
 
     let toAccount = null;
     if (toParty) {
@@ -297,14 +303,14 @@ export const createAccount = async (req, res) => {
         createdBy: req.user.id,
         verified: false
       });
-      console.log('Creating toAccount for party:', to);
+      console.log('createAccount - Creating toAccount for party:', to);
       try {
         await toAccount.save();
-        console.log('toAccount saved:', toAccount._id.toString());
+        console.log('createAccount - toAccount saved:', toAccount._id.toString());
       } catch (error) {
         // Rollback: Delete the main account if toAccount save fails
         await Account.findByIdAndDelete(account._id);
-        console.error('Error saving toAccount, rolled back main account:', error);
+        console.error('createAccount - Error saving toAccount, rolled back main account:', error);
         return res.status(500).json({ message: 'Failed to save transfer account, transaction rolled back', error: error.message });
       }
     }
@@ -312,13 +318,18 @@ export const createAccount = async (req, res) => {
     // Populate both accounts in the response
     const populatedAccount = await Account.findById(account._id).populate('partyname', 'partyname');
     const populatedToAccount = toAccount ? await Account.findById(toAccount._id).populate('partyname', 'partyname') : null;
+    console.log('createAccount - Response prepared:', { 
+      message: 'Account created successfully', 
+      account: populatedAccount,
+      toAccount: populatedToAccount 
+    });
     res.status(201).json({ 
       message: 'Account created successfully', 
       account: populatedAccount,
       toAccount: populatedToAccount 
     });
   } catch (error) {
-    console.error('Error in createAccount:', error);
+    console.error('createAccount - Error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
