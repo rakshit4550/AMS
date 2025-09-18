@@ -4,7 +4,7 @@
 // // Create a new account
 // export const createAccount = async (req, res) => {
 //   try {
-//     const { partyname, credit = 0, debit = 0, remark, date } = req.body;
+//     const { partyname, credit = 0, debit = 0, remark, date, to } = req.body;
 //     if (!partyname) {
 //       return res.status(400).json({ message: 'Party name is required' });
 //     }
@@ -16,16 +16,42 @@
 //     if (!party) {
 //       return res.status(404).json({ message: 'Party not found or you do not have access' });
 //     }
+//     let toParty = null;
+//     if (to) {
+//       if (to === partyname) {
+//         return res.status(400).json({ message: 'To party cannot be the same as the main party' });
+//       }
+//       toParty = await Party.findOne({ _id: to, createdBy: req.user.id });
+//       if (!toParty) {
+//         return res.status(404).json({ message: 'To party not found or you do not have access' });
+//       }
+//     }
+//     const mainRemark = toParty ? `${remark || ''} (Transfer to ${toParty.partyname})`.trim() : remark;
 //     const account = new Account({ 
 //       partyname, 
 //       credit, 
 //       debit, 
-//       remark, 
-//       date: new Date(date).toISOString(), 
+//       remark: mainRemark, 
+//       date: new Date(date), 
 //       createdBy: req.user.id, 
 //       verified: false 
 //     });
 //     await account.save();
+//     if (toParty) {
+//       const toCredit = debit;
+//       const toDebit = credit;
+//       const toRemark = `${remark || ''} (Transfer from ${party.partyname})`.trim();
+//       const toAccount = new Account({
+//         partyname: to,
+//         credit: toCredit,
+//         debit: toDebit,
+//         remark: toRemark,
+//         date: new Date(date),
+//         createdBy: req.user.id,
+//         verified: false
+//       });
+//       await toAccount.save();
+//     }
 //     // Populate partyname in the response
 //     const populatedAccount = await Account.findById(account._id).populate('partyname', 'partyname');
 //     res.status(201).json({ message: 'Account created successfully', account: populatedAccount });
@@ -83,7 +109,7 @@
 //     }
 //     const updatedAccount = await Account.findOneAndUpdate(
 //       { _id: req.params.id, createdBy: req.user.id },
-//       { partyname, credit, debit, remark, date: new Date(date).toISOString() },
+//       { partyname, credit, debit, remark, date: new Date(date) },
 //       { new: true, runValidators: true }
 //     ).populate('partyname', 'partyname');
 //     res.status(200).json({ message: 'Account updated successfully', account: updatedAccount });
@@ -174,8 +200,6 @@
 //   }
 // };
 
-
-
 import Account from '../model/Account.js';
 import Party from '../model/Party.js';
 
@@ -215,11 +239,13 @@ export const createAccount = async (req, res) => {
       verified: false 
     });
     await account.save();
+
+    let toAccount = null;
     if (toParty) {
       const toCredit = debit;
       const toDebit = credit;
       const toRemark = `${remark || ''} (Transfer from ${party.partyname})`.trim();
-      const toAccount = new Account({
+      toAccount = new Account({
         partyname: to,
         credit: toCredit,
         debit: toDebit,
@@ -228,12 +254,26 @@ export const createAccount = async (req, res) => {
         createdBy: req.user.id,
         verified: false
       });
-      await toAccount.save();
+      try {
+        await toAccount.save();
+      } catch (error) {
+        // Rollback: Delete the main account if toAccount save fails
+        await Account.findByIdAndDelete(account._id);
+        console.error('Error saving toAccount, rolled back main account:', error);
+        return res.status(500).json({ message: 'Failed to save transfer account, transaction rolled back', error: error.message });
+      }
     }
-    // Populate partyname in the response
+
+    // Populate both accounts in the response
     const populatedAccount = await Account.findById(account._id).populate('partyname', 'partyname');
-    res.status(201).json({ message: 'Account created successfully', account: populatedAccount });
+    const populatedToAccount = toAccount ? await Account.findById(toAccount._id).populate('partyname', 'partyname') : null;
+    res.status(201).json({ 
+      message: 'Account created successfully', 
+      account: populatedAccount,
+      toAccount: populatedToAccount 
+    });
   } catch (error) {
+    console.error('Error in createAccount:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -248,6 +288,7 @@ export const getAllAccounts = async (req, res) => {
       .sort({ createdAt: -1 }); // Sort by createdAt descending
     res.status(200).json(accounts);
   } catch (error) {
+    console.error('Error in getAllAccounts:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -261,6 +302,7 @@ export const getAccountById = async (req, res) => {
     }
     res.status(200).json(account);
   } catch (error) {
+    console.error('Error in getAccountById:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -292,6 +334,7 @@ export const updateAccount = async (req, res) => {
     ).populate('partyname', 'partyname');
     res.status(200).json({ message: 'Account updated successfully', account: updatedAccount });
   } catch (error) {
+    console.error('Error in updateAccount:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -309,6 +352,7 @@ export const deleteAccount = async (req, res) => {
     await Account.findOneAndDelete({ _id: req.params.id, createdBy: req.user.id });
     res.status(200).json({ message: 'Account deleted successfully' });
   } catch (error) {
+    console.error('Error in deleteAccount:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -330,6 +374,7 @@ export const verifyAccount = async (req, res) => {
     ).populate('partyname', 'partyname');
     res.status(200).json({ message: 'Account verified successfully', account: updatedAccount });
   } catch (error) {
+    console.error('Error in verifyAccount:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
