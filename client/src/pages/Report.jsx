@@ -603,7 +603,7 @@ const Report = () => {
   const totalCredit = (selectedPartyAccounts || []).reduce((sum, account) => sum + (account.credit || 0), 0);
   const balance = totalDebit - totalCredit;
   const balSign = balance > 0 ? 'Dr' : balance < 0 ? 'Cr' : '';
-  const balValue = Math.abs(balance).toFixed(2);
+   const balValue = balance > 0 ? `-${Math.abs(balance).toFixed(2)}` : Math.abs(balance).toFixed(2);
   const balanceColor = balance > 0 ? 'text-red-600' : balance < 0 ? 'text-green-600' : 'text-gray-800';
 
   // Get the party name for the selected party

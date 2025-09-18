@@ -159,7 +159,6 @@ const ProtectedRoute = ({ children }) => {
       const currentTime = Date.now() / 1000; // Current time in seconds
       isTokenValid = decoded.exp > currentTime;
       if (!isTokenValid) {
-        console.log('ProtectedRoute: Token is expired');
         localStorage.removeItem('token'); // Clear expired token
         toast.error('Session expired. Please log in again.');
       }
@@ -170,8 +169,6 @@ const ProtectedRoute = ({ children }) => {
       isTokenValid = false;
     }
   }
-
-  console.log('ProtectedRoute: isAuthenticated=', isAuthenticated, 'isTokenValid=', isTokenValid, 'token=', token);
 
   return isAuthenticated && isTokenValid ? children : <Navigate to="/" />;
 };
