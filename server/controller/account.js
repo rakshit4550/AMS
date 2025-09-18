@@ -221,15 +221,13 @@
 //   }
 // };
 
-
-
-// Create a new account
 import Account from '../model/Account.js';
 import Party from '../model/Party.js';
 
 // Create a new account
 export const createAccount = async (req, res) => {
   try {
+    console.log('req.body:', req.body);
     const { partyname, credit = 0, debit = 0, remark, date, to } = req.body;
     if (!partyname) {
       return res.status(400).json({ message: 'Party name is required' });
@@ -244,13 +242,17 @@ export const createAccount = async (req, res) => {
     }
     let toParty = null;
     if (to) {
+      console.log('to provided:', to);
       if (to === partyname) {
         return res.status(400).json({ message: 'To party cannot be the same as the main party' });
       }
       toParty = await Party.findOne({ _id: to, createdBy: req.user.id });
+      console.log('toParty found:', toParty ? toParty._id.toString() : 'null');
       if (!toParty) {
         return res.status(404).json({ message: 'To party not found or you do not have access' });
       }
+    } else {
+      console.log('No to provided');
     }
     let mainRemark = remark || '';
     let toRemarkVar = remark || '';
@@ -265,6 +267,8 @@ export const createAccount = async (req, res) => {
         mainRemark = `${remark || ''} (Transfer involving ${toParty.partyname})`.trim();
         toRemarkVar = `${remark || ''} (Transfer involving ${party.partyname})`.trim();
       }
+      console.log('mainRemark:', mainRemark);
+      console.log('toRemarkVar:', toRemarkVar);
     }
 
     // Create and save the main account
@@ -278,6 +282,7 @@ export const createAccount = async (req, res) => {
       verified: false 
     });
     await account.save();
+    console.log('Main account saved:', account._id.toString());
 
     let toAccount = null;
     if (toParty) {
@@ -292,8 +297,10 @@ export const createAccount = async (req, res) => {
         createdBy: req.user.id,
         verified: false
       });
+      console.log('Creating toAccount for party:', to);
       try {
         await toAccount.save();
+        console.log('toAccount saved:', toAccount._id.toString());
       } catch (error) {
         // Rollback: Delete the main account if toAccount save fails
         await Account.findByIdAndDelete(account._id);
