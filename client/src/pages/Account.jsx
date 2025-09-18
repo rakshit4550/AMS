@@ -103,15 +103,14 @@
 //       if (editId) {
 //         await dispatch(updateAccount({ id: editId, ...accountData })).unwrap();
 //         showMessages(accountData.credit, accountData.debit, formData.partyname);
-//         await dispatch(fetchAccounts()).unwrap(); // Refresh accounts
+//         await dispatch(fetchAccounts()).unwrap();
 //         setFormData({ partyname: formData.partyname, amount: '', transactionType: 'credit', remark: '', date: formData.date, toParty: '' });
 //         setEditId(null);
 //       } else {
 //         const result = await dispatch(createAccount(accountData)).unwrap();
 //         console.log('Create account response:', JSON.stringify(result, null, 2));
 //         showMessages(accountData.credit, accountData.debit, formData.partyname);
-//         await dispatch(fetchAccounts()).unwrap(); // Refresh accounts
-//         // If a transfer was made, also select the toParty to display its entries
+//         await dispatch(fetchAccounts()).unwrap();
 //         if (formData.toParty) {
 //           setFormData((prev) => ({ ...prev, partyname: formData.toParty, toParty: '' }));
 //         } else {
@@ -254,24 +253,21 @@
 //         const balValue = balance > 0 ? `-${Math.abs(balance).toFixed(2)}` : Math.abs(balance).toFixed(2);
 
 //         // Closing Balance Box (Right Side, Above Table)
-//         const boxX = 130; // Right side of the page
+//         const boxX = 130;
 //         const boxWidth = 70;
 //         const boxHeight = 20;
 //         const balanceColor = balance > 0 ? [255, 0, 0] : balance < 0 ? [0, 128, 0] : [0, 0, 0];
-//         // Background gradient simulation
 //         doc.setFillColor(balance > 0 ? 255 : balance < 0 ? 0 : 240, balance > 0 ? 200 : balance < 0 ? 255 : 240, balance > 0 ? 200 : balance < 0 ? 200 : 240);
 //         doc.rect(boxX, y, boxWidth, boxHeight, 'F');
-//         // Border
 //         doc.setDrawColor(150, 150, 150);
 //         doc.rect(boxX, y, boxWidth, boxHeight);
-//         // Closing Balance Text
 //         doc.setFontSize(10);
 //         doc.setFont('helvetica', 'bold');
 //         doc.setTextColor(balanceColor[0], balanceColor[1], balanceColor[2]);
 //         doc.text('Closing Balance', boxX + 5, y + 7);
 //         doc.setFontSize(12);
 //         doc.text(`₹ ${balValue} ${balSign}`, boxX + 5, y + 15);
-//         y += 25; // Adjust y to make space below the box
+//         y += 25;
 
 //         // Table setup
 //         const tableX = 10;
@@ -314,13 +310,11 @@
 //           const curBalSign = currentBalance > 0 ? 'Dr' : currentBalance < 0 ? 'Cr' : '';
 //           const curBalValue = currentBalance > 0 ? `-${Math.abs(currentBalance).toFixed(2)}` : Math.abs(currentBalance).toFixed(2);
 
-//           // Row background
 //           if (rowIndex % 2 === 0) {
 //             doc.setFillColor(240, 240, 240);
 //             doc.rect(tableX, y, tableWidth, rowHeight, 'F');
 //           }
 
-//           // Draw row borders
 //           doc.setDrawColor(150, 150, 150);
 //           doc.rect(tableX, y, tableWidth, rowHeight);
 //           let x = tableX;
@@ -329,7 +323,6 @@
 //             x += width;
 //           });
 
-//           // Row content
 //           doc.setFontSize(9);
 //           doc.text(formatDate(acc.date), tableX + 2, y + 6);
 //           if (acc.debit > 0) {
@@ -347,7 +340,6 @@
 
 //           y += rowHeight;
 
-//           // Handle page overflow
 //           if (y > 260) {
 //             doc.addPage();
 //             y = 20;
@@ -359,7 +351,6 @@
 //             doc.setFont('helvetica', 'bold');
 //             doc.text(`${party.partyname} Statement`, 10, 10);
 //             y += 15;
-//             // Redraw Closing Balance Box on new page
 //             doc.setFillColor(balance > 0 ? 255 : balance < 0 ? 0 : 240, balance > 0 ? 200 : balance < 0 ? 255 : 240, balance > 0 ? 200 : balance < 0 ? 200 : 240);
 //             doc.rect(boxX, y, boxWidth, boxHeight, 'F');
 //             doc.setDrawColor(150, 150, 150);
@@ -371,7 +362,6 @@
 //             doc.setFontSize(12);
 //             doc.text(`₹ ${balValue} ${balSign}`, boxX + 5, y + 15);
 //             y += 25;
-//             // Redraw Table Header
 //             doc.setFillColor(0, 51, 102);
 //             doc.rect(tableX, y, tableWidth, rowHeight, 'F');
 //             doc.setTextColor(255, 255, 255);
@@ -388,7 +378,6 @@
 //           }
 //         });
 
-//         // Add generation timestamp
 //         y += 15;
 //         const now = new Date();
 //         const hours = now.getHours() % 12 || 12;
@@ -400,7 +389,6 @@
 //         doc.setTextColor(100, 100, 100);
 //         doc.text(`Report Generated: ${genTime}`, tableX, y);
 
-//         // Save PDF
 //         doc.save(`${party.partyname}_account_statement.pdf`);
 //       });
 //     } catch (error) {
@@ -423,7 +411,7 @@
 //   const selectedPartyAccounts = formData.partyname && groupedAccounts[formData.partyname] ? groupedAccounts[formData.partyname].accounts : [];
 //   const sortedAccounts = [...(selectedPartyAccounts || [])]
 //     .filter((acc) => acc && acc._id && acc.date && !isNaN(new Date(acc.date)))
-//     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by createdAt descending
+//     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 //   const totalPages = Math.ceil((sortedAccounts.length || 0) / entriesPerPage);
 //   const indexOfLast = currentPage * entriesPerPage;
 //   const indexOfFirst = indexOfLast - entriesPerPage;
@@ -646,9 +634,12 @@
 //                     </thead>
 //                     <tbody>
 //                       {currentAccounts.map((account, index) => {
+//                         // Reverse balance calculation
 //                         let currentBalance = 0;
-//                         const accountsUpToIndex = sortedAccounts.slice(0, indexOfFirst + index + 1);
-//                         accountsUpToIndex.forEach((acc) => {
+//                         const reverseSortedAccounts = [...sortedAccounts].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Sort ascending
+//                         const reverseIndex = sortedAccounts.length - (indexOfFirst + index) - 1;
+//                         const accountsUpToReverseIndex = reverseSortedAccounts.slice(0, reverseIndex + 1);
+//                         accountsUpToReverseIndex.forEach((acc) => {
 //                           currentBalance += (acc.debit || 0) - (acc.credit || 0);
 //                         });
 //                         const curBalSign = currentBalance > 0 ? 'Dr' : currentBalance < 0 ? 'Cr' : '';
@@ -1024,8 +1015,10 @@ const Account = () => {
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
 
-        // Filter accounts (relaxed criteria)
-        const validAccounts = group.accounts.filter((acc) => acc && acc.date && !isNaN(new Date(acc.date)));
+        // Filter and sort accounts for PDF (descending order to match table)
+        const validAccounts = group.accounts
+          .filter((acc) => acc && acc.date && !isNaN(new Date(acc.date)))
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         console.log(`All accounts for party ${pId}:`, group.accounts);
         console.log(`Valid accounts for party ${pId}:`, validAccounts);
         if (validAccounts.length === 0) {
@@ -1036,10 +1029,18 @@ const Account = () => {
           return;
         }
 
-        let currentBalance = 0;
+        // Create reverse sorted accounts for balance calculation
+        const reverseSortedAccounts = [...validAccounts].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
         validAccounts.forEach((acc, rowIndex) => {
           console.log(`Rendering account ${acc._id || 'unknown'}:`, acc);
-          currentBalance += (acc.debit || 0) - (acc.credit || 0);
+          // Reverse balance calculation
+          const reverseIndex = validAccounts.length - rowIndex - 1;
+          let currentBalance = 0;
+          const accountsUpToReverseIndex = reverseSortedAccounts.slice(0, reverseIndex + 1);
+          accountsUpToReverseIndex.forEach((acc) => {
+            currentBalance += (acc.debit || 0) - (acc.credit || 0);
+          });
           const curBalSign = currentBalance > 0 ? 'Dr' : currentBalance < 0 ? 'Cr' : '';
           const curBalValue = currentBalance > 0 ? `-${Math.abs(currentBalance).toFixed(2)}` : Math.abs(currentBalance).toFixed(2);
 
@@ -1369,7 +1370,7 @@ const Account = () => {
                       {currentAccounts.map((account, index) => {
                         // Reverse balance calculation
                         let currentBalance = 0;
-                        const reverseSortedAccounts = [...sortedAccounts].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Sort ascending
+                        const reverseSortedAccounts = [...sortedAccounts].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
                         const reverseIndex = sortedAccounts.length - (indexOfFirst + index) - 1;
                         const accountsUpToReverseIndex = reverseSortedAccounts.slice(0, reverseIndex + 1);
                         accountsUpToReverseIndex.forEach((acc) => {
