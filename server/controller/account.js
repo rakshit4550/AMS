@@ -1,264 +1,31 @@
-// import Account from '../model/Account.js';
-// import Party from '../model/Party.js';
-
-// // Create a new account
-// export const createAccount = async (req, res) => {
-//   try {
-//     const { partyname, credit = 0, debit = 0, remark, date, to } = req.body;
-//     if (!partyname) {
-//       return res.status(400).json({ message: 'Party name is required' });
-//     }
-//     if (!date) {
-//       return res.status(400).json({ message: 'Date is required' });
-//     }
-//     // Verify party exists and belongs to the authenticated user
-//     const party = await Party.findOne({ _id: partyname, createdBy: req.user.id });
-//     if (!party) {
-//       return res.status(404).json({ message: 'Party not found or you do not have access' });
-//     }
-//     let toParty = null;
-//     if (to) {
-//       if (to === partyname) {
-//         return res.status(400).json({ message: 'To party cannot be the same as the main party' });
-//       }
-//       toParty = await Party.findOne({ _id: to, createdBy: req.user.id });
-//       if (!toParty) {
-//         return res.status(404).json({ message: 'To party not found or you do not have access' });
-//       }
-//     }
-//     const mainRemark = toParty ? `${remark || ''} (Transfer to ${toParty.partyname})`.trim() : remark;
-//     const account = new Account({ 
-//       partyname, 
-//       credit, 
-//       debit, 
-//       remark: mainRemark, 
-//       date: new Date(date), 
-//       createdBy: req.user.id, 
-//       verified: false 
-//     });
-//     await account.save();
-
-//     let toAccount = null;
-//     if (toParty) {
-//       const toCredit = debit;
-//       const toDebit = credit;
-//       const toRemark = `${remark || ''} (Transfer from ${party.partyname})`.trim();
-//       toAccount = new Account({
-//         partyname: to,
-//         credit: toCredit,
-//         debit: toDebit,
-//         remark: toRemark,
-//         date: new Date(date),
-//         createdBy: req.user.id,
-//         verified: false
-//       });
-//       try {
-//         await toAccount.save();
-//       } catch (error) {
-//         // Rollback: Delete the main account if toAccount save fails
-//         await Account.findByIdAndDelete(account._id);
-//         console.error('Error saving toAccount, rolled back main account:', error);
-//         return res.status(500).json({ message: 'Failed to save transfer account, transaction rolled back', error: error.message });
-//       }
-//     }
-
-//     // Populate both accounts in the response
-//     const populatedAccount = await Account.findById(account._id).populate('partyname', 'partyname');
-//     const populatedToAccount = toAccount ? await Account.findById(toAccount._id).populate('partyname', 'partyname') : null;
-//     res.status(201).json({ 
-//       message: 'Account created successfully', 
-//       account: populatedAccount,
-//       toAccount: populatedToAccount 
-//     });
-//   } catch (error) {
-//     console.error('Error in createAccount:', error);
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-
-// // Get all accounts for the authenticated user
-// export const getAllAccounts = async (req, res) => {
-//   try {
-//     const parties = await Party.find({ createdBy: req.user.id }).select('_id');
-//     const partyIds = parties.map(party => party._id);
-//     const accounts = await Account.find({ partyname: { $in: partyIds } })
-//       .populate('partyname', 'partyname')
-//       .sort({ createdAt: -1 }); // Sort by createdAt descending
-//     res.status(200).json(accounts);
-//   } catch (error) {
-//     console.error('Error in getAllAccounts:', error);
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-
-// // Get a single account by ID
-// export const getAccountById = async (req, res) => {
-//   try {
-//     const account = await Account.findOne({ _id: req.params.id, createdBy: req.user.id }).populate('partyname', 'partyname');
-//     if (!account) {
-//       return res.status(404).json({ message: 'Account not found or you do not have access' });
-//     }
-//     res.status(200).json(account);
-//   } catch (error) {
-//     console.error('Error in getAccountById:', error);
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-
-// // Update an account
-// export const updateAccount = async (req, res) => {
-//   try {
-//     const { partyname, credit = 0, debit = 0, remark, date } = req.body;
-//     const account = await Account.findOne({ _id: req.params.id, createdBy: req.user.id });
-//     if (!account) {
-//       return res.status(404).json({ message: 'Account not found or you do not have access' });
-//     }
-//     if (account.verified) {
-//       return res.status(403).json({ message: 'Cannot update a verified account' });
-//     }
-//     if (!date) {
-//       return res.status(400).json({ message: 'Date is required' });
-//     }
-//     if (partyname) {
-//       const party = await Party.findOne({ _id: partyname, createdBy: req.user.id });
-//       if (!party) {
-//         return res.status(404).json({ message: 'Party not found or you do not have access' });
-//       }
-//     }
-//     const updatedAccount = await Account.findOneAndUpdate(
-//       { _id: req.params.id, createdBy: req.user.id },
-//       { partyname, credit, debit, remark, date: new Date(date) },
-//       { new: true, runValidators: true }
-//     ).populate('partyname', 'partyname');
-//     res.status(200).json({ message: 'Account updated successfully', account: updatedAccount });
-//   } catch (error) {
-//     console.error('Error in updateAccount:', error);
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-
-// // Delete an account
-// export const deleteAccount = async (req, res) => {
-//   try {
-//     const account = await Account.findOne({ _id: req.params.id, createdBy: req.user.id });
-//     if (!account) {
-//       return res.status(404).json({ message: 'Account not found or you do not have access' });
-//     }
-//     if (account.verified) {
-//       return res.status(403).json({ message: 'Cannot delete a verified account' });
-//     }
-//     await Account.findOneAndDelete({ _id: req.params.id, createdBy: req.user.id });
-//     res.status(200).json({ message: 'Account deleted successfully' });
-//   } catch (error) {
-//     console.error('Error in deleteAccount:', error);
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-
-// // Verify an account
-// export const verifyAccount = async (req, res) => {
-//   try {
-//     const account = await Account.findOne({ _id: req.params.id, createdBy: req.user.id });
-//     if (!account) {
-//       return res.status(404).json({ message: 'Account not found or you do not have access' });
-//     }
-//     if (account.verified) {
-//       return res.status(400).json({ message: 'Account is already verified' });
-//     }
-//     const updatedAccount = await Account.findOneAndUpdate(
-//       { _id: req.params.id, createdBy: req.user.id },
-//       { verified: true },
-//       { new: true }
-//     ).populate('partyname', 'partyname');
-//     res.status(200).json({ message: 'Account verified successfully', account: updatedAccount });
-//   } catch (error) {
-//     console.error('Error in verifyAccount:', error);
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-
-// // Fetch account statement data
-// export const downloadStatement = async (req, res) => {
-//   try {
-//     const partyId = req.query.party;
-//     const query = { createdBy: req.user.id };
-//     if (partyId) {
-//       const party = await Party.findOne({ _id: partyId, createdBy: req.user.id });
-//       if (!party) {
-//         return res.status(404).json({ message: 'Party not found or you do not have access' });
-//       }
-//       query.partyname = partyId;
-//     }
-//     const accounts = await Account.find(query)
-//       .populate('partyname', 'partyname')
-//       .sort({ createdAt: -1 }); // Sort by createdAt descending
-
-//     // Group accounts by party
-//     const grouped = {};
-//     accounts.forEach((acc) => {
-//       const pId = acc.partyname._id.toString();
-//       const pName = acc.partyname.partyname;
-//       if (!grouped[pId]) {
-//         grouped[pId] = { name: pName, accounts: [], totalCredit: 0, totalDebit: 0 };
-//       }
-//       grouped[pId].accounts.push({
-//         _id: acc._id,
-//         date: acc.date.toISOString(),
-//         credit: Number(acc.credit) || 0,
-//         debit: Number(acc.debit) || 0,
-//         remark: acc.remark || '',
-//         verified: acc.verified || false,
-//         createdAt: acc.createdAt.toISOString() // Include createdAt
-//       });
-//       grouped[pId].totalCredit += Number(acc.credit) || 0;
-//       grouped[pId].totalDebit += Number(acc.debit) || 0;
-//     });
-
-//     res.status(200).json(grouped);
-//   } catch (error) {
-//     console.error('Backend error in downloadStatement:', error);
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-
 import Account from '../model/Account.js';
 import Party from '../model/Party.js';
 
 // Create a new account
 export const createAccount = async (req, res) => {
   try {
-    console.log('createAccount - Request body:', JSON.stringify(req.body, null, 2));
     const { partyname, credit = 0, debit = 0, remark, date, to } = req.body;
     if (!partyname) {
-      console.log('createAccount - Error: Party name is required');
       return res.status(400).json({ message: 'Party name is required' });
     }
     if (!date) {
-      console.log('createAccount - Error: Date is required');
       return res.status(400).json({ message: 'Date is required' });
     }
     // Verify party exists and belongs to the authenticated user
     const party = await Party.findOne({ _id: partyname, createdBy: req.user.id });
     if (!party) {
-      console.log('createAccount - Error: Party not found for partyname:', partyname);
       return res.status(404).json({ message: 'Party not found or you do not have access' });
     }
-    console.log('createAccount - Main party found:', party._id.toString(), party.partyname);
     let toParty = null;
     if (to && typeof to === 'string' && to.trim() !== '') {
-      console.log('createAccount - To party provided:', to);
       if (to === partyname) {
-        console.log('createAccount - Error: To party cannot be the same as the main party');
         return res.status(400).json({ message: 'To party cannot be the same as the main party' });
       }
       toParty = await Party.findOne({ _id: to, createdBy: req.user.id });
-      console.log('createAccount - toParty found:', toParty ? toParty._id.toString() : 'null');
       if (!toParty) {
-        console.log('createAccount - Error: To party not found for ID:', to);
         return res.status(404).json({ message: 'To party not found or you do not have access' });
       }
     } else {
-      console.log('createAccount - No valid to party provided');
     }
     let mainRemark = remark || '';
     let toRemarkVar = remark || '';
@@ -273,8 +40,6 @@ export const createAccount = async (req, res) => {
         mainRemark = `${remark || ''} (Transfer involving ${toParty.partyname})`.trim();
         toRemarkVar = `${remark || ''} (Transfer involving ${party.partyname})`.trim();
       }
-      console.log('createAccount - mainRemark:', mainRemark);
-      console.log('createAccount - toRemarkVar:', toRemarkVar);
     }
 
     // Create and save the main account
@@ -288,7 +53,6 @@ export const createAccount = async (req, res) => {
       verified: false 
     });
     await account.save();
-    console.log('createAccount - Main account saved:', account._id.toString());
 
     let toAccount = null;
     if (toParty) {
@@ -303,14 +67,11 @@ export const createAccount = async (req, res) => {
         createdBy: req.user.id,
         verified: false
       });
-      console.log('createAccount - Creating toAccount for party:', to);
       try {
         await toAccount.save();
-        console.log('createAccount - toAccount saved:', toAccount._id.toString());
       } catch (error) {
         // Rollback: Delete the main account if toAccount save fails
         await Account.findByIdAndDelete(account._id);
-        console.error('createAccount - Error saving toAccount, rolled back main account:', error);
         return res.status(500).json({ message: 'Failed to save transfer account, transaction rolled back', error: error.message });
       }
     }
@@ -318,18 +79,12 @@ export const createAccount = async (req, res) => {
     // Populate both accounts in the response
     const populatedAccount = await Account.findById(account._id).populate('partyname', 'partyname');
     const populatedToAccount = toAccount ? await Account.findById(toAccount._id).populate('partyname', 'partyname') : null;
-    console.log('createAccount - Response prepared:', { 
-      message: 'Account created successfully', 
-      account: populatedAccount,
-      toAccount: populatedToAccount 
-    });
     res.status(201).json({ 
       message: 'Account created successfully', 
       account: populatedAccount,
       toAccount: populatedToAccount 
     });
   } catch (error) {
-    console.error('createAccount - Error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -344,7 +99,6 @@ export const getAllAccounts = async (req, res) => {
       .sort({ createdAt: -1 }); // Sort by createdAt descending
     res.status(200).json(accounts);
   } catch (error) {
-    console.error('Error in getAllAccounts:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -358,7 +112,6 @@ export const getAccountById = async (req, res) => {
     }
     res.status(200).json(account);
   } catch (error) {
-    console.error('Error in getAccountById:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -390,7 +143,6 @@ export const updateAccount = async (req, res) => {
     ).populate('partyname', 'partyname');
     res.status(200).json({ message: 'Account updated successfully', account: updatedAccount });
   } catch (error) {
-    console.error('Error in updateAccount:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -408,7 +160,6 @@ export const deleteAccount = async (req, res) => {
     await Account.findOneAndDelete({ _id: req.params.id, createdBy: req.user.id });
     res.status(200).json({ message: 'Account deleted successfully' });
   } catch (error) {
-    console.error('Error in deleteAccount:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -430,7 +181,6 @@ export const verifyAccount = async (req, res) => {
     ).populate('partyname', 'partyname');
     res.status(200).json({ message: 'Account verified successfully', account: updatedAccount });
   } catch (error) {
-    console.error('Error in verifyAccount:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -474,7 +224,6 @@ export const downloadStatement = async (req, res) => {
 
     res.status(200).json(grouped);
   } catch (error) {
-    console.error('Backend error in downloadStatement:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

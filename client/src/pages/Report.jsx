@@ -398,7 +398,6 @@ const Report = () => {
     }
     const party = parties.find((p) => p._id === selectedParty);
     if (!party) {
-      console.warn('Party not found for ID:', selectedParty);
       return;
     }
     const validAccounts = selectedPartyAccounts.filter((acc) => acc && acc.date && !isNaN(new Date(acc.date)));
@@ -474,7 +473,6 @@ const Report = () => {
 
     let currentBalance = 0;
     validAccounts.forEach((acc, rowIndex) => {
-      console.log(`Rendering account ${acc._id || 'unknown'}:`, acc);
       currentBalance += (acc.debit || 0) - (acc.credit || 0);
       const curBalSign = currentBalance > 0 ? 'Dr' : currentBalance < 0 ? 'Cr' : '';
       const curBalValue = currentBalance > 0 ? `-${Math.abs(currentBalance).toFixed(2)}` : Math.abs(currentBalance).toFixed(2);

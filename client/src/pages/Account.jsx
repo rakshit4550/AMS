@@ -780,13 +780,11 @@ const Account = () => {
   };
 
   const handlePartyInputChange = (selectedOption) => {
-    console.log('Party selected:', selectedOption);
     setFormData({ ...formData, partyname: selectedOption ? selectedOption.value : '' });
     setCurrentPage(1);
   };
 
   const handleToPartyInputChange = (selectedOption) => {
-    console.log('To party selected:', selectedOption);
     setFormData({ ...formData, toParty: selectedOption ? selectedOption.value : '' });
   };
 
@@ -832,7 +830,6 @@ const Account = () => {
         setEditId(null);
       } else {
         const result = await dispatch(createAccount(accountData)).unwrap();
-        console.log('Create account response:', JSON.stringify(result, null, 2));
         showMessages(accountData.credit, accountData.debit, formData.partyname);
         await dispatch(fetchAccounts()).unwrap();
         if (formData.toParty) {
@@ -842,7 +839,6 @@ const Account = () => {
         }
       }
     } catch (err) {
-      console.error('Error in handleSubmit:', err);
       if (err === 'No token available' || err.includes('Invalid token')) {
         navigate('/');
       } else {
@@ -935,7 +931,6 @@ const Account = () => {
         throw new Error('Invalid response: Expected JSON data, but received binary (e.g., PDF). Check backend.');
       }
       const grouped = await response.json();
-      console.log('Grouped data from API:', grouped);
       if (!grouped || typeof grouped !== 'object' || Object.keys(grouped).length === 0) {
         throw new Error('Invalid or empty data received from server');
       }
@@ -949,14 +944,11 @@ const Account = () => {
         let y = 20;
         let page = 1;
         const group = grouped[pId];
-        console.log(`Processing party ${pId}:`, group);
         if (!group || !group.accounts || group.accounts.length === 0) {
-          console.warn('Skipping empty group:', pId);
           return;
         }
         const party = parties.find((p) => p._id === pId);
         if (!party) {
-          console.warn('Party not found for ID:', pId);
           return;
         }
         // Header
@@ -1019,8 +1011,6 @@ const Account = () => {
         const validAccounts = group.accounts
           .filter((acc) => acc && acc.date && !isNaN(new Date(acc.date)))
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        console.log(`All accounts for party ${pId}:`, group.accounts);
-        console.log(`Valid accounts for party ${pId}:`, validAccounts);
         if (validAccounts.length === 0) {
           doc.setFontSize(10);
           doc.setTextColor(255, 0, 0);
@@ -1033,7 +1023,6 @@ const Account = () => {
         const reverseSortedAccounts = [...validAccounts].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
         validAccounts.forEach((acc, rowIndex) => {
-          console.log(`Rendering account ${acc._id || 'unknown'}:`, acc);
           // Reverse balance calculation
           const reverseIndex = validAccounts.length - rowIndex - 1;
           let currentBalance = 0;
@@ -1126,7 +1115,6 @@ const Account = () => {
         doc.save(`${party.partyname}_account_statement.pdf`);
       });
     } catch (error) {
-      console.error('Detailed error in handleDownload:', error);
       alert('Error generating statement: ' + error.message);
     }
   };
