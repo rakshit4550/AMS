@@ -178,6 +178,218 @@ const Account = () => {
       });
   };
 
+// const handleDownload = async () => {
+//   const token = localStorage.getItem('token');
+//   if (!token) {
+//     navigate('/');
+//     return;
+//   }
+//   if (!formData.partyname) {
+//     alert('Please select a party to download the statement.');
+//     return;
+//   }
+//   let url = `${API_URL}/accounts/statement/download`;
+//   if (formData.partyname) {
+//     url += `?party=${formData.partyname}`;
+//   }
+//   try {
+//     const response = await fetch(url, {
+//       method: 'GET',
+//       headers: {
+//         'Authorization': `Bearer ${token}`,
+//       },
+//     });
+//     if (!response.ok) {
+//       throw new Error(`HTTP error! status: ${response.status}`);
+//     }
+//     const contentType = response.headers.get('content-type');
+//     if (!contentType || !contentType.includes('application/json')) {
+//       throw new Error('Invalid response: Expected JSON data, but received binary (e.g., PDF). Check backend.');
+//     }
+//     const grouped = await response.json();
+//     if (!grouped || typeof grouped !== 'object' || Object.keys(grouped).length === 0) {
+//       throw new Error('Invalid or empty data received from server');
+//     }
+//     const formatDate = (date) => {
+//       if (!date || isNaN(new Date(date))) return 'N/A';
+//       const options = { day: 'numeric', month: 'short', year: 'numeric' };
+//       return new Date(date).toLocaleDateString('en-GB', options);
+//     };
+//     Object.keys(grouped).forEach((pId) => {
+//       const doc = new jsPDF();
+//       let y = 20;
+//       let page = 1;
+//       const group = grouped[pId];
+//       if (!group || !group.accounts || group.accounts.length === 0) {
+//         return;
+//       }
+//       const party = parties.find((p) => p._id === pId);
+//       if (!party) {
+//         return;
+//       }
+//       // Header
+//       doc.setFillColor(0, 51, 102);
+//       doc.rect(0, 0, 210, 15, 'F');
+//       doc.setTextColor(255, 255, 255);
+//       doc.setFontSize(14);
+//       doc.setFont('helvetica', 'bold');
+//       doc.text(`${party.partyname} Statement`, 10, 10);
+//       doc.setFontSize(12);
+//       doc.setTextColor(0, 0, 0);
+//       doc.setFont('helvetica', 'normal');
+//       y += 10;
+
+//       // Calculate balance
+//       const balance = group.totalDebit - group.totalCredit;
+//       const balSign = balance > 0 ? 'Dr' : balance < 0 ? 'Cr' : '';
+//       const balValue = balance > 0 ? `-${Math.abs(balance)}` : Math.abs(balance);
+
+//       // Closing Balance Box (Right Side, Above Table) - INITIAL PAGE
+//       const boxX = 130;
+//       const boxWidth = 70;
+//       const boxHeight = 20;
+//       const balanceColor = balance > 0 ? [255, 0, 0] : balance < 0 ? [0, 128, 0] : [0, 0, 0];
+//       doc.setFillColor(balance > 0 ? 255 : balance < 0 ? 0 : 240, balance > 0 ? 200 : balance < 0 ? 255 : 240, balance > 0 ? 200 : balance < 0 ? 200 : 240);
+//       doc.rect(boxX, y, boxWidth, boxHeight, 'F');
+//       doc.setDrawColor(150, 150, 150);
+//       doc.rect(boxX, y, boxWidth, boxHeight);
+//       doc.setFontSize(12);
+//       doc.setTextColor(balanceColor[0], balanceColor[1], balanceColor[2]);
+//       doc.text(`₹ ${balValue} ${balSign}`, boxX + 5, y + 12); // Only value, no label or "¹"
+//       y += 25;
+
+//       // Table setup
+//       const tableX = 10;
+//       const tableWidth = 190;
+//       const colWidths = [40, 40, 40, 40, 30];
+//       const rowHeight = 8;
+//       const tableStartY = y;
+
+//       // Table header
+//       doc.setFillColor(0, 51, 102);
+//       doc.rect(tableX, y, tableWidth, rowHeight, 'F');
+//       doc.setTextColor(255, 255, 255);
+//       doc.setFontSize(10);
+//       doc.setFont('helvetica', 'bold');
+//       doc.text('Date', tableX + 2, y + 6);
+//       doc.text('Debit (-)', tableX + 42, y + 6);
+//       doc.text('Credit (+)', tableX + 82, y + 6);
+//       doc.text('Balance', tableX + 122, y + 6);
+//       doc.text('Remark', tableX + 162, y + 6);
+//       y += rowHeight;
+//       doc.setFont('helvetica', 'normal');
+//       doc.setTextColor(0, 0, 0);
+
+//       // Filter and sort accounts for PDF (descending order to match table)
+//       const validAccounts = group.accounts
+//         .filter((acc) => acc && acc.date && !isNaN(new Date(acc.date)))
+//         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+//       if (validAccounts.length === 0) {
+//         doc.setFontSize(10);
+//         doc.setTextColor(255, 0, 0);
+//         doc.text('No valid accounts available for this party.', tableX, y + 10);
+//         doc.save(`${party.partyname}_account_statement.pdf`);
+//         return;
+//       }
+
+//       // Create reverse sorted accounts for balance calculation
+//       const reverseSortedAccounts = [...validAccounts].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+//       validAccounts.forEach((acc, rowIndex) => {
+//         // Reverse balance calculation
+//         const reverseIndex = validAccounts.length - rowIndex - 1;
+//         let currentBalance = 0;
+//         const accountsUpToReverseIndex = reverseSortedAccounts.slice(0, reverseIndex + 1);
+//         accountsUpToReverseIndex.forEach((acc) => {
+//           currentBalance += (acc.debit || 0) - (acc.credit || 0);
+//         });
+//         const curBalSign = currentBalance > 0 ? 'Dr' : currentBalance < 0 ? 'Cr' : '';
+//         const curBalValue = currentBalance > 0 ? `-${Math.abs(currentBalance)}` : Math.abs(currentBalance);
+
+//         if (rowIndex % 2 === 0) {
+//           doc.setFillColor(240, 240, 240);
+//           doc.rect(tableX, y, tableWidth, rowHeight, 'F');
+//         }
+
+//         doc.setDrawColor(150, 150, 150);
+//         doc.rect(tableX, y, tableWidth, rowHeight);
+//         let x = tableX;
+//         colWidths.forEach((width) => {
+//           doc.rect(x, y, width, rowHeight);
+//           x += width;
+//         });
+
+//         doc.setFontSize(9);
+//         doc.text(formatDate(acc.date), tableX + 2, y + 6);
+//         if (acc.debit > 0) {
+//           doc.setTextColor(255, 0, 0);
+//           doc.text(acc.debit.toString(), tableX + 42, y + 6);
+//         }
+//         if (acc.credit > 0) {
+//           doc.setTextColor(0, 128, 0);
+//           doc.text(acc.credit.toString(), tableX + 82, y + 6);
+//         }
+//         doc.setTextColor(0, 0, 0);
+//         doc.text(`${curBalValue} ${curBalSign}`, tableX + 122, y + 6);
+//         const remarkText = (acc.remark || '').length > 20 ? `${acc.remark.substring(0, 20)}...` : acc.remark || '';
+//         doc.text(remarkText, tableX + 162, y + 6);
+
+//         y += rowHeight;
+
+//         if (y > 260) {
+//           doc.addPage();
+//           y = 20;
+//           page++;
+//           doc.setFillColor(0, 51, 102);
+//           doc.rect(0, 0, 210, 15, 'F');
+//           doc.setTextColor(255, 255, 255);
+//           doc.setFontSize(14);
+//           doc.setFont('helvetica', 'bold');
+//           doc.text(`${party.partyname} Statement`, 10, 10);
+//           y += 15;
+//           // Closing Balance Box (Right Side, Above Table) - NEW PAGE (Updated to match initial page, no label or "¹")
+//           doc.setFillColor(balance > 0 ? 255 : balance < 0 ? 0 : 240, balance > 0 ? 200 : balance < 0 ? 255 : 240, balance > 0 ? 200 : balance < 0 ? 200 : 240);
+//           doc.rect(boxX, y, boxWidth, boxHeight, 'F');
+//           doc.setDrawColor(150, 150, 150);
+//           doc.rect(boxX, y, boxWidth, boxHeight);
+//           doc.setFontSize(12);
+//           doc.setTextColor(balanceColor[0], balanceColor[1], balanceColor[2]);
+//           doc.text(`₹ ${balValue} ${balSign}`, boxX + 5, y + 12); // Only value, no label or "¹"
+//           y += 25;
+//           doc.setFillColor(0, 51, 102);
+//           doc.rect(tableX, y, tableWidth, rowHeight, 'F');
+//           doc.setTextColor(255, 255, 255);
+//           doc.setFontSize(10);
+//           doc.setFont('helvetica', 'bold');
+//           doc.text('Date', tableX + 2, y + 6);
+//           doc.text('Debit (-)', tableX + 42, y + 6);
+//           doc.text('Credit (+)', tableX + 82, y + 6);
+//           doc.text('Balance', tableX + 122, y + 6);
+//           doc.text('Remark', tableX + 162, y + 6);
+//           y += rowHeight;
+//           doc.setFont('helvetica', 'normal');
+//           doc.setTextColor(0, 0, 0);
+//         }
+//       });
+
+//       y += 15;
+//       const now = new Date();
+//       const hours = now.getHours() % 12 || 12;
+//       const minutes = String(now.getMinutes()).padStart(2, '0');
+//       const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
+//       const genDate = formatDate(now).replace(/\d{4}$/, `'${now.getFullYear().toString().slice(2)}`);
+//       const genTime = `${hours}:${minutes} ${ampm} | ${genDate}`;
+//       doc.setFontSize(9);
+//       doc.setTextColor(100, 100, 100);
+//       doc.text(`Report Generated: ${genTime}`, tableX, y);
+
+//       doc.save(`${party.partyname}_account_statement.pdf`);
+//     });
+//   } catch (error) {
+//     alert('Error generating statement: ' + error.message);
+//   }
+// };
+
 const handleDownload = async () => {
   const token = localStorage.getItem('token');
   if (!token) {
@@ -232,17 +444,18 @@ const handleDownload = async () => {
       doc.rect(0, 0, 210, 15, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont('times', 'bold'); // Use 'times' font
       doc.text(`${party.partyname} Statement`, 10, 10);
       doc.setFontSize(12);
       doc.setTextColor(0, 0, 0);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('times', 'normal'); // Use 'times' font
       y += 10;
 
       // Calculate balance
       const balance = group.totalDebit - group.totalCredit;
       const balSign = balance > 0 ? 'Dr' : balance < 0 ? 'Cr' : '';
-      const balValue = balance > 0 ? `-${Math.abs(balance)}` : Math.abs(balance);
+      const balValue = Math.abs(balance).toFixed(2).replace(/[^0-9.]/g, ''); // Clean non-numeric characters
+      console.log('Balance text:', `Rs. ${balValue} ${balSign}`); // Debug output
 
       // Closing Balance Box (Right Side, Above Table) - INITIAL PAGE
       const boxX = 130;
@@ -254,8 +467,9 @@ const handleDownload = async () => {
       doc.setDrawColor(150, 150, 150);
       doc.rect(boxX, y, boxWidth, boxHeight);
       doc.setFontSize(12);
+      doc.setFont('times', 'normal'); // Use 'times' font
       doc.setTextColor(balanceColor[0], balanceColor[1], balanceColor[2]);
-      doc.text(`₹ ${balValue} ${balSign}`, boxX + 5, y + 12); // Only value, no label or "¹"
+      doc.text(`Rs. ${balValue} ${balSign}`, boxX + 5, y + 12); // Use 'Rs.' instead of '₹'
       y += 25;
 
       // Table setup
@@ -270,17 +484,17 @@ const handleDownload = async () => {
       doc.rect(tableX, y, tableWidth, rowHeight, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont('times', 'bold'); // Use 'times' font
       doc.text('Date', tableX + 2, y + 6);
       doc.text('Debit (-)', tableX + 42, y + 6);
       doc.text('Credit (+)', tableX + 82, y + 6);
       doc.text('Balance', tableX + 122, y + 6);
       doc.text('Remark', tableX + 162, y + 6);
       y += rowHeight;
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('times', 'normal'); // Use 'times' font
       doc.setTextColor(0, 0, 0);
 
-      // Filter and sort accounts for PDF (descending order to match table)
+      // Filter and sort accounts for PDF
       const validAccounts = group.accounts
         .filter((acc) => acc && acc.date && !isNaN(new Date(acc.date)))
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -304,7 +518,8 @@ const handleDownload = async () => {
           currentBalance += (acc.debit || 0) - (acc.credit || 0);
         });
         const curBalSign = currentBalance > 0 ? 'Dr' : currentBalance < 0 ? 'Cr' : '';
-        const curBalValue = currentBalance > 0 ? `-${Math.abs(currentBalance)}` : Math.abs(currentBalance);
+        const curBalValue = Math.abs(currentBalance).toFixed(2).replace(/[^0-9.]/g, ''); // Clean non-numeric characters
+        console.log('Row balance text:', `Rs. ${curBalValue} ${curBalSign}`); // Debug output
 
         if (rowIndex % 2 === 0) {
           doc.setFillColor(240, 240, 240);
@@ -323,14 +538,14 @@ const handleDownload = async () => {
         doc.text(formatDate(acc.date), tableX + 2, y + 6);
         if (acc.debit > 0) {
           doc.setTextColor(255, 0, 0);
-          doc.text(acc.debit.toString(), tableX + 42, y + 6);
+          doc.text(acc.debit.toFixed(2), tableX + 42, y + 6); // Clean number format
         }
         if (acc.credit > 0) {
           doc.setTextColor(0, 128, 0);
-          doc.text(acc.credit.toString(), tableX + 82, y + 6);
+          doc.text(acc.credit.toFixed(2), tableX + 82, y + 6); // Clean number format
         }
         doc.setTextColor(0, 0, 0);
-        doc.text(`${curBalValue} ${curBalSign}`, tableX + 122, y + 6);
+        doc.text(`Rs. ${curBalValue} ${curBalSign}`, tableX + 122, y + 6); // Use 'Rs.' for table balance
         const remarkText = (acc.remark || '').length > 20 ? `${acc.remark.substring(0, 20)}...` : acc.remark || '';
         doc.text(remarkText, tableX + 162, y + 6);
 
@@ -344,30 +559,31 @@ const handleDownload = async () => {
           doc.rect(0, 0, 210, 15, 'F');
           doc.setTextColor(255, 255, 255);
           doc.setFontSize(14);
-          doc.setFont('helvetica', 'bold');
+          doc.setFont('times', 'bold'); // Use 'times' font
           doc.text(`${party.partyname} Statement`, 10, 10);
           y += 15;
-          // Closing Balance Box (Right Side, Above Table) - NEW PAGE (Updated to match initial page, no label or "¹")
+          // Closing Balance Box (Right Side, Above Table) - NEW PAGE
           doc.setFillColor(balance > 0 ? 255 : balance < 0 ? 0 : 240, balance > 0 ? 200 : balance < 0 ? 255 : 240, balance > 0 ? 200 : balance < 0 ? 200 : 240);
           doc.rect(boxX, y, boxWidth, boxHeight, 'F');
           doc.setDrawColor(150, 150, 150);
           doc.rect(boxX, y, boxWidth, boxHeight);
           doc.setFontSize(12);
+          doc.setFont('times', 'normal'); // Use 'times' font
           doc.setTextColor(balanceColor[0], balanceColor[1], balanceColor[2]);
-          doc.text(`₹ ${balValue} ${balSign}`, boxX + 5, y + 12); // Only value, no label or "¹"
+          doc.text(`Rs. ${balValue} ${balSign}`, boxX + 5, y + 12); // Use 'Rs.' instead of '₹'
           y += 25;
           doc.setFillColor(0, 51, 102);
           doc.rect(tableX, y, tableWidth, rowHeight, 'F');
           doc.setTextColor(255, 255, 255);
           doc.setFontSize(10);
-          doc.setFont('helvetica', 'bold');
+          doc.setFont('times', 'bold'); // Use 'times' font
           doc.text('Date', tableX + 2, y + 6);
           doc.text('Debit (-)', tableX + 42, y + 6);
           doc.text('Credit (+)', tableX + 82, y + 6);
           doc.text('Balance', tableX + 122, y + 6);
           doc.text('Remark', tableX + 162, y + 6);
           y += rowHeight;
-          doc.setFont('helvetica', 'normal');
+          doc.setFont('times', 'normal'); // Use 'times' font
           doc.setTextColor(0, 0, 0);
         }
       });
