@@ -444,32 +444,33 @@ const handleDownload = async () => {
       doc.rect(0, 0, 210, 15, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(14);
-      doc.setFont('times', 'bold'); // Use 'times' font
+      doc.setFont('times', 'bold');
       doc.text(`${party.partyname} Statement`, 10, 10);
       doc.setFontSize(12);
       doc.setTextColor(0, 0, 0);
-      doc.setFont('times', 'normal'); // Use 'times' font
+      doc.setFont('times', 'normal');
       y += 10;
 
       // Calculate balance
-      const balance = group.totalDebit - group.totalCredit;
+      const balance = (group.totalDebit || 0) - (group.totalCredit || 0);
       const balSign = balance > 0 ? 'Dr' : balance < 0 ? 'Cr' : '';
-      const balValue = Math.abs(balance).toFixed(2).replace(/[^0-9.]/g, ''); // Clean non-numeric characters
-      console.log('Balance text:', `Rs. ${balValue} ${balSign}`); // Debug output
+      const balValue = String(Math.abs(balance)); // Ensure string
+      console.log('Balance text:', `Rs. ${balValue} ${balSign}`);
 
-      // Closing Balance Box (Right Side, Above Table) - INITIAL PAGE
+      // Closing Balance Box (Right Side, Above Table)
       const boxX = 130;
       const boxWidth = 70;
       const boxHeight = 20;
       const balanceColor = balance > 0 ? [255, 0, 0] : balance < 0 ? [0, 128, 0] : [0, 0, 0];
-      doc.setFillColor(balance > 0 ? 255 : balance < 0 ? 0 : 240, balance > 0 ? 200 : balance < 0 ? 255 : 240, balance > 0 ? 200 : balance < 0 ? 200 : 240);
+      const bgColor = balance > 0 ? [255, 200, 200] : balance < 0 ? [200, 255, 200] : [240, 240, 240];
+      doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
       doc.rect(boxX, y, boxWidth, boxHeight, 'F');
       doc.setDrawColor(150, 150, 150);
       doc.rect(boxX, y, boxWidth, boxHeight);
       doc.setFontSize(12);
-      doc.setFont('times', 'normal'); // Use 'times' font
+      doc.setFont('times', 'normal');
       doc.setTextColor(balanceColor[0], balanceColor[1], balanceColor[2]);
-      doc.text(`Rs. ${balValue} ${balSign}`, boxX + 5, y + 12); // Use 'Rs.' instead of '₹'
+      doc.text(`Rs. ${balValue} ${balSign}`, boxX + 5, y + 12);
       y += 25;
 
       // Table setup
@@ -484,14 +485,14 @@ const handleDownload = async () => {
       doc.rect(tableX, y, tableWidth, rowHeight, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(10);
-      doc.setFont('times', 'bold'); // Use 'times' font
+      doc.setFont('times', 'bold');
       doc.text('Date', tableX + 2, y + 6);
       doc.text('Debit (-)', tableX + 42, y + 6);
       doc.text('Credit (+)', tableX + 82, y + 6);
       doc.text('Balance', tableX + 122, y + 6);
       doc.text('Remark', tableX + 162, y + 6);
       y += rowHeight;
-      doc.setFont('times', 'normal'); // Use 'times' font
+      doc.setFont('times', 'normal');
       doc.setTextColor(0, 0, 0);
 
       // Filter and sort accounts for PDF
@@ -518,8 +519,8 @@ const handleDownload = async () => {
           currentBalance += (acc.debit || 0) - (acc.credit || 0);
         });
         const curBalSign = currentBalance > 0 ? 'Dr' : currentBalance < 0 ? 'Cr' : '';
-        const curBalValue = Math.abs(currentBalance).toFixed(2).replace(/[^0-9.]/g, ''); // Clean non-numeric characters
-        console.log('Row balance text:', `Rs. ${curBalValue} ${curBalSign}`); // Debug output
+        const curBalValue = String(Math.abs(currentBalance)); // Ensure string
+        console.log('Row balance text:', `Rs. ${curBalValue} ${curBalSign}`);
 
         if (rowIndex % 2 === 0) {
           doc.setFillColor(240, 240, 240);
@@ -536,22 +537,23 @@ const handleDownload = async () => {
 
         doc.setFontSize(9);
         doc.text(formatDate(acc.date), tableX + 2, y + 6);
-        if (acc.debit > 0) {
+        if ((acc.debit || 0) > 0) {
           doc.setTextColor(255, 0, 0);
-          doc.text(acc.debit.toFixed(2), tableX + 42, y + 6); // Clean number format
+          doc.text(String(acc.debit || 0), tableX + 42, y + 6);
         }
-        if (acc.credit > 0) {
+        if ((acc.credit || 0) > 0) {
           doc.setTextColor(0, 128, 0);
-          doc.text(acc.credit.toFixed(2), tableX + 82, y + 6); // Clean number format
+          doc.text(String(acc.credit || 0), tableX + 82, y + 6);
         }
         doc.setTextColor(0, 0, 0);
-        doc.text(`Rs. ${curBalValue} ${curBalSign}`, tableX + 122, y + 6); // Use 'Rs.' for table balance
+        doc.text(`Rs. ${curBalValue} ${curBalSign}`, tableX + 122, y + 6);
         const remarkText = (acc.remark || '').length > 20 ? `${acc.remark.substring(0, 20)}...` : acc.remark || '';
         doc.text(remarkText, tableX + 162, y + 6);
 
         y += rowHeight;
 
-        if (y > 260) {
+        // Check if we need a new page
+        if (y > 260 && rowIndex < validAccounts.length - 1) {
           doc.addPage();
           y = 20;
           page++;
@@ -559,35 +561,38 @@ const handleDownload = async () => {
           doc.rect(0, 0, 210, 15, 'F');
           doc.setTextColor(255, 255, 255);
           doc.setFontSize(14);
-          doc.setFont('times', 'bold'); // Use 'times' font
+          doc.setFont('times', 'bold');
           doc.text(`${party.partyname} Statement`, 10, 10);
           y += 15;
+
           // Closing Balance Box (Right Side, Above Table) - NEW PAGE
-          doc.setFillColor(balance > 0 ? 255 : balance < 0 ? 0 : 240, balance > 0 ? 200 : balance < 0 ? 255 : 240, balance > 0 ? 200 : balance < 0 ? 200 : 240);
+          doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
           doc.rect(boxX, y, boxWidth, boxHeight, 'F');
           doc.setDrawColor(150, 150, 150);
           doc.rect(boxX, y, boxWidth, boxHeight);
           doc.setFontSize(12);
-          doc.setFont('times', 'normal'); // Use 'times' font
+          doc.setFont('times', 'normal');
           doc.setTextColor(balanceColor[0], balanceColor[1], balanceColor[2]);
-          doc.text(`Rs. ${balValue} ${balSign}`, boxX + 5, y + 12); // Use 'Rs.' instead of '₹'
+          doc.text(`Rs. ${balValue} ${balSign}`, boxX + 5, y + 12);
           y += 25;
+
           doc.setFillColor(0, 51, 102);
           doc.rect(tableX, y, tableWidth, rowHeight, 'F');
           doc.setTextColor(255, 255, 255);
           doc.setFontSize(10);
-          doc.setFont('times', 'bold'); // Use 'times' font
+          doc.setFont('times', 'bold');
           doc.text('Date', tableX + 2, y + 6);
           doc.text('Debit (-)', tableX + 42, y + 6);
           doc.text('Credit (+)', tableX + 82, y + 6);
           doc.text('Balance', tableX + 122, y + 6);
           doc.text('Remark', tableX + 162, y + 6);
           y += rowHeight;
-          doc.setFont('times', 'normal'); // Use 'times' font
+          doc.setFont('times', 'normal');
           doc.setTextColor(0, 0, 0);
         }
       });
 
+      // Add report generation timestamp
       y += 15;
       const now = new Date();
       const hours = now.getHours() % 12 || 12;
@@ -605,7 +610,6 @@ const handleDownload = async () => {
     alert('Error generating statement: ' + error.message);
   }
 };
-
   const groupedAccounts = parties.reduce((acc, party) => {
     const partyAccounts = accounts.filter((account) => account.partyname?._id === party._id);
     if (partyAccounts.length > 0 && (party._id === formData.partyname || party._id === formData.toParty)) {
