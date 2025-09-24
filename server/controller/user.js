@@ -239,22 +239,61 @@ export const createDefaultAdmin = async () => {
 };
 
 // Login
+// export const login = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+//     if (!email || !password) {
+//       return res.status(400).json({ message: 'Username or email and password are required' });
+//     }
+
+//     // Check for user by email or username
+//     const user = await User.findOne({
+//       $or: [{ email }, { username: email }],
+//     });
+//     if (!user) {
+//       return res.status(401).json({ message: 'Invalid username/email or password' });
+//     }
+
+//     const isMatch = await user.comparePassword(password);
+//     if (!isMatch) {
+//       return res.status(401).json({ message: 'Invalid username/email or password' });
+//     }
+
+//     if (!process.env.JWT_SECRET) {
+//       return res.status(500).json({ message: 'Server configuration error: JWT_SECRET is not defined' });
+//     }
+
+//     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+//       expiresIn: '1h',
+//     });
+
+//     res.status(200).json({ message: 'Login successful', token, role: user.role });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Server error', error: error.message });
+//   }
+// };
+
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('Login attempt:', { email, password });
     if (!email || !password) {
       return res.status(400).json({ message: 'Username or email and password are required' });
     }
 
-    // Check for user by email or username
     const user = await User.findOne({
-      $or: [{ email }, { username: email }],
+      $or: [
+        { email: new RegExp(`^${email}$`, 'i') }, // Case-insensitive
+        { username: new RegExp(`^${email}$`, 'i') },
+      ],
     });
+    console.log('Found user:', user ? { id: user._id, username: user.username, email: user.email, role: user.role } : null);
     if (!user) {
       return res.status(401).json({ message: 'Invalid username/email or password' });
     }
 
     const isMatch = await user.comparePassword(password);
+    console.log('Password match:', isMatch);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid username/email or password' });
     }
@@ -269,6 +308,7 @@ export const login = async (req, res) => {
 
     res.status(200).json({ message: 'Login successful', token, role: user.role });
   } catch (error) {
+    console.error('Login error:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
