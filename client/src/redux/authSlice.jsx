@@ -1,7 +1,7 @@
 // import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 // import axios from 'axios';
 
-// const API_URL = process.env.REACT_APP_API_URL
+// const API_URL = process.env.REACT_APP_API_URL;
 
 // export const login = createAsyncThunk('user/login', async (loginData, { rejectWithValue }) => {
 //   try {
@@ -90,7 +90,7 @@
 //         state.loading = false;
 //         state.token = action.payload.token;
 //         state.role = action.payload.role;
-//         state.currentUser = { id: action.payload.id }; // Fallback if needed, but not from login response
+//         state.currentUser = { id: action.payload.id };
 //       })
 //       .addCase(login.rejected, (state, action) => {
 //         state.loading = false;
@@ -167,6 +167,7 @@
 
 // export default userSlice.reducer;
 
+
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
@@ -174,15 +175,18 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 export const login = createAsyncThunk('user/login', async (loginData, { rejectWithValue }) => {
   try {
+    console.log('Sending login request with payload:', loginData);
     const response = await axios.post(`${API_URL}/login`, loginData);
     localStorage.setItem('token', response.data.token);
-    return { token: response.data.token, role: response.data.role };
+    return { token: response.data.token, role: response.data.role, id: response.data.id };
   } catch (error) {
-    return rejectWithValue(error.response.data.message);
+    console.error('Login request failed:', error.response?.data?.message || error.message);
+    return rejectWithValue(error.response?.data?.message || 'Login failed');
   }
 });
 
 export const logout = createAsyncThunk('user/logout', async () => {
+  console.log('Logging out, removing token');
   localStorage.removeItem('token');
   return null;
 });
@@ -191,16 +195,13 @@ export const fetchUsers = createAsyncThunk('user/fetchUsers', async (id = null, 
   try {
     const { user: { token } } = getState();
     const config = { headers: { Authorization: `Bearer ${token}` } };
-    let url;
-    if (id) {
-      url = `${API_URL}/users/${id}`;
-    } else {
-      url = `${API_URL}/users`;
-    }
+    let url = id ? `${API_URL}/users/${id}` : `${API_URL}/users`;
+    console.log('Fetching users from:', url);
     const response = await axios.get(url, config);
     return Array.isArray(response.data) ? response.data : [response.data];
   } catch (error) {
-    return rejectWithValue(error.response.data.message);
+    console.error('Fetch users failed:', error.response?.data?.message || error.message);
+    return rejectWithValue(error.response?.data?.message || 'Failed to fetch users');
   }
 });
 
@@ -208,10 +209,12 @@ export const createUser = createAsyncThunk('user/createUser', async (userData, {
   try {
     const { user: { token } } = getState();
     const config = { headers: { Authorization: `Bearer ${token}` } };
+    console.log('Creating user with data:', userData);
     const response = await axios.post(`${API_URL}/users`, userData, config);
     return response.data.user;
   } catch (error) {
-    return rejectWithValue(error.response.data.message);
+    console.error('Create user failed:', error.response?.data?.message || error.message);
+    return rejectWithValue(error.response?.data?.message || 'Failed to create user');
   }
 });
 
@@ -219,10 +222,12 @@ export const updateUser = createAsyncThunk('user/updateUser', async ({ id, ...us
   try {
     const { user: { token } } = getState();
     const config = { headers: { Authorization: `Bearer ${token}` } };
+    console.log('Updating user:', id, 'with data:', userData);
     const response = await axios.put(`${API_URL}/users/${id}`, userData, config);
     return response.data.user;
   } catch (error) {
-    return rejectWithValue(error.response.data.message);
+    console.error('Update user failed:', error.response?.data?.message || error.message);
+    return rejectWithValue(error.response?.data?.message || 'Failed to update user');
   }
 });
 
@@ -230,10 +235,12 @@ export const deleteUser = createAsyncThunk('user/deleteUser', async (id, { getSt
   try {
     const { user: { token } } = getState();
     const config = { headers: { Authorization: `Bearer ${token}` } };
+    console.log('Deleting user:', id);
     await axios.delete(`${API_URL}/users/${id}`, config);
     return id;
   } catch (error) {
-    return rejectWithValue(error.response.data.message);
+    console.error('Delete user failed:', error.response?.data?.message || error.message);
+    return rejectWithValue(error.response?.data?.message || 'Failed to delete user');
   }
 });
 

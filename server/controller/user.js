@@ -7,7 +7,7 @@
 //     const adminExists = await User.findOne({ email: 'admin1@gmail.com' });
 
 //     if (adminExists) {
-//       // If admin exists, update password and role if necessary, but don't change email
+//       // If admin exists, update password and role if necessary, but don't change email or username
 //       if (adminExists.role !== 'admin') {
 //         adminExists.role = 'admin';
 //         await adminExists.save();
@@ -23,7 +23,8 @@
 //     } else {
 //       // Create new admin if none exists
 //       const admin = new User({
-//         email: 'admin1@gmail.com', // Use original email to avoid conflicts
+//         username: 'admin1',
+//         email: 'admin1@gmail.com',
 //         password: 'admin123',
 //         role: 'admin',
 //       });
@@ -32,29 +33,37 @@
 //     }
 //   } catch (error) {
 //     if (error.code === 11000) {
-//       console.error('Duplicate key error: Email already exists');
+//       console.error('Duplicate key error: Email or username already exists');
 //     } else {
 //       console.error('Error creating/updating default admin:', error.message);
 //     }
 //   }
 // };
 
-// // Login
+
 // export const login = async (req, res) => {
 //   try {
 //     const { email, password } = req.body;
+//     console.log('Login attempt:', { email, password });
 //     if (!email || !password) {
-//       return res.status(400).json({ message: 'Email and password are required' });
+//       return res.status(400).json({ message: 'Username or email and password are required' });
 //     }
 
-//     const user = await User.findOne({ email });
+//     const user = await User.findOne({
+//       $or: [
+//         { email: new RegExp(`^${email}$`, 'i') }, // Case-insensitive
+//         { username: new RegExp(`^${email}$`, 'i') },
+//       ],
+//     });
+//     console.log('Found user:', user ? { id: user._id, username: user.username, email: user.email, role: user.role } : null);
 //     if (!user) {
-//       return res.status(401).json({ message: 'Invalid email or password' });
+//       return res.status(401).json({ message: 'Invalid username/email or password' });
 //     }
 
 //     const isMatch = await user.comparePassword(password);
+//     console.log('Password match:', isMatch);
 //     if (!isMatch) {
-//       return res.status(401).json({ message: 'Invalid email or password' });
+//       return res.status(401).json({ message: 'Invalid username/email or password' });
 //     }
 
 //     if (!process.env.JWT_SECRET) {
@@ -67,6 +76,7 @@
 
 //     res.status(200).json({ message: 'Login successful', token, role: user.role });
 //   } catch (error) {
+//     console.error('Login error:', error.message);
 //     res.status(500).json({ message: 'Server error', error: error.message });
 //   }
 // };
@@ -103,17 +113,17 @@
 // // Create a new user (admin only)
 // export const createUser = async (req, res) => {
 //   try {
-//     const { email, password, role } = req.body;
-//     if (!email || !password) {
-//       return res.status(400).json({ message: 'Email and password are required' });
+//     const { username, email, password, role } = req.body;
+//     if (!username || !email || !password) {
+//       return res.status(400).json({ message: 'Username, email, and password are required' });
 //     }
-//     const userExists = await User.findOne({ email });
+//     const userExists = await User.findOne({ $or: [{ email }, { username }] });
 //     if (userExists) {
-//       return res.status(400).json({ message: 'Email already exists' });
+//       return res.status(400).json({ message: 'Email or username already exists' });
 //     }
-//     const user = new User({ email, password, role: role || 'user' });
+//     const user = new User({ username, email, password, role: role || 'user' });
 //     await user.save();
-//     res.status(201).json({ message: 'User created successfully', user: { id: user._id, email: user.email, role: user.role } });
+//     res.status(201).json({ message: 'User created successfully', user: { id: user._id, username: user.username, email: user.email, role: user.role } });
 //   } catch (error) {
 //     res.status(500).json({ message: 'Server error', error: error.message });
 //   }
@@ -164,8 +174,9 @@
 //     if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
 //       return res.status(403).json({ message: 'Access denied: You can only update your own data' });
 //     }
-//     const { email, password, role } = req.body;
+//     const { username, email, password, role } = req.body;
 //     const updateData = {};
+//     if (username) updateData.username = username;
 //     if (email) updateData.email = email;
 //     if (password) updateData.password = password;
 //     if (req.user.role === 'admin' && role) updateData.role = role;
@@ -196,6 +207,7 @@
 //   }
 // };
 
+
 import jwt from 'jsonwebtoken';
 import User from '../model/User.js';
 
@@ -203,21 +215,28 @@ import User from '../model/User.js';
 export const createDefaultAdmin = async () => {
   try {
     const adminExists = await User.findOne({ email: 'admin1@gmail.com' });
+    console.log('Checking for admin with email: admin1@gmail.com, found:', adminExists ? 'Yes' : 'No');
 
     if (adminExists) {
-      // If admin exists, update password and role if necessary, but don't change email or username
+      // If admin exists, update password and role if necessary
       if (adminExists.role !== 'admin') {
         adminExists.role = 'admin';
         await adminExists.save();
-        console.log('Default admin role updated');
+        console.log('Default admin role updated to admin');
       }
-      // Optionally, reset password if needed
+      // Reset password if it doesn't match
       if (!(await adminExists.comparePassword('admin123'))) {
         adminExists.password = 'admin123'; // Will be hashed by pre-save hook
         await adminExists.save();
-        console.log('Default admin password reset');
+        console.log('Default admin password reset to admin123');
+      } else {
+        console.log('Default admin password is correct');
       }
-      console.log('Default admin already exists, no changes needed');
+      console.log('Default admin already exists:', {
+        username: adminExists.username,
+        email: adminExists.email,
+        role: adminExists.role,
+      });
     } else {
       // Create new admin if none exists
       const admin = new User({
@@ -227,11 +246,15 @@ export const createDefaultAdmin = async () => {
         role: 'admin',
       });
       await admin.save();
-      console.log('Default admin created');
+      console.log('Default admin created:', {
+        username: admin.username,
+        email: admin.email,
+        role: admin.role,
+      });
     }
   } catch (error) {
     if (error.code === 11000) {
-      console.error('Duplicate key error: Email or username already exists');
+      console.error('Duplicate key error: Email or username already exists', error);
     } else {
       console.error('Error creating/updating default admin:', error.message);
     }
@@ -239,66 +262,50 @@ export const createDefaultAdmin = async () => {
 };
 
 // Login
-// export const login = async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-//     if (!email || !password) {
-//       return res.status(400).json({ message: 'Username or email and password are required' });
-//     }
-
-//     // Check for user by email or username
-//     const user = await User.findOne({
-//       $or: [{ email }, { username: email }],
-//     });
-//     if (!user) {
-//       return res.status(401).json({ message: 'Invalid username/email or password' });
-//     }
-
-//     const isMatch = await user.comparePassword(password);
-//     if (!isMatch) {
-//       return res.status(401).json({ message: 'Invalid username/email or password' });
-//     }
-
-//     if (!process.env.JWT_SECRET) {
-//       return res.status(500).json({ message: 'Server configuration error: JWT_SECRET is not defined' });
-//     }
-
-//     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-//       expiresIn: '1h',
-//     });
-
-//     res.status(200).json({ message: 'Login successful', token, role: user.role });
-//   } catch (error) {
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log('Login attempt:', { email, password });
+    console.log('Login attempt with payload:', { email, password });
+
     if (!email || !password) {
+      console.log('Missing email/username or password');
       return res.status(400).json({ message: 'Username or email and password are required' });
     }
 
-    const user = await User.findOne({
-      $or: [
-        { email: new RegExp(`^${email}$`, 'i') }, // Case-insensitive
-        { username: new RegExp(`^${email}$`, 'i') },
-      ],
-    });
-    console.log('Found user:', user ? { id: user._id, username: user.username, email: user.email, role: user.role } : null);
+    // Use collation for case-insensitive query
+    const user = await User.findOne(
+      {
+        $or: [
+          { email: email.trim() },
+          { username: email.trim() },
+        ],
+      },
+      null,
+      { collation: { locale: 'en', strength: 2 } } // Case-insensitive collation
+    );
+
+    console.log('Found user:', user ? {
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    } : 'No user found');
+
     if (!user) {
+      console.log('User not found for input:', email);
       return res.status(401).json({ message: 'Invalid username/email or password' });
     }
 
     const isMatch = await user.comparePassword(password);
-    console.log('Password match:', isMatch);
+    console.log('Password match for user', user.username, ':', isMatch);
+
     if (!isMatch) {
+      console.log('Password mismatch for user:', user.username);
       return res.status(401).json({ message: 'Invalid username/email or password' });
     }
 
     if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not defined');
       return res.status(500).json({ message: 'Server configuration error: JWT_SECRET is not defined' });
     }
 
@@ -306,36 +313,43 @@ export const login = async (req, res) => {
       expiresIn: '1h',
     });
 
+    console.log('Login successful for user:', user.username);
     res.status(200).json({ message: 'Login successful', token, role: user.role });
   } catch (error) {
-    console.error('Login error:', error.message);
+    console.error('Login error:', error.message, error.stack);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
 // Logout
 export const logout = (req, res) => {
+  console.log('Logout request received');
   res.status(200).json({ message: 'Logout successful' });
 };
 
 // Middleware to verify JWT and role
 export const verifyToken = async (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
+  console.log('Verifying token:', token ? 'Token provided' : 'No token provided');
+
   if (!token) {
     return res.status(401).json({ message: 'No token provided' });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Token decoded:', decoded);
     req.user = decoded; // Attach user ID and role to request
     next();
   } catch (error) {
+    console.error('Token verification error:', error.message);
     res.status(401).json({ message: 'Invalid token', error: error.message });
   }
 };
 
 // Middleware to restrict to admin
 export const restrictToAdmin = (req, res, next) => {
+  console.log('Checking admin access for user role:', req.user.role);
   if (req.user.role !== 'admin') {
     return res.status(403).json({ message: 'Access denied: Admins only' });
   }
@@ -346,17 +360,29 @@ export const restrictToAdmin = (req, res, next) => {
 export const createUser = async (req, res) => {
   try {
     const { username, email, password, role } = req.body;
+    console.log('Creating user with data:', { username, email, role });
+
     if (!username || !email || !password) {
+      console.log('Missing required fields for user creation');
       return res.status(400).json({ message: 'Username, email, and password are required' });
     }
+
     const userExists = await User.findOne({ $or: [{ email }, { username }] });
     if (userExists) {
+      console.log('User already exists:', { username, email });
       return res.status(400).json({ message: 'Email or username already exists' });
     }
+
     const user = new User({ username, email, password, role: role || 'user' });
     await user.save();
-    res.status(201).json({ message: 'User created successfully', user: { id: user._id, username: user.username, email: user.email, role: user.role } });
+    console.log('User created successfully:', { id: user._id, username, email, role });
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user: { id: user._id, username: user.username, email: user.email, role: user.role },
+    });
   } catch (error) {
+    console.error('Error creating user:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -364,9 +390,12 @@ export const createUser = async (req, res) => {
 // Get all users (admin only)
 export const getAllUsers = async (req, res) => {
   try {
+    console.log('Fetching all users');
     const users = await User.find().select('-password');
+    console.log('Users fetched:', users.length);
     res.status(200).json(users);
   } catch (error) {
+    console.error('Error fetching users:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -374,15 +403,20 @@ export const getAllUsers = async (req, res) => {
 // Get user by ID (self or admin)
 export const getUserById = async (req, res) => {
   try {
+    console.log('Fetching user by ID:', req.params.id, 'for user:', req.user.id);
     if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+      console.log('Access denied: User is not admin and ID does not match');
       return res.status(403).json({ message: 'Access denied: You can only view your own data' });
     }
     const user = await User.findById(req.params.id).select('-password');
     if (!user) {
+      console.log('User not found:', req.params.id);
       return res.status(404).json({ message: 'User not found' });
     }
+    console.log('User fetched:', { id: user._id, username: user.username, email: user.email });
     res.status(200).json(user);
   } catch (error) {
+    console.error('Error fetching user by ID:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -390,12 +424,16 @@ export const getUserById = async (req, res) => {
 // Get own user data (for non-admin)
 export const getOwnUser = async (req, res) => {
   try {
+    console.log('Fetching own user data for ID:', req.user.id);
     const user = await User.findById(req.user.id).select('-password');
     if (!user) {
+      console.log('User not found:', req.user.id);
       return res.status(404).json({ message: 'User not found' });
     }
+    console.log('Own user data fetched:', { id: user._id, username: user.username, email: user.email });
     res.status(200).json(user);
   } catch (error) {
+    console.error('Error fetching own user:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -403,7 +441,9 @@ export const getOwnUser = async (req, res) => {
 // Update user (self or admin)
 export const updateUser = async (req, res) => {
   try {
+    console.log('Updating user:', req.params.id, 'with data:', req.body);
     if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+      console.log('Access denied: User is not admin and ID does not match');
       return res.status(403).json({ message: 'Access denied: You can only update your own data' });
     }
     const { username, email, password, role } = req.body;
@@ -418,10 +458,13 @@ export const updateUser = async (req, res) => {
       runValidators: true,
     }).select('-password');
     if (!user) {
+      console.log('User not found for update:', req.params.id);
       return res.status(404).json({ message: 'User not found' });
     }
+    console.log('User updated successfully:', { id: user._id, username: user.username, email: user.email, role: user.role });
     res.status(200).json({ message: 'User updated successfully', user });
   } catch (error) {
+    console.error('Error updating user:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -429,12 +472,16 @@ export const updateUser = async (req, res) => {
 // Delete user (admin only)
 export const deleteUser = async (req, res) => {
   try {
+    console.log('Deleting user:', req.params.id);
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) {
+      console.log('User not found for deletion:', req.params.id);
       return res.status(404).json({ message: 'User not found' });
     }
+    console.log('User deleted successfully:', req.params.id);
     res.status(200).json({ message: 'User deleted successfully' });
   } catch (error) {
+    console.error('Error deleting user:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

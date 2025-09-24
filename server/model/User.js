@@ -2,6 +2,12 @@
 // import bcrypt from 'bcrypt';
 
 // const userSchema = new mongoose.Schema({
+//   username: {
+//     type: String,
+//     required: true,
+//     unique: true,
+//     trim: true,
+//   },
 //   email: {
 //     type: String,
 //     required: true,
@@ -65,6 +71,7 @@ const userSchema = new mongoose.Schema({
   },
 }, {
   timestamps: true,
+  collation: { locale: 'en', strength: 2 }, // Case-insensitive collation
 });
 
 // Pre-save hook to hash password
