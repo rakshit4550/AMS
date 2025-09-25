@@ -105,6 +105,47 @@ export const fetchParties = createAsyncThunk(
   }
 );
 
+export const sendStatementEmail = createAsyncThunk(
+  'account/sendStatementEmail',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const { user: { token } } = getState();
+      if (!token) {
+        return rejectWithValue('No token available');
+      }
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const response = await axios.get(`${API_URL}/accounts/send-email`, config);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
+export const importAccounts = createAsyncThunk(
+  'account/importAccounts',
+  async (file, { getState, rejectWithValue }) => {
+    try {
+      const { user: { token } } = getState();
+      if (!token) {
+        return rejectWithValue('No token available');
+      }
+      const formData = new FormData();
+      formData.append('file', file);
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      };
+      const response = await axios.post(`${API_URL}/accounts/import`, formData, config);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
 const accountSlice = createSlice({
   name: 'account',
   initialState: {
@@ -191,6 +232,28 @@ const accountSlice = createSlice({
         state.parties = action.payload;
       })
       .addCase(fetchParties.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(sendStatementEmail.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(sendStatementEmail.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(sendStatementEmail.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(importAccounts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(importAccounts.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(importAccounts.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });
