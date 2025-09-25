@@ -20,6 +20,10 @@ const User = () => {
 
   const handleLogin = (e) => {
     e.preventDefault();
+    if (!loginData.email || !loginData.password) {
+      alert('Username or email and password are required');
+      return;
+    }
     dispatch(login(loginData)).then((result) => {
       if (result.meta.requestStatus === 'fulfilled') {
         setLoginData({ email: '', password: '' });
@@ -38,17 +42,29 @@ const User = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.username || !formData.email || !formData.password) {
-      alert('Username, email, and password are required');
+    if (!formData.username || !formData.email || (!editId && !formData.password)) {
+      alert('Username, email, and password (for new users) are required');
       return;
     }
     if (editId) {
-      dispatch(updateUser({ id: editId, ...formData }));
-      setEditId(null);
+      // For updates, only include password if provided
+      const updateData = { id: editId, username: formData.username, email: formData.email, role: formData.role };
+      if (formData.password) {
+        updateData.password = formData.password;
+      }
+      dispatch(updateUser(updateData)).then((result) => {
+        if (result.meta.requestStatus === 'fulfilled') {
+          setFormData({ username: '', email: '', password: '', role: 'user' });
+          setEditId(null);
+        }
+      });
     } else {
-      dispatch(createUser(formData));
+      dispatch(createUser(formData)).then((result) => {
+        if (result.meta.requestStatus === 'fulfilled') {
+          setFormData({ username: '', email: '', password: '', role: 'user' });
+        }
+      });
     }
-    setFormData({ username: '', email: '', password: '', role: 'user' });
   };
 
   const handleEdit = (user) => {
@@ -61,9 +77,8 @@ const User = () => {
   };
 
   return (
-    <div className="cmin-h-screen bg-white p-4 sm:p-6 lg:p-8">
-      <div className='bg-white shadow-xl rounded-lg p-6'>
-
+    <div className="min-h-screen bg-white p-4 sm:p-6 lg:p-8">
+      <div className="bg-white shadow-xl rounded-lg p-6">
         {!currentUser ? (
           <div className="mb-6">
             <h2 className="text-xl font-semibold mb-2">Login</h2>
@@ -93,6 +108,7 @@ const User = () => {
                 Login
               </button>
             </form>
+            {error && <p className="text-red-500 mt-2">{error}</p>}
           </div>
         ) : (
           <div>
@@ -128,13 +144,13 @@ const User = () => {
                   />
                 </div>
                 <div>
-                  <label className="block mb-1">Password</label>
+                  <label className="block mb-1">Password {editId ? '(Leave blank to keep unchanged)' : ''}</label>
                   <input
                     type="password"
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    placeholder="Enter password"
+                    placeholder={editId ? 'Enter new password (optional)' : 'Enter password'}
                     className="border p-2 rounded w-full"
                   />
                 </div>
