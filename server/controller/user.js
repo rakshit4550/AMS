@@ -104,7 +104,7 @@
 //     });
 
 //     console.log('Login successful for user:', user.username);
-//     res.status(200).json({ message: 'Login successful', token, role: user.role });
+//     res.status(200).json({ message: 'Login successful', token, role: user.role, id: user._id });
 //   } catch (error) {
 //     console.error('Login error:', error.message, error.stack);
 //     res.status(500).json({ message: 'Server error', error: error.message });
@@ -234,25 +234,43 @@
 //       console.log('Access denied: User is not admin and ID does not match');
 //       return res.status(403).json({ message: 'Access denied: You can only update your own data' });
 //     }
+
 //     const { username, email, password, role } = req.body;
 //     const updateData = {};
 //     if (username) updateData.username = username;
 //     if (email) updateData.email = email;
-//     if (password) updateData.password = password;
 //     if (req.user.role === 'admin' && role) updateData.role = role;
 
-//     const user = await User.findByIdAndUpdate(req.params.id, updateData, {
-//       new: true,
-//       runValidators: true,
-//     }).select('-password');
+//     // Find the user first
+//     const user = await User.findById(req.params.id);
 //     if (!user) {
 //       console.log('User not found for update:', req.params.id);
 //       return res.status(404).json({ message: 'User not found' });
 //     }
-//     console.log('User updated successfully:', { id: user._id, username: user.username, email: user.email, role: user.role });
-//     res.status(200).json({ message: 'User updated successfully', user });
+
+//     // Update fields
+//     if (username) user.username = username;
+//     if (email) user.email = email;
+//     if (req.user.role === 'admin' && role) user.role = role;
+//     if (password) {
+//       user.password = password; // Set new password
+//       user.markModified('password'); // Explicitly mark password as modified to trigger pre-save hook
+//       console.log('Password field marked as modified for user:', req.params.id);
+//     }
+
+//     // Save the updated user (pre-save hook will hash the password if modified)
+//     await user.save();
+
+//     // Fetch the updated user without the password
+//     const updatedUser = await User.findById(req.params.id).select('-password');
+//     console.log('User updated successfully:', { id: updatedUser._id, username: updatedUser.username, email: updatedUser.email, role: updatedUser.role });
+
+//     res.status(200).json({ message: 'User updated successfully', user: updatedUser });
 //   } catch (error) {
 //     console.error('Error updating user:', error.message);
+//     if (error.code === 11000) {
+//       return res.status(400).json({ message: 'Email or username already exists' });
+//     }
 //     res.status(500).json({ message: 'Server error', error: error.message });
 //   }
 // };
@@ -276,6 +294,7 @@
 
 
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import User from '../model/User.js';
 
 // Create default admin user
@@ -285,15 +304,16 @@ export const createDefaultAdmin = async () => {
     console.log('Checking for admin with email: admin1@gmail.com, found:', adminExists ? 'Yes' : 'No');
 
     if (adminExists) {
-      // If admin exists, update password and role if necessary
+      // If admin exists, update role if necessary
       if (adminExists.role !== 'admin') {
         adminExists.role = 'admin';
         await adminExists.save();
         console.log('Default admin role updated to admin');
       }
       // Reset password if it doesn't match
-      if (!(await adminExists.comparePassword('admin123'))) {
-        adminExists.password = 'admin123'; // Will be hashed by pre-save hook
+      const isMatch = await bcrypt.compare('admin123', adminExists.password);
+      if (!isMatch) {
+        adminExists.password = await bcrypt.hash('admin123', 10); // Hash the password
         await adminExists.save();
         console.log('Default admin password reset to admin123');
       } else {
@@ -309,7 +329,7 @@ export const createDefaultAdmin = async () => {
       const admin = new User({
         username: 'admin1',
         email: 'admin1@gmail.com',
-        password: 'admin123',
+        password: await bcrypt.hash('admin123', 10), // Hash the password
         role: 'admin',
       });
       await admin.save();
@@ -376,9 +396,11 @@ export const login = async (req, res) => {
       return res.status(500).json({ message: 'Server configuration error: JWT_SECRET is not defined' });
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
-    });
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role }, // Include email in JWT
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
 
     console.log('Login successful for user:', user.username);
     res.status(200).json({ message: 'Login successful', token, role: user.role, id: user._id });
@@ -404,7 +426,8 @@ export const verifyToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Attach user ID and role to request
+    console.log('Decoded JWT:', decoded); // Debug JWT payload
+    req.user = decoded; // Attach user ID, email, and role to request
     next();
   } catch (error) {
     console.error('Token verification error:', error.message);
@@ -530,12 +553,11 @@ export const updateUser = async (req, res) => {
     if (email) user.email = email;
     if (req.user.role === 'admin' && role) user.role = role;
     if (password) {
-      user.password = password; // Set new password
-      user.markModified('password'); // Explicitly mark password as modified to trigger pre-save hook
-      console.log('Password field marked as modified for user:', req.params.id);
+      user.password = await bcrypt.hash(password, 10); // Hash the password
+      console.log('Password field updated for user:', req.params.id);
     }
 
-    // Save the updated user (pre-save hook will hash the password if modified)
+    // Save the updated user
     await user.save();
 
     // Fetch the updated user without the password
