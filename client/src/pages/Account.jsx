@@ -709,7 +709,7 @@
 //                     <tbody>
 //                       {currentAccounts.map((account, index) => {
 //                         const currentBalance = sortedAccounts
-//                           .slice(0, sortedAccounts.findIndex((a) => a._id === account._id) + 1)
+//                           .slice(sortedAccounts.findIndex((a) => a._id === account._id))
 //                           .reduce((sum, acc) => sum + (acc.debit || 0) - (acc.credit || 0), 0);
 //                         const curBalSign = currentBalance > 0 ? 'D' : currentBalance < 0 ? 'C' : '';
 //                         const curBalValue = formatNumber(Math.abs(currentBalance));
@@ -792,8 +792,6 @@
 
 // export default Account;
 
-
-
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -806,6 +804,11 @@ import { FaPlus, FaEdit, FaTrash, FaCheck, FaFileDownload, FaArrowRight, FaEnvel
 const formatNumber = (number) => {
   if (number === undefined || number === null || isNaN(number)) return '0';
   return Number(number).toLocaleString('en-IN');
+};
+
+// Utility function to remove commas for raw number
+const parseNumber = (value) => {
+  return value.replace(/,/g, '');
 };
 
 // Utility function to format dates
@@ -861,7 +864,22 @@ const Account = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    if (name === 'amount') {
+      // Remove non-numeric characters except for decimal point
+      const numericValue = value.replace(/[^0-9.]/g, '');
+      // Ensure only one decimal point
+      const parts = numericValue.split('.');
+      let formattedValue = parts[0];
+      if (parts.length > 1) {
+        formattedValue += '.' + parts[1].slice(0, 2); // Limit to 2 decimal places
+      }
+      // Add commas to the integer part
+      const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      formattedValue = parts.length > 1 ? `${integerPart}.${parts[1].slice(0, 2)}` : integerPart;
+      setFormData({ ...formData, [name]: formattedValue });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handlePartyInputChange = (selectedOption) => {
@@ -900,8 +918,8 @@ const Account = () => {
     }
     const accountData = {
       partyname: formData.partyname,
-      credit: formData.transactionType === 'credit' ? parseFloat(formData.amount) : 0,
-      debit: formData.transactionType === 'debit' ? parseFloat(formData.amount) : 0,
+      credit: formData.transactionType === 'credit' ? parseFloat(parseNumber(formData.amount)) : 0,
+      debit: formData.transactionType === 'debit' ? parseFloat(parseNumber(formData.amount)) : 0,
       remark: formData.remark,
       date: formData.date,
       to: formData.toParty || undefined,
@@ -944,7 +962,7 @@ const Account = () => {
     }
     setFormData({
       partyname: account.partyname._id,
-      amount: account.credit > 0 ? account.credit : account.debit,
+      amount: formatNumber(account.credit > 0 ? account.credit : account.debit),
       transactionType: account.credit > 0 ? 'credit' : 'debit',
       remark: account.remark || '',
       date: new Date(account.date).toISOString().split('T')[0],
@@ -1279,7 +1297,7 @@ const Account = () => {
   return (
     <div className="container mx-auto p-6 bg-white min-h-screen">
       <div className="bg-white shadow-xl rounded-lg p-6">
-        <form onSubmit={handleSubmit} className="mb-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-4 items-end">
+        <form onSubmit={handleSubmit} className="mb-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-4 items-end">
           <div>
             <label className="block mb-1 font-medium text-gray-700">Party Name</label>
             <Select
@@ -1353,7 +1371,7 @@ const Account = () => {
           <div>
             <label className="block mb-1 font-medium text-gray-700">Amount*</label>
             <input
-              type="number"
+              type="text"
               name="amount"
               value={formData.amount}
               onChange={handleInputChange}

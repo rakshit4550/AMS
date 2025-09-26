@@ -65,7 +65,7 @@ const Layout = ({ children }) => {
         theme="colored"
       />
       {!hideHeader && isAuthenticated && 
-        <div className='fixed left-0 lg:left-[15rem] top-0 right-0 z-50'>
+        <div className='fixed left-0 lg:left-[15rem]  top-0 right-0 z-50'>
           <Header />
         </div>
       }
