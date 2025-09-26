@@ -5,8 +5,8 @@ import User from '../model/User.js';
 // Create default admin user
 export const createDefaultAdmin = async () => {
   try {
-    const adminExists = await User.findOne({ email: 'admin1@gmail.com' });
-    console.log('Checking for admin with email: admin1@gmail.com, found:', adminExists ? 'Yes' : 'No');
+    const adminExists = await User.findOne({ email: 'admin2@gmail.com' });
+    console.log('Checking for admin with email: admin2@gmail.com, found:', adminExists ? 'Yes' : 'No');
 
     if (adminExists) {
       if (adminExists.role !== 'admin') {
@@ -14,11 +14,11 @@ export const createDefaultAdmin = async () => {
         await adminExists.save();
         console.log('Default admin role updated to admin');
       }
-      const isMatch = await bcrypt.compare('admin123', adminExists.password);
+      const isMatch = await bcrypt.compare('admin', adminExists.password);
       if (!isMatch) {
-        adminExists.password = await bcrypt.hash('admin123', 10);
+        adminExists.password = await bcrypt.hash('admin', 10);
         await adminExists.save();
-        console.log('Default admin password reset to admin123');
+        console.log('Default admin password reset to admin');
       } else {
         console.log('Default admin password is correct');
       }
@@ -29,9 +29,9 @@ export const createDefaultAdmin = async () => {
       });
     } else {
       const admin = new User({
-        username: 'admin1',
-        email: 'admin1@gmail.com',
-        password: await bcrypt.hash('admin123', 10),
+        username: 'admin2',
+        email: 'admin2@gmail.com',
+        password: await bcrypt.hash('admin', 10),
         role: 'admin',
       });
       await admin.save();
