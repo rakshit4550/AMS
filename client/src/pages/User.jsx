@@ -1,39 +1,255 @@
+// import React, { useEffect, useState } from 'react';
+// import { useSelector, useDispatch } from 'react-redux';
+// import { fetchUsers, createUser, updateUser, deleteUser, login, logout } from '../redux/authSlice';
+// import 'tailwindcss/tailwind.css';
+
+// const User = () => {
+//   const dispatch = useDispatch();
+//   const { users, currentUser, role, loading, error } = useSelector((state) => state.user);
+//   const [formData, setFormData] = useState({ username: '', email: '', password: '', role: 'user' });
+//   const [editId, setEditId] = useState(null);
+//   const [loginData, setLoginData] = useState({ email: '', password: '' });
+
+//   useEffect(() => {
+//     if (role === 'admin') {
+//       dispatch(fetchUsers());
+//     } else if (currentUser) {
+//       dispatch(fetchUsers(currentUser.id)); // Fetch only own data for non-admins
+//     }
+//   }, [dispatch, role, currentUser]);
+
+//   const handleLogin = (e) => {
+//     e.preventDefault();
+//     if (!loginData.email || !loginData.password) {
+//       alert('Username or email and password are required');
+//       return;
+//     }
+//     dispatch(login(loginData)).then((result) => {
+//       if (result.meta.requestStatus === 'fulfilled') {
+//         setLoginData({ email: '', password: '' });
+//       }
+//     });
+//   };
+
+//   const handleLogout = () => {
+//     dispatch(logout());
+//   };
+
+//   const handleInputChange = (e) => {
+//     const { name, value } = e.target;
+//     setFormData({ ...formData, [name]: value });
+//   };
+
+//   const handleSubmit = (e) => {
+//     e.preventDefault();
+//     if (!formData.username || !formData.email || (!editId && !formData.password)) {
+//       alert('Username, email, and password (for new users) are required');
+//       return;
+//     }
+//     if (editId) {
+//       // For updates, only include password if provided
+//       const updateData = { id: editId, username: formData.username, email: formData.email, role: formData.role };
+//       if (formData.password) {
+//         updateData.password = formData.password;
+//       }
+//       dispatch(updateUser(updateData)).then((result) => {
+//         if (result.meta.requestStatus === 'fulfilled') {
+//           setFormData({ username: '', email: '', password: '', role: 'user' });
+//           setEditId(null);
+//           // If updating the current user, force logout to refresh token
+//           if (editId === currentUser.id) {
+//             dispatch(logout());
+//             alert('Your account details have been updated. Please log in again.');
+//           }
+//         }
+//       });
+//     } else {
+//       dispatch(createUser(formData)).then((result) => {
+//         if (result.meta.requestStatus === 'fulfilled') {
+//           setFormData({ username: '', email: '', password: '', role: 'user' });
+//         }
+//       });
+//     }
+//   };
+
+//   const handleEdit = (user) => {
+//     setFormData({ username: user.username, email: user.email, password: '', role: user.role });
+//     setEditId(user._id);
+//   };
+
+//   const handleDelete = (id) => {
+//     dispatch(deleteUser(id));
+//   };
+
+//   return (
+//     <div className="min-h-screen bg-white p-4 sm:p-6 lg:p-8">
+//       <div className="bg-white shadow-xl rounded-lg p-6">
+//         {!currentUser ? (
+//           <div className="mb-6">
+//             <h2 className="text-xl font-semibold mb-2">Login</h2>
+//             <form onSubmit={handleLogin} className="space-y-4">
+//               <input
+//                 type="text"
+//                 name="email"
+//                 value={loginData.email}
+//                 onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+//                 placeholder="Username or Email"
+//                 className="border p-2 rounded w-full"
+//                 required
+//               />
+//               <input
+//                 type="password"
+//                 name="password"
+//                 value={loginData.password}
+//                 onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+//                 placeholder="Password"
+//                 className="border p-2 rounded w-full"
+//                 required
+//               />
+//               <button
+//                 type="submit"
+//                 className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+//               >
+//                 Login
+//               </button>
+//             </form>
+//             {error && <p className="text-red-500 mt-2">{error}</p>}
+//           </div>
+//         ) : (
+//           <div>
+//             <button
+//               onClick={handleLogout}
+//               className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mb-6"
+//             >
+//               Logout
+//             </button>
+
+//             {role === 'admin' && (
+//               <form onSubmit={handleSubmit} className="mb-6 space-y-4">
+//                 <div>
+//                   <label className="block mb-1">Username</label>
+//                   <input
+//                     type="text"
+//                     name="username"
+//                     value={formData.username}
+//                     onChange={handleInputChange}
+//                     placeholder="Enter username"
+//                     className="border p-2 rounded w-full"
+//                   />
+//                 </div>
+//                 <div>
+//                   <label className="block mb-1">Email</label>
+//                   <input
+//                     type="email"
+//                     name="email"
+//                     value={formData.email}
+//                     onChange={handleInputChange}
+//                     placeholder="Enter email"
+//                     className="border p-2 rounded w-full"
+//                   />
+//                 </div>
+//                 <div>
+//                   <label className="block mb-1">Password {editId ? '(Leave blank to keep unchanged)' : ''}</label>
+//                   <input
+//                     type="password"
+//                     name="password"
+//                     value={formData.password}
+//                     onChange={handleInputChange}
+//                     placeholder={editId ? 'Enter new password (optional)' : 'Enter password'}
+//                     className="border p-2 rounded w-full"
+//                   />
+//                 </div>
+//                 <div>
+//                   <label className="block mb-1">Role</label>
+//                   <select
+//                     name="role"
+//                     value={formData.role}
+//                     onChange={handleInputChange}
+//                     className="border p-2 rounded w-full"
+//                   >
+//                     <option value="user">User</option>
+//                     <option value="admin">Admin</option>
+//                   </select>
+//                 </div>
+//                 <button
+//                   type="submit"
+//                   className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+//                 >
+//                   {editId ? 'Update User' : 'Add User'}
+//                 </button>
+//               </form>
+//             )}
+
+//             {loading && <p>Loading...</p>}
+//             {error && <p className="text-red-500">{error}</p>}
+
+//             <h2 className="text-xl font-semibold mb-2">User List</h2>
+//             <ul className="space-y-2">
+//               {users.map((user) => (
+//                 <li key={user._id} className="flex justify-between items-center border p-2 rounded">
+//                   <div>
+//                     <p>Username: {user.username}</p>
+//                     <p>Email: {user.email}</p>
+//                     <p>Role: {user.role}</p>
+//                   </div>
+//                   {(role === 'admin' || user._id === currentUser.id) && (
+//                     <div>
+//                       <button
+//                         onClick={() => handleEdit(user)}
+//                         className="bg-yellow-500 text-white px-2 py-1 rounded mr-2 hover:bg-yellow-600"
+//                       >
+//                         Edit
+//                       </button>
+//                       {role === 'admin' && (
+//                         <button
+//                           onClick={() => handleDelete(user._id)}
+//                           className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+//                         >
+//                           Delete
+//                         </button>
+//                       )}
+//                     </div>
+//                   )}
+//                 </li>
+//               ))}
+//             </ul>
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default User;
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchUsers, createUser, updateUser, deleteUser, login, logout } from '../redux/authSlice';
+import { fetchUsers, createUser, updateUser, deleteUser, logout, loadUser, clearError } from '../redux/authSlice';
 import 'tailwindcss/tailwind.css';
+import { FaEdit, FaTrash } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 
 const User = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { users, currentUser, role, loading, error } = useSelector((state) => state.user);
   const [formData, setFormData] = useState({ username: '', email: '', password: '', role: 'user' });
   const [editId, setEditId] = useState(null);
-  const [loginData, setLoginData] = useState({ email: '', password: '' });
 
   useEffect(() => {
-    if (role === 'admin') {
-      dispatch(fetchUsers());
-    } else if (currentUser) {
-      dispatch(fetchUsers(currentUser.id)); // Fetch only own data for non-admins
-    }
-  }, [dispatch, role, currentUser]);
+    dispatch(loadUser());
+  }, [dispatch]);
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (!loginData.email || !loginData.password) {
-      alert('Username or email and password are required');
-      return;
-    }
-    dispatch(login(loginData)).then((result) => {
-      if (result.meta.requestStatus === 'fulfilled') {
-        setLoginData({ email: '', password: '' });
+  useEffect(() => {
+    if (currentUser) {
+      if (role === 'admin') {
+        dispatch(fetchUsers());
+      } else {
+        dispatch(fetchUsers(currentUser.id));
       }
-    });
-  };
-
-  const handleLogout = () => {
-    dispatch(logout());
-  };
+    } else if (error && (error === 'No token found' || error.includes('Invalid token'))) {
+      navigate('/login');
+    }
+  }, [dispatch, role, currentUser, error, navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -42,28 +258,39 @@ const User = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.username || !formData.email || (!editId && !formData.password)) {
-      alert('Username, email, and password (for new users) are required');
+    dispatch(clearError());
+    if (!formData.username || !formData.email) {
+      alert('Username and email are required');
       return;
     }
     if (editId) {
-      // For updates, only include password if provided
-      const updateData = { id: editId, username: formData.username, email: formData.email, role: formData.role };
-      if (formData.password) {
-        updateData.password = formData.password;
-      }
+      const updateData = { 
+        id: editId, 
+        username: formData.username, 
+        email: formData.email, 
+        role: formData.role,
+        ...(formData.password && { password: formData.password }) 
+      };
+      
       dispatch(updateUser(updateData)).then((result) => {
         if (result.meta.requestStatus === 'fulfilled') {
           setFormData({ username: '', email: '', password: '', role: 'user' });
           setEditId(null);
-          // If updating the current user, force logout to refresh token
-          if (editId === currentUser.id) {
+          if (editId === currentUser?.id) {
+            if (result.payload.token) {
+              localStorage.setItem('token', result.payload.token);
+            }
             dispatch(logout());
             alert('Your account details have been updated. Please log in again.');
+            navigate('/login');
           }
         }
       });
     } else {
+      if (!formData.password) {
+        alert('Password is required for new users');
+        return;
+      }
       dispatch(createUser(formData)).then((result) => {
         if (result.meta.requestStatus === 'fulfilled') {
           setFormData({ username: '', email: '', password: '', role: 'user' });
@@ -73,52 +300,31 @@ const User = () => {
   };
 
   const handleEdit = (user) => {
-    setFormData({ username: user.username, email: user.email, password: '', role: user.role });
+    setFormData({ 
+      username: user.username, 
+      email: user.email, 
+      password: '', 
+      role: user.role 
+    });
     setEditId(user._id);
   };
 
   const handleDelete = (id) => {
-    dispatch(deleteUser(id));
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      dispatch(deleteUser(id));
+    }
   };
 
   return (
     <div className="min-h-screen bg-white p-4 sm:p-6 lg:p-8">
       <div className="bg-white shadow-xl rounded-lg p-6">
-        {!currentUser ? (
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-2">Login</h2>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <input
-                type="text"
-                name="email"
-                value={loginData.email}
-                onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                placeholder="Username or Email"
-                className="border p-2 rounded w-full"
-                required
-              />
-              <input
-                type="password"
-                name="password"
-                value={loginData.password}
-                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                placeholder="Password"
-                className="border p-2 rounded w-full"
-                required
-              />
-              <button
-                type="submit"
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-              >
-                Login
-              </button>
-            </form>
-            {error && <p className="text-red-500 mt-2">{error}</p>}
-          </div>
-        ) : (
+        {currentUser ? (
           <div>
             <button
-              onClick={handleLogout}
+              onClick={() => {
+                dispatch(logout());
+                navigate('/login');
+              }}
               className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mb-6"
             >
               Logout
@@ -181,7 +387,17 @@ const User = () => {
             )}
 
             {loading && <p>Loading...</p>}
-            {error && <p className="text-red-500">{error}</p>}
+            {error && (
+              <div className="text-red-500 mb-4">
+                {error}
+                <button
+                  onClick={() => dispatch(clearError())}
+                  className="ml-2 text-blue-500 hover:underline"
+                >
+                  Clear Error
+                </button>
+              </div>
+            )}
 
             <h2 className="text-xl font-semibold mb-2">User List</h2>
             <ul className="space-y-2">
@@ -192,20 +408,22 @@ const User = () => {
                     <p>Email: {user.email}</p>
                     <p>Role: {user.role}</p>
                   </div>
-                  {(role === 'admin' || user._id === currentUser.id) && (
-                    <div>
+                  {(role === 'admin' || user._id === currentUser?.id) && (
+                    <div className="flex space-x-2">
                       <button
                         onClick={() => handleEdit(user)}
-                        className="bg-yellow-500 text-white px-2 py-1 rounded mr-2 hover:bg-yellow-600"
+                        className="text-yellow-500 hover:text-yellow-600"
+                        title="Edit User"
                       >
-                        Edit
+                        <FaEdit size={20} />
                       </button>
                       {role === 'admin' && (
                         <button
                           onClick={() => handleDelete(user._id)}
-                          className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                          className="text-red-500 hover:text-red-600"
+                          title="Delete User"
                         >
-                          Delete
+                          <FaTrash size={20} />
                         </button>
                       )}
                     </div>
@@ -214,6 +432,8 @@ const User = () => {
               ))}
             </ul>
           </div>
+        ) : (
+          <p>Redirecting to login...</p>
         )}
       </div>
     </div>
@@ -221,4 +441,3 @@ const User = () => {
 };
 
 export default User;
-
