@@ -704,11 +704,11 @@ const Login = () => {
       </div>
       <div className="w-full lg:w-1/2 px-4 lg:pr-10 flex flex-col justify-center">
         <div className="flex items-center justify-center mb-4">
-          <img src={Images.Logo} className="w-[150px]" alt="i100 Pay Logo" />
+         
         </div>
         <div className="flex items-center justify-center">
           <form onSubmit={handleSubmit} className="w-full max-w-md shadow-xl py-10 px-5 bg-white rounded border">
-            <h2 className="text-2xl font-semibold mb-4 text-center">Welcome to i100 Pay</h2>
+            <h2 className="text-2xl font-semibold mb-4 text-center">Welcome</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1 text-[#4c4b59]">
