@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import partyRoutes from './route/party.js';
 import authRoutes from './route/user.js';
 import accountRoutes from './route/account.js';
+import settlementRoutes from './route/settlement.js';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { createDefaultAdmin } from './controller/user.js';
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use('/api/parties', partyRoutes);
 app.use('/api', authRoutes);
 app.use('/api/accounts', accountRoutes);
+app.use('/api/settlements', settlementRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
