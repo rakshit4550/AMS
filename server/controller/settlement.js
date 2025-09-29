@@ -87,52 +87,42 @@ export const deleteSettlement = async (req, res) => {
   }
 };
 
-// Download settlements grouped by domainname
+
 export const downloadSettlement = async (req, res) => {
   try {
-    const domainId = req.query.domain;
+    const domainname = req.query.domain;
     const query = { createdBy: req.user.id };
-    if (domainId) {
-      const domain = await Settlement.findOne({
-        _id: domainId,
-        createdBy: req.user.id,
-      });
-      if (!domain) {
-        return res
-          .status(404)
-          .json({ message: "Domain not found or you do not have access" });
-      }
-      query.domainname = domainId;
+    if (domainname) {
+      query.domainname = domainname; // Filter by domainname directly
     }
-    const settlements = await Settlement.find(query)
-      .sort({ createdAt: -1 }); // Sort by createdAt descending
+    const settlements = await Settlement.find(query).sort({ createdAt: -1 });
 
     // Group settlements by domainname
     const grouped = {};
     settlements.forEach((sett) => {
-      const dId = sett.domainname.toString();
       const dName = sett.domainname;
-      if (!grouped[dId]) {
-        grouped[dId] = {
+      if (!grouped[dName]) {
+        grouped[dName] = {
           name: dName,
           settlements: [],
           totalSettlement: 0,
           totalRate: 0,
         };
       }
-      grouped[dId].settlements.push({
+      grouped[dName].settlements.push({
         _id: sett._id,
         date: sett.date.toISOString(),
         settlement: Number(sett.settlement) || 0,
         rate: Number(sett.rate) || 0,
         createdAt: sett.createdAt.toISOString(),
       });
-      grouped[dId].totalSettlement += Number(sett.settlement) || 0;
-      grouped[dId].totalRate += Number(sett.rate) || 0;
+      grouped[dName].totalSettlement += Number(sett.settlement) || 0;
+      grouped[dName].totalRate += Number(sett.rate) || 0;
     });
 
     res.status(200).json(grouped);
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error('Download settlement error:', error.message);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

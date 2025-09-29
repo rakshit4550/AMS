@@ -7,13 +7,13 @@ import {
   deleteSettlement, 
   downloadSettlements,
   reset 
-} from '../features/settlementSlice';
+} from '../redux/settlementSlice';
 import { toast } from 'react-toastify';
 
 const Settlement = () => {
   const dispatch = useDispatch();
   const { settlements, loading, error, success, groupedSettlements } = useSelector((state) => state.settlement);
-  const { user } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.user);
 
   const [formData, setFormData] = useState({
     date: '',
@@ -25,25 +25,30 @@ const Settlement = () => {
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
+    console.log('useEffect triggered, user:', user);
     if (user) {
       dispatch(getSettlements());
     }
     if (error) {
+      console.log('Error in settlement state:', error);
       toast.error(error);
       dispatch(reset());
     }
     if (success) {
+      console.log('Operation successful');
       toast.success('Operation successful!');
       dispatch(reset());
     }
   }, [user, error, success, dispatch]);
 
   const handleInputChange = (e) => {
+    console.log('Input changed:', e.target.name, e.target.value);
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('Form submitted with data:', formData);
     const settlementData = {
       date: formData.date,
       domainname: formData.domainname,
@@ -52,16 +57,26 @@ const Settlement = () => {
     };
 
     if (editId) {
+      console.log('Updating settlement with ID:', editId, 'Data:', settlementData);
       dispatch(updateSettlement({ id: editId, settlementData }));
       setEditId(null);
     } else {
-      dispatch(createSettlement(settlementData));
+      console.log('Creating new settlement:', settlementData);
+      dispatch(createSettlement(settlementData)).then((result) => {
+        if (result.type === 'settlement/create/rejected') {
+          console.log('Create settlement failed:', result.payload);
+          toast.error(result.payload || 'Failed to create settlement');
+        } else {
+          console.log('Create settlement succeeded:', result.payload);
+        }
+      });
     }
     setFormData({ date: '', domainname: '', settlement: '', rate: '' });
     setShowForm(false);
   };
 
   const handleEdit = (settlement) => {
+    console.log('Editing settlement:', settlement);
     setFormData({
       date: settlement.date.split('T')[0],
       domainname: settlement.domainname,
@@ -73,13 +88,29 @@ const Settlement = () => {
   };
 
   const handleDelete = (id) => {
+    console.log('Deleting settlement with ID:', id);
     if (window.confirm('Are you sure you want to delete this settlement?')) {
       dispatch(deleteSettlement(id));
     }
   };
 
-  const handleDownload = (domainId) => {
-    dispatch(downloadSettlements(domainId));
+  const handleDownload = (domainId = null) => {
+    console.log('Downloading settlements, domainId:', domainId);
+    dispatch(downloadSettlements(domainId)).then((result) => {
+      if (result.type === 'settlement/download/fulfilled') {
+        const data = JSON.stringify(result.payload, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `settlements${domainId ? `_${domainId}` : ''}.json`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      } else {
+        console.log('Download settlements failed:', result.payload);
+        toast.error(result.payload || 'Failed to download settlements');
+      }
+    });
   };
 
   return (
@@ -87,7 +118,10 @@ const Settlement = () => {
       <h1 className="text-2xl font-bold mb-4">Settlements</h1>
 
       <button
-        onClick={() => setShowForm(!showForm)}
+        onClick={() => {
+          console.log('Toggling form visibility, current showForm:', showForm);
+          setShowForm(!showForm);
+        }}
         className="mb-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
       >
         {showForm ? 'Cancel' : 'Add New Settlement'}
@@ -170,7 +204,7 @@ const Settlement = () => {
               <p>Total Settlement: {group.totalSettlement}</p>
               <p>Total Rate: {group.totalRate}</p>
               <button
-                onClick={() => handleDownload(group.settlements[0]._id)}
+                onClick={() => handleDownload(group.name)}
                 className="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
               >
                 Download {group.name} Settlements
