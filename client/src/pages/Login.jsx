@@ -1,18 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { login, logout } from '../redux/authSlice';
+import { login, logout, loadUser } from '../redux/authSlice';
 import { useNavigate } from 'react-router-dom';
 import 'tailwindcss/tailwind.css';
-import { Images } from "../assets/images";
+import { Images } from '../assets/images';
 
 const Login = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { token, loading, error } = useSelector((state) => state.user);
+  const { currentUser, token, loading, error } = useSelector((state) => state.user || {});
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const isAuthenticated = !!token;
+  const isAuthenticated = !!currentUser;
+
+  // Load user on component mount to restore state from token
+  useEffect(() => {
+    console.log('Login: Dispatching loadUser');
+    dispatch(loadUser()).then((result) => {
+      if (result.type === 'user/loadUser/fulfilled') {
+        console.log('User loaded successfully, navigating to /parties');
+        navigate('/parties');
+      }
+    });
+  }, [dispatch, navigate]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -22,16 +33,21 @@ const Login = () => {
       return;
     }
     console.log('Submitting login with:', { email: email.trim(), password: '****' });
-    dispatch(login({ email: email.trim(), password })).then((result) => {
-      console.log('Login result:', result);
-      if (result.type === 'user/login/fulfilled') {
-        console.log('Login successful, navigating to /parties');
-        navigate('/parties');
-      } else {
-        console.log('Login failed:', result.payload);
-        alert(result.payload || 'Login failed. Please try again.');
-      }
-    });
+    dispatch(login({ email: email.trim(), password }))
+      .then((result) => {
+        console.log('Login result:', result);
+        if (result.type === 'user/login/fulfilled') {
+          console.log('Login successful, navigating to /parties');
+          navigate('/parties');
+        } else {
+          console.log('Login failed:', result.payload);
+          alert(result.payload || 'Login failed. Please try again.');
+        }
+      })
+      .catch((err) => {
+        console.error('Login error:', err);
+        alert('An unexpected error occurred. Please try again.');
+      });
   };
 
   const handleLogout = () => {
@@ -43,7 +59,7 @@ const Login = () => {
   if (isAuthenticated) {
     return (
       <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4">Welcome, Admin!</h1>
+        <h1 className="text-2xl font-bold mb-4">Welcome, {currentUser?.username || 'Admin'}!</h1>
         <button
           onClick={handleLogout}
           className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"

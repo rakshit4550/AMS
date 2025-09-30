@@ -13,6 +13,7 @@ import User from './pages/User';
 import Report from './pages/Report';
 import { jwtDecode } from 'jwt-decode';
 import Settlement from './pages/Settlement';
+import Domain from './pages/Domain';
 
 const ProtectedRoute = ({ children }) => {
   const { token } = useSelector((state) => state.user);
@@ -140,6 +141,16 @@ function App() {
             <Layout>
               <ProtectedRoute>
                 <Report />
+              </ProtectedRoute>
+            </Layout>
+          }
+        />
+         <Route
+          path="/domain"
+          element={
+            <Layout>
+              <ProtectedRoute>
+                <Domain />
               </ProtectedRoute>
             </Layout>
           }

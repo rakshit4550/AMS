@@ -5,10 +5,10 @@ const settlementSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
-  domainname: {
-    type: String,
+  domain: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Domain',
     required: true,
-    trim: true,
   },
   settlement: {
     type: Number,
