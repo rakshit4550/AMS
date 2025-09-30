@@ -143,9 +143,7 @@ const Header = () => {
         </button>
         <div className="flex items-center space-x-4">
           <div className="flex items-center">
-            <div className="text-sm mr-2">
-              <span className="text-xs">USER</span>
-            </div>
+          
             <ProfileMenu />
           </div>
         </div>
