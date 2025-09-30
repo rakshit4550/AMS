@@ -36,21 +36,6 @@ const ProfileMenu = () => {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10">
           <div className="py-1">
-           
-              <button
-                onClick={() => {
-                  navigate('/');
-                  setIsOpen(false);
-                  toast.info('Navigating to Transaction PIN', {
-                    position: 'top-center',
-                    autoClose: 2000,
-                  });
-                }}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <FaLock className="mr-2 h-4 w-4" />
-                Payout Transaction PIN
-              </button>
         
             <button
               onClick={() => {
