@@ -708,13 +708,13 @@ const Account = () => {
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-xl font-semibold text-gray-800">{groupedAccounts[formData.partyname].partyname}</h3>
                 <div
-                  className={`bg-white flex gap-4 border-2 border-gray-300 p-4 rounded-lg shadow-xl md:w-1/3 bg-gradient-to-br ${balance > 0 ? 'from-red-50 to-red-100' : balance < 0 ? 'from-green-50 to-green-100' : 'from-gray-50 to-gray-100'
+                  className={`bg-white flex gap-4 border-2 border-gray-300 p-4 rounded-lg shadow-xl xl:w-1/3 bg-gradient-to-br ${balance > 0 ? 'from-red-50 to-red-100' : balance < 0 ? 'from-green-50 to-green-100' : 'from-gray-50 to-gray-100'
                     }`}
                 >
-                  <div className="border-b border-gray-400 pb-2 mb-1">
-                    <span className={`text-2xl font-bold font-sans ${balanceColor}`}>Closing Balance</span>
+                  <div className="border-b border-gray-400  pb-2 mb-1">
+                    <span className={` text-2xl font-bold font-sans ${balanceColor}`}>Closing Balance</span>
                   </div>
-                  <div className={`text-2xl font-extrabold font-sans ${balanceColor}`}>₹ {balValue} {balSign}</div>
+                  <div className={` text-2xl font-extrabold font-sans ${balanceColor}`}>₹ {balValue} {balSign}</div>
                 </div>
               </div>
               {sortedAccounts.length === 0 ? (
