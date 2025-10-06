@@ -3,8 +3,6 @@ import mongoose from 'mongoose';
 import partyRoutes from './route/party.js';
 import authRoutes from './route/user.js';
 import accountRoutes from './route/account.js';
-import settlementRoutes from './route/settlement.js';
-import domainRoutes from './route/domain.js';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { createDefaultAdmin } from './controller/user.js';
@@ -25,8 +23,6 @@ app.use(express.json());
 app.use('/api/parties', partyRoutes);
 app.use('/api', authRoutes);
 app.use('/api/accounts', accountRoutes);
-app.use('/api/domains', domainRoutes);
-app.use('/api/settlements', settlementRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
@@ -107,7 +103,7 @@ cron.schedule('0 0 11 * * *', async () => {
       const jsonData = JSON.stringify(grouped, null, 2);
 
       const mailOptions = {
-        from: process.env.EMAIL_FROM || 'AMS Admin <reider0009@gmail.com>',
+        from: process.env.EMAIL_FROM || 'AMS Admin <flagcartshop@gmail.com>',
         to: user.email,
         subject: 'Daily Account Statement JSON',
         text: 'Attached is your daily account data in JSON format.',

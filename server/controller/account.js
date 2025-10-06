@@ -8,8 +8,8 @@ import User from '../model/User.js';
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "reider0009@gmail.com",
-    pass: "haqnvddoeambjpul",
+    user: "flagcartshop@gmail.com",
+    pass: "dtngccwcvtivixmt",
   },
 });
 
@@ -65,7 +65,7 @@ export const sendStatementEmail = async (req, res) => {
     const jsonData = JSON.stringify(grouped, null, 2);
 
     const mailOptions = {
-      from: process.env.EMAIL_FROM || "AMS Admin <reider0009@gmail.com>",
+      from: process.env.EMAIL_FROM || "AMS Admin <flagcartshop@gmail.com>",
       to: toEmail,
       subject: 'Account Statement JSON',
       text: 'Attached is your account data in JSON format.',
