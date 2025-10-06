@@ -93,7 +93,6 @@
 
 // export default Party;
 
-
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchParties, createParty, updateParty, deleteParty } from '../redux/partySlice';
@@ -204,34 +203,45 @@ const Party = () => {
         {loading && <p>Loading...</p>}
         {error && <p className="text-red-500">{error}</p>}
 
-        <ul className="space-y-2">
-          {parties.map((party) => (
-            <li key={party._id} className="border p-2 rounded">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="font-medium">{party.partyname}</div>
-                  {party.mobileNumber && <div className="text-sm text-gray-500">Mobile: {party.mobileNumber}</div>}
-                  {party.city && <div className="text-sm text-gray-500">City: {party.city}</div>}
-                  {party.remark && <div className="text-sm text-gray-500">Remark: {party.remark}</div>}
-                </div>
-                <div className="flex space-x-2 ml-4">
-                  <button
-                    onClick={() => handleEdit(party)}
-                    className="p-1 rounded text-yellow-600 flex items-center"
-                  >
-                    <FaEdit className="mr-1" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(party._id)}
-                    className="text-red-600 p-2 rounded flex items-center"
-                  >
-                    <FaTrash className="mr-1" />
-                  </button>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="overflow-x-auto">
+          <table className="min-w-full border-collapse border border-gray-300">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 px-4 py-2 text-left">Party Name</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">Mobile Number</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">City</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">Remark</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {parties.map((party) => (
+                <tr key={party._id} className="hover:bg-gray-50">
+                  <td className="border border-gray-300 px-4 py-2 font-medium">{party.partyname}</td>
+                  <td className="border border-gray-300 px-4 py-2 text-gray-500">{party.mobileNumber || '-'}</td>
+                  <td className="border border-gray-300 px-4 py-2 text-gray-500">{party.city || '-'}</td>
+                  <td className="border border-gray-300 px-4 py-2 text-gray-500">{party.remark || '-'}</td>
+                  <td className="border border-gray-300 px-4 py-2">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEdit(party)}
+                        className="p-1 rounded text-yellow-600 hover:bg-yellow-100 flex items-center"
+                      >
+                        <FaEdit className="mr-1" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(party._id)}
+                        className="text-red-600 p-1 rounded hover:bg-red-100 flex items-center"
+                      >
+                        <FaTrash className="mr-1" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

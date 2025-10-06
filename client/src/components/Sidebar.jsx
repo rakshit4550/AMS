@@ -299,50 +299,6 @@ const Sidebar = () => {
             </div>
           </li>
 
-          <li>
-            <div
-              className={`flex items-center p-3 rounded-md transition-transform duration-300 hover:scale-[0.95] ${
-                window.location.pathname === '/domain'
-                  ? 'text-[#424687] border-r-4 border-[#424687]'
-                  : ''
-              }`}
-            >
-              <NavLink
-                to="/domain"
-                className={({ isActive }) =>
-                  `flex items-center w-full rounded p-2 hover:bg-gray-200 ${
-                    isActive ? 'font-bold text-[#424687] bg-gray-200' : ''
-                  }`
-                }
-              >
-                <span className="mr-3">{getIconComponent('TbReportAnalytics')}</span>
-                <span>Domains</span>
-              </NavLink>
-            </div>
-          </li>
-
-          <li>
-            <div
-              className={`flex items-center p-3 rounded-md transition-transform duration-300 hover:scale-[0.95] ${
-                window.location.pathname === '/settlement'
-                  ? 'text-[#424687] border-r-4 border-[#424687]'
-                  : ''
-              }`}
-            >
-              <NavLink
-                to="/settlement"
-                className={({ isActive }) =>
-                  `flex items-center w-full rounded p-2 hover:bg-gray-200 ${
-                    isActive ? 'font-bold text-[#424687] bg-gray-200' : ''
-                  }`
-                }
-              >
-                <span className="mr-3">{getIconComponent('TbReportAnalytics')}</span>
-                <span>Settlement</span>
-              </NavLink>
-            </div>
-          </li>
-
         {/* Users Menu Item (Admin only) */}
         {role === 'admin' && (
           <li>
