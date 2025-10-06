@@ -2,13 +2,14 @@ import mongoose from "mongoose";
 import Account from "../model/Account.js";
 import Party from "../model/Party.js";
 import nodemailer from "nodemailer";
+import User from '../model/User.js';
 
 // Define the nodemailer transporter
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER || "reider0009@gmail.com",
-    pass: process.env.EMAIL_PASS || "yfuvizrnzpchxcrp",
+    user: "reider0009@gmail.com",
+    pass: "haqnvddoeambjpul",
   },
 });
 
@@ -29,8 +30,9 @@ export const sendStatementEmail = async (req, res) => {
       return res.status(500).json({ message: 'Server error', error: 'Email credentials are missing in environment variables' });
     }
 
-    // Use req.user.email or fallback email
-    const toEmail = req.user.email || process.env.FALLBACK_EMAIL;
+    // Fetch user to get email
+    const user = await User.findById(req.user.id).select('email');
+    const toEmail = user?.email || process.env.FALLBACK_EMAIL;
     console.log("Sending email to:", toEmail); // Debug the recipient email
     if (!toEmail) {
       return res.status(400).json({ message: 'No recipient email available. Please ensure your account has an email address or set a fallback email in environment variables.' });
