@@ -82,6 +82,7 @@ const Utr = () => {
   const [subtypeModalOpen, setSubtypeModalOpen] = useState(false);
   const [newSubtypeName, setNewSubtypeName] = useState("");
   const [subtypeLoading, setSubtypeLoading] = useState(false);
+  const [excelModalOpen, setExcelModalOpen] = useState(false);
 
   const authConfig = token
     ? { headers: { Authorization: `Bearer ${token}` } }
@@ -345,8 +346,7 @@ const Utr = () => {
       Amount: Number(utr.amount || 0),
       "Time (IST)": utr.time || "",
       Remark: utr.remark || "",
-      "Created By":
-        utr?.createdBy?.username || utr?.createdBy?.email || "",
+      "Created By": utr?.createdBy?.username || utr?.createdBy?.email || "",
     }));
 
     const totalDepositForExcel = dataToDownload.reduce((sum, item) => {
@@ -542,71 +542,33 @@ const Utr = () => {
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap lg:flex-nowrap items-center gap-3 pt-1 w-full">
               <button
                 type="submit"
-                className="bg-blue-600 text-white text-[13px] p-2 flex items-center  rounded-[5px] hover:bg-blue-700 transition duration-200"
+                className="h-[42px] flex-1 sm:flex-none min-w-[100px] bg-blue-600 text-white text-sm font-semibold px-4 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm flex items-center justify-center"
               >
                 Submit
               </button>
 
-
               <button
                 type="button"
                 onClick={() => setSubtypeModalOpen(true)}
-                className="bg-purple-600 text-white text-[13px] p-2 flex items-center  rounded-[5px] hover:bg-purple-700 transition duration-200"
+                className="h-[42px] flex-1 sm:flex-none min-w-[140px] bg-purple-600 text-white text-sm font-semibold px-4 rounded-lg hover:bg-purple-700 transition-all duration-200 shadow-sm flex items-center justify-center gap-2"
               >
                 <FaPlus size={13} />
                 {subtypes.length === 0 ? "Add Subtype" : "Subtype"}
               </button>
+
               <button
                 type="button"
-                onClick={handleDownloadExcel}
-                className="bg-green-600 text-white  text-[13px] p-2 flex items-center  rounded-[5px] hover:bg-green-700 transition duration-200"
+                onClick={() => setExcelModalOpen(true)}
+                className="h-[42px] flex-1 sm:flex-none min-w-[100px] bg-green-600 text-white text-sm font-semibold px-4 rounded-lg hover:bg-green-700 transition-all duration-200 shadow-sm flex items-center justify-center gap-2"
                 title="Download Excel"
               >
-                <FaFileExcel size={18} />
+                <FaFileExcel size={16} />
                 Excel
               </button>
-
-              {(filterData.startDate || filterData.endDate) && (
-                <button
-                  type="button"
-                  onClick={() => setFilterData({ startDate: "", endDate: "" })}
-                  className="bg-gray-600 text-white  flex items-center p-2 text-[13px]  rounded-[5px] hover:bg-gray-700 transition duration-200"
-                >
-                  Clear
-                </button>
-              )}
             </div>
-
-            <div>
-              <label className="block mb-1 font-medium text-gray-700">
-                Start Date
-              </label>
-              <input
-                type="date"
-                name="startDate"
-                value={filterData.startDate}
-                onChange={handleFilterChange}
-                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block mb-1 font-medium text-gray-700">
-                End Date
-              </label>
-              <input
-                type="date"
-                name="endDate"
-                value={filterData.endDate}
-                onChange={handleFilterChange}
-                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
-              />
-            </div>
-
-            
           </form>
 
           {/* BOXES RIGHT SIDE */}
@@ -782,6 +744,74 @@ const Utr = () => {
                   className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800"
                 >
                   Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {excelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between border-b px-5 py-4">
+              <h2 className="text-lg font-bold text-gray-800">
+                Download Excel Report
+              </h2>
+              <button
+                type="button"
+                onClick={() => setExcelModalOpen(false)}
+                className="text-gray-500 hover:text-red-600"
+              >
+                <FaTimes size={18} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block mb-1 font-medium text-gray-700">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  name="startDate"
+                  value={filterData.startDate}
+                  onChange={handleFilterChange}
+                  className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 font-medium text-gray-700">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  name="endDate"
+                  value={filterData.endDate}
+                  onChange={handleFilterChange}
+                  className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setFilterData({ startDate: "", endDate: "" })}
+                  className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+                >
+                  Clear
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDownloadExcel();
+                    setExcelModalOpen(false);
+                  }}
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
+                >
+                  <FaFileExcel size={16} />
+                  Download
                 </button>
               </div>
             </div>
