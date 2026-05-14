@@ -494,24 +494,28 @@ const Utr = () => {
               </select>
             </div>
 
-            <div>
-              <label className="block mb-1 font-medium text-gray-700">
-                Sub Type
-              </label>
-              <select
-                name="subtype"
-                value={formData.subtype}
-                onChange={handleInputChange}
-                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              >
-                <option value="">Select Sub Type</option>
-                {subtypes.map((item) => (
-                  <option key={item._id} value={item._id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {subtypes.length > 0 && (
+              <div>
+                <label className="block mb-1 font-medium text-gray-700">
+                  Sub Type
+                </label>
+
+                <select
+                  name="subtype"
+                  value={formData.subtype}
+                  onChange={handleInputChange}
+                  className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                >
+                  <option value="">Select Sub Type</option>
+
+                  {subtypes.map((item) => (
+                    <option key={item._id} value={item._id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block mb-1 font-medium text-gray-700">
