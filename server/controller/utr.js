@@ -117,62 +117,62 @@ export const getUtrById = async (req, res) => {
   }
 };
 
-// Update UTR
-export const updateUtr = async (req, res) => {
-  try {
-    if (!canAccessUtr(req)) {
-      return res.status(403).json({ message: 'Access denied: Trader role required' });
-    }
+// // Update UTR
+// export const updateUtr = async (req, res) => {
+//   try {
+//     if (!canAccessUtr(req)) {
+//       return res.status(403).json({ message: 'Access denied: Trader role required' });
+//     }
 
-    const { id } = req.params;
-    const {
-      utrNo,
-      amount,
-      transactionType = 'deposit',
-      date,
-      remark = '',
-    } = req.body;
+//     const { id } = req.params;
+//     const {
+//       utrNo,
+//       amount,
+//       transactionType = 'deposit',
+//       date,
+//       remark = '',
+//     } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'Invalid UTR ID' });
-    }
+//     if (!mongoose.Types.ObjectId.isValid(id)) {
+//       return res.status(400).json({ message: 'Invalid UTR ID' });
+//     }
 
-    if (!utrNo || String(utrNo).trim() === '') {
-      return res.status(400).json({ message: 'UTR No is required' });
-    }
+//     if (!utrNo || String(utrNo).trim() === '') {
+//       return res.status(400).json({ message: 'UTR No is required' });
+//     }
 
-    if (amount === undefined || amount === null || Number(amount) <= 0) {
-      return res.status(400).json({ message: 'Amount is required and must be greater than 0' });
-    }
+//     if (amount === undefined || amount === null || Number(amount) <= 0) {
+//       return res.status(400).json({ message: 'Amount is required and must be greater than 0' });
+//     }
 
-    const query = req.user.role === 'admin' ? { _id: id } : { _id: id, createdBy: req.user.id };
-    const cleanTransactionType = transactionType === 'withdraw' ? 'withdraw' : 'deposit';
+//     const query = req.user.role === 'admin' ? { _id: id } : { _id: id, createdBy: req.user.id };
+//     const cleanTransactionType = transactionType === 'withdraw' ? 'withdraw' : 'deposit';
 
-    const updatedUtr = await Utr.findOneAndUpdate(
-      query,
-      {
-        utrNo: String(utrNo).trim(),
-        amount: Number(amount),
-        transactionType: cleanTransactionType,
-        date: date ? new Date(date) : getTodayISTDateOnly(),
-        remark: remark || '',
-      },
-      { new: true, runValidators: true }
-    ).populate('createdBy', 'username email role');
+//     const updatedUtr = await Utr.findOneAndUpdate(
+//       query,
+//       {
+//         utrNo: String(utrNo).trim(),
+//         amount: Number(amount),
+//         transactionType: cleanTransactionType,
+//         date: date ? new Date(date) : getTodayISTDateOnly(),
+//         remark: remark || '',
+//       },
+//       { new: true, runValidators: true }
+//     ).populate('createdBy', 'username email role');
 
-    if (!updatedUtr) {
-      return res.status(404).json({ message: 'UTR not found or you do not have access' });
-    }
+//     if (!updatedUtr) {
+//       return res.status(404).json({ message: 'UTR not found or you do not have access' });
+//     }
 
-    res.status(200).json({
-      message: 'UTR updated successfully',
-      utr: updatedUtr,
-    });
-  } catch (error) {
-    console.error('Update UTR error:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
+//     res.status(200).json({
+//       message: 'UTR updated successfully',
+//       utr: updatedUtr,
+//     });
+//   } catch (error) {
+//     console.error('Update UTR error:', error.message);
+//     res.status(500).json({ message: 'Server error', error: error.message });
+//   }
+// };
 
 // Delete UTR
 export const deleteUtr = async (req, res) => {
