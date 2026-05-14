@@ -64,7 +64,7 @@
 //         pauseOnHover
 //         theme="colored"
 //       />
-//       {!hideHeader && isAuthenticated && 
+//       {!hideHeader && isAuthenticated &&
 //         <div className='fixed left-0 lg:left-[15rem]  top-0 right-0 z-50'>
 //           <Header />
 //         </div>
@@ -151,22 +151,27 @@
 
 // export default App;
 
-
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import 'tailwindcss/tailwind.css';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import Login from './pages/Login';
-import Party from './pages/Party';
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
-import Account from './pages/Account';
-import User from './pages/User';
-import Report from './pages/Report';
-import Utr from './pages/Utr';
-import { jwtDecode } from 'jwt-decode';
+import React, { useEffect, useState } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
+import { useSelector } from "react-redux";
+import "tailwindcss/tailwind.css";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import Login from "./pages/Login";
+import Party from "./pages/Party";
+import Sidebar from "./components/Sidebar";
+import Header from "./components/Header";
+import Account from "./pages/Account";
+import User from "./pages/User";
+import Report from "./pages/Report";
+import Utr from "./pages/Utr";
+import { jwtDecode } from "jwt-decode";
 
 const ProtectedRoute = ({ children }) => {
   const { token } = useSelector((state) => state.user);
@@ -180,12 +185,12 @@ const ProtectedRoute = ({ children }) => {
       const currentTime = Date.now() / 1000; // Current time in seconds
       isTokenValid = decoded.exp > currentTime;
       if (!isTokenValid) {
-        localStorage.removeItem('token'); // Clear expired token
-        toast.error('Session expired. Please log in again.');
+        localStorage.removeItem("token"); // Clear expired token
+        toast.error("Session expired. Please log in again.");
       }
     } catch (error) {
-      localStorage.removeItem('token'); // Clear invalid token
-      toast.error('Invalid token. Please log in again.');
+      localStorage.removeItem("token"); // Clear invalid token
+      toast.error("Invalid token. Please log in again.");
       isTokenValid = false;
     }
   }
@@ -196,7 +201,7 @@ const ProtectedRoute = ({ children }) => {
 const TraderRoute = ({ children }) => {
   const { role } = useSelector((state) => state.user);
 
-  if (role !== 'trader' && role !== 'admin') {
+  if (role !== "trader" && role !== "admin") {
     return <Navigate to="/parties" />;
   }
 
@@ -210,7 +215,7 @@ const Layout = ({ children }) => {
   const [hideHeader, setHideHeader] = useState(false);
 
   useEffect(() => {
-    const shouldHideHeader = location.pathname?.includes('/pay/');
+    const shouldHideHeader = location.pathname?.includes("/pay/");
     setHideHeader(shouldHideHeader);
   }, [location]);
 
@@ -229,11 +234,11 @@ const Layout = ({ children }) => {
         pauseOnHover
         theme="colored"
       />
-      {!hideHeader && isAuthenticated &&
-        <div className='fixed left-0 lg:left-[15rem]  top-0 right-0 z-50'>
+      {!hideHeader && isAuthenticated && (
+        <div className="fixed left-0 lg:left-[15rem]  top-0 right-0 z-50">
           <Header />
         </div>
-      }
+      )}
       <div className="flex">
         {!hideHeader && isAuthenticated && (
           <div className="fixed w-[15rem] top-0 left-0 hidden lg:block overflow-hidden overflow-y-auto">
@@ -245,7 +250,7 @@ const Layout = ({ children }) => {
             hideHeader
               ? "w-full"
               : isAuthenticated
-                ? "px-4 z-[9] w-full lg:w-[calc(100vw-15rem-8px)] mt-[72px] lg:ml-[15rem]"
+                ? "px-4  w-full lg:w-[calc(100vw-15rem-8px)] mt-[72px] lg:ml-[15rem]"
                 : "w-full"
           }
         >

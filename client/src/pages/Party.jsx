@@ -93,20 +93,25 @@
 
 // export default Party;
 
-import React, { useEffect, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { fetchParties, createParty, updateParty, deleteParty } from '../redux/partySlice';
-import 'tailwindcss/tailwind.css';
-import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
+import React, { useEffect, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import {
+  fetchParties,
+  createParty,
+  updateParty,
+  deleteParty,
+} from "../redux/partySlice";
+import "tailwindcss/tailwind.css";
+import { FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 
 const Party = () => {
   const dispatch = useDispatch();
   const { parties, loading, error } = useSelector((state) => state.party);
   const [formData, setFormData] = useState({
-    partyname: '',
-    mobileNumber: '',
-    city: '',
-    remark: ''
+    partyname: "",
+    mobileNumber: "",
+    city: "",
+    remark: "",
   });
   const [editId, setEditId] = useState(null);
 
@@ -123,7 +128,7 @@ const Party = () => {
     e.preventDefault();
     if (!formData.partyname.trim()) return;
     if (formData.mobileNumber && !/^\d{10}$/.test(formData.mobileNumber)) {
-      alert('Mobile number must be exactly 10 digits');
+      alert("Mobile number must be exactly 10 digits");
       return;
     }
     if (editId) {
@@ -132,21 +137,21 @@ const Party = () => {
     } else {
       dispatch(createParty(formData));
     }
-    setFormData({ partyname: '', mobileNumber: '', city: '', remark: '' });
+    setFormData({ partyname: "", mobileNumber: "", city: "", remark: "" });
   };
 
   const handleEdit = (party) => {
     setFormData({
       partyname: party.partyname,
-      mobileNumber: party.mobileNumber || '',
-      city: party.city || '',
-      remark: party.remark || ''
+      mobileNumber: party.mobileNumber || "",
+      city: party.city || "",
+      remark: party.remark || "",
     });
     setEditId(party._id);
   };
 
   const handleDelete = (id) => {
-    if (!window.confirm('Are you sure you want to delete this party?')) {
+    if (!window.confirm("Are you sure you want to delete this party?")) {
       return;
     }
     dispatch(deleteParty(id));
@@ -154,10 +159,13 @@ const Party = () => {
 
   return (
     <div className="min-h-screen bg-white p-4 sm:p-6 lg:p-8">
-      <div className='bg-white shadow-xl rounded-lg p-6'>
+      <div className="bg-white shadow-xl rounded-lg p-6">
         <h1 className="text-2xl font-bold mb-4">Party Management</h1>
 
-        <form onSubmit={handleSubmit} className="mb-6 flex flex-wrap items-end gap-2">
+        <form
+          onSubmit={handleSubmit}
+          className="mb-6 flex flex-wrap items-end gap-2"
+        >
           <input
             type="text"
             name="partyname"
@@ -195,8 +203,7 @@ const Party = () => {
             type="submit"
             className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 flex items-center justify-center min-w-[100px]"
           >
-            <FaPlus className="mr-1" />
-            {editId ? 'Update' : 'Add'}
+            {editId ? "Update" : "Submit"}
           </button>
         </form>
 
@@ -207,20 +214,38 @@ const Party = () => {
           <table className="min-w-full border-collapse border border-gray-300">
             <thead>
               <tr className="bg-gray-100">
-                <th className="border border-gray-300 px-4 py-2 text-left">Party Name</th>
-                <th className="border border-gray-300 px-4 py-2 text-left">Mobile Number</th>
-                <th className="border border-gray-300 px-4 py-2 text-left">City</th>
-                <th className="border border-gray-300 px-4 py-2 text-left">Remark</th>
-                <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">
+                  Party Name
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left">
+                  Mobile Number
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left">
+                  City
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left">
+                  Remark
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {parties.map((party) => (
                 <tr key={party._id} className="hover:bg-gray-50">
-                  <td className="border border-gray-300 px-4 py-2 font-medium">{party.partyname}</td>
-                  <td className="border border-gray-300 px-4 py-2 text-gray-500">{party.mobileNumber || '-'}</td>
-                  <td className="border border-gray-300 px-4 py-2 text-gray-500">{party.city || '-'}</td>
-                  <td className="border border-gray-300 px-4 py-2 text-gray-500">{party.remark || '-'}</td>
+                  <td className="border border-gray-300 px-4 py-2 font-medium">
+                    {party.partyname}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-gray-500">
+                    {party.mobileNumber || "-"}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-gray-500">
+                    {party.city || "-"}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-gray-500">
+                    {party.remark || "-"}
+                  </td>
                   <td className="border border-gray-300 px-4 py-2">
                     <div className="flex space-x-2">
                       <button

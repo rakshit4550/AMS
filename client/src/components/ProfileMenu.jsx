@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { toast } from 'react-toastify';
-import { logout } from '../redux/authSlice'; // Adjust path as needed
-import { FaLock } from 'react-icons/fa6';
-
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
+import { logout } from "../redux/authSlice"; // Adjust path as needed
+import { FaLock } from "react-icons/fa6";
 
 const ProfileMenu = () => {
   const { isLoggedIn, token } = useSelector((state) => state?.user);
@@ -12,15 +11,13 @@ const ProfileMenu = () => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
-
-
   const handleLogout = () => {
     dispatch(logout());
-    toast.success('Logged out successfully!', {
-      position: 'top-center',
+    toast.success("Logged out successfully!", {
+      position: "top-center",
       autoClose: 2000,
     });
-    navigate('/');
+    navigate("/");
     setIsOpen(false);
   };
 
@@ -34,15 +31,14 @@ const ProfileMenu = () => {
         />
       </button>
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10">
+        <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-[9999]">
           <div className="py-1">
-        
             <button
               onClick={() => {
-                navigate('/');
+                navigate("/");
                 setIsOpen(false);
-                toast.info('Navigating to Change Password', {
-                  position: 'top-center',
+                toast.info("Navigating to Change Password", {
+                  position: "top-center",
                   autoClose: 2000,
                 });
               }}
