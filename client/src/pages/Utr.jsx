@@ -546,7 +546,7 @@ const Utr = () => {
               />
             </div>
 
-            <div className="flex flex-wrap lg:flex-nowrap items-center gap-3 pt-1 w-full">
+            <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap items-center gap-3 pt-2 w-full">
               <button
                 type="submit"
                 className="h-[42px] flex-1 sm:flex-none min-w-[100px] bg-blue-600 text-white text-sm font-semibold px-4 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm flex items-center justify-center"
