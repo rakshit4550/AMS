@@ -27,6 +27,14 @@
 //     type: Boolean,
 //     default: false, // Default to false (auto-job disabled)
 //   },
+//   otp: {
+//     type: String,
+//     default: null
+//   },
+//   otpExpiry: {
+//     type: Date,
+//     default: null
+//   }
 // }, {
 //   timestamps: true,
 //   collation: { locale: 'en', strength: 2 }, // Case-insensitive collation
@@ -76,7 +84,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'user'],
+    enum: ['admin', 'user', 'trader'],
     default: 'user',
   },
   autoJobEnabled: {

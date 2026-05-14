@@ -11,6 +11,7 @@ import nodemailer from 'nodemailer';
 import User from './model/User.js'; 
 import Party from './model/Party.js';
 import Account from './model/Account.js';
+import utrRoutes from './route/utr.js';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use('/api/parties', partyRoutes);
 app.use('/api', authRoutes);
 app.use('/api/accounts', accountRoutes);
+app.use('/api/utrs', utrRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
