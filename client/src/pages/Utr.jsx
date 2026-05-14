@@ -168,125 +168,138 @@ const Utr = () => {
   return (
     <div className="container mx-auto p-6 bg-white min-h-screen">
       <div className="bg-white shadow-xl rounded-lg p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">UTR</h2>
+        <div className="mb-8 grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+          <form
+            onSubmit={handleSubmit}
+            className="xl:col-span-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end"
+          >
+            <div>
+              <label className="block mb-1 font-medium text-gray-700">
+                UTR No*
+              </label>
+              <input
+                type="text"
+                name="utrNo"
+                value={formData.utrNo}
+                onChange={handleInputChange}
+                placeholder="Enter UTR No"
+                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                required
+              />
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <p className="text-xs text-green-700 font-semibold">
+            <div>
+              <label className="block mb-1 font-medium text-gray-700">
+                Amount*
+              </label>
+              <input
+                type="text"
+                name="amount"
+                value={formData.amount}
+                onChange={handleInputChange}
+                placeholder="Enter amount"
+                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 font-medium text-gray-700">
+                Transaction Type*
+              </label>
+              <select
+                name="transactionType"
+                value={formData.transactionType}
+                onChange={handleInputChange}
+                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              >
+                <option value="deposit">Deposit</option>
+                <option value="withdraw">Withdraw</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block mb-1 font-medium text-gray-700">
+                Date*
+              </label>
+              <input
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={handleInputChange}
+                onKeyDown={(e) => {
+                  if (e.key === "Tab") {
+                    e.preventDefault();
+
+                    // next input pe focus
+                    const form = e.target.form;
+                    const index = Array.prototype.indexOf.call(form, e.target);
+
+                    if (form.elements[index + 1]) {
+                      form.elements[index + 1].focus();
+                    }
+                  }
+                }}
+                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 font-medium text-gray-700">
+                Remark
+              </label>
+              <input
+                type="text"
+                name="remark"
+                value={formData.remark}
+                onChange={handleInputChange}
+                placeholder="Enter remark"
+                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="bg-blue-600 text-white p-2 flex items-center gap-2 rounded-[5px] hover:bg-blue-700 transition duration-200"
+              >
+                Submit
+              </button>
+            </div>
+          </form>
+          {/* BOXES RIGHT SIDE */}
+          <div className="xl:col-span-4 grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-2 gap-3">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+              <p className="text-sm text-green-700 font-semibold">
                 Total Deposit
               </p>
-              <p className="text-lg font-bold text-green-700">
+              <p className="text-[15px] font-bold text-green-700">
                 ₹ {formatNumber(totalDeposit)}
               </p>
             </div>
 
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-xs text-red-700 font-semibold">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-2">
+              <p className="text-sm text-red-700 font-semibold">
                 Total Withdraw
               </p>
-              <p className="text-lg font-bold text-red-700">
+              <p className="text-[15px] font-bold text-red-700">
                 ₹ {formatNumber(totalWithdraw)}
               </p>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-xs text-blue-700 font-semibold">Balance</p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
+              <p className="text-sm text-blue-700 font-semibold">Balance</p>
               <p
-                className={`text-lg font-bold ${balance >= 0 ? "text-green-700" : "text-red-700"}`}
+                className={`text-[15px] font-bold ${
+                  balance >= 0 ? "text-green-700" : "text-red-700"
+                }`}
               >
                 ₹ {formatNumber(Math.abs(balance))}
               </p>
             </div>
           </div>
         </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="mb-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 items-end"
-        >
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              UTR No*
-            </label>
-            <input
-              type="text"
-              name="utrNo"
-              value={formData.utrNo}
-              onChange={handleInputChange}
-              placeholder="Enter UTR No"
-              className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              Amount*
-            </label>
-            <input
-              type="text"
-              name="amount"
-              value={formData.amount}
-              onChange={handleInputChange}
-              placeholder="Enter amount"
-              className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              Transaction Type*
-            </label>
-            <select
-              name="transactionType"
-              value={formData.transactionType}
-              onChange={handleInputChange}
-              className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-            >
-              <option value="deposit">Deposit</option>
-              <option value="withdraw">Withdraw</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              Date*
-            </label>
-            <input
-              type="date"
-              name="date"
-              value={formData.date}
-              onChange={handleInputChange}
-              className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              Remark
-            </label>
-            <input
-              type="text"
-              name="remark"
-              value={formData.remark}
-              onChange={handleInputChange}
-              placeholder="Enter remark"
-              className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="bg-blue-600 text-white p-2 flex items-center gap-2 rounded-[5px] hover:bg-blue-700 transition duration-200"
-            >
-              Submit
-            </button>
-          </div>
-        </form>
 
         {loading && <p className="text-blue-600 text-center">Loading...</p>}
         {error && <p className="text-red-600 text-center">{error}</p>}
