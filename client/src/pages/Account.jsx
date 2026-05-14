@@ -809,17 +809,7 @@ const Account = () => {
               name="date"
               value={formData.date}
               onChange={handleInputChange}
-              onKeyDown={(e) => {
-                if (e.key === "Tab") {
-                  e.preventDefault();
-
-                  // Next input pe focus
-                  const form = e.target.form;
-                  const index = Array.prototype.indexOf.call(form, e.target);
-
-                  form.elements[index + 1]?.focus();
-                }
-              }}
+              tabIndex={-1}
               className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               required
             />

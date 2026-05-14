@@ -7,9 +7,8 @@ export const fetchUtrs = createAsyncThunk(
   "utr/fetchUtrs",
   async (_, { getState, rejectWithValue }) => {
     try {
-      const {
-        user: { token },
-      } = getState();
+      const reduxToken = getState()?.user?.token;
+      const token = reduxToken || localStorage.getItem("token");
 
       if (!token) {
         return rejectWithValue("No token available");
@@ -29,9 +28,8 @@ export const createUtr = createAsyncThunk(
   "utr/createUtr",
   async (utrData, { getState, rejectWithValue }) => {
     try {
-      const {
-        user: { token },
-      } = getState();
+      const reduxToken = getState()?.user?.token;
+      const token = reduxToken || localStorage.getItem("token");
 
       if (!token) {
         return rejectWithValue("No token available");
@@ -51,9 +49,8 @@ export const deleteUtr = createAsyncThunk(
   "utr/deleteUtr",
   async (id, { getState, rejectWithValue }) => {
     try {
-      const {
-        user: { token },
-      } = getState();
+      const reduxToken = getState()?.user?.token;
+      const token = reduxToken || localStorage.getItem("token");
 
       if (!token) {
         return rejectWithValue("No token available");

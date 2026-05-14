@@ -201,7 +201,23 @@ const ProtectedRoute = ({ children }) => {
 const TraderRoute = ({ children }) => {
   const { role } = useSelector((state) => state.user);
 
-  if (role !== "trader" && role !== "admin") {
+  const getRoleFromToken = () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      if (!token) return "";
+
+      const decoded = jwtDecode(token);
+
+      return decoded.role || "";
+    } catch {
+      return "";
+    }
+  };
+
+  const userRole = role || getRoleFromToken();
+
+  if (userRole !== "trader" && userRole !== "admin") {
     return <Navigate to="/parties" />;
   }
 
@@ -209,7 +225,10 @@ const TraderRoute = ({ children }) => {
 };
 
 const Layout = ({ children }) => {
-  const { token } = useSelector((state) => state.user);
+  const { token: reduxToken } = useSelector((state) => state.user);
+
+  const token = reduxToken || localStorage.getItem("token");
+
   const isAuthenticated = !!token;
   const location = useLocation();
   const [hideHeader, setHideHeader] = useState(false);
