@@ -12,6 +12,9 @@ import User from './model/User.js';
 import Party from './model/Party.js';
 import Account from './model/Account.js';
 import utrRoutes from './route/utr.js';
+import utrSubtypeRoutes from './route/utrSubtype.js';
+
+
 
 dotenv.config();
 
@@ -25,6 +28,7 @@ app.use('/api/parties', partyRoutes);
 app.use('/api', authRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/utrs', utrRoutes);
+app.use('/api/utr-subtypes', utrSubtypeRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
