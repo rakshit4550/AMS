@@ -4,11 +4,10 @@ import { useNavigate } from "react-router-dom";
 import {
   fetchUtrs,
   createUtr,
-  updateUtr,
   deleteUtr,
   clearUtrError,
 } from "../redux/utrSlice";
-import { FaPlus, FaEdit, FaTrash, FaTimes } from "react-icons/fa";
+import { FaEdit, FaTimes, FaTrash } from "react-icons/fa";
 
 const getTodayDate = () => {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
@@ -47,8 +46,6 @@ const Utr = () => {
     date: getTodayDate(),
     remark: "",
   });
-
-  const [editId, setEditId] = useState(null);
 
   useEffect(() => {
     if (role && role !== "trader" && role !== "admin") {
@@ -98,7 +95,6 @@ const Utr = () => {
       date: getTodayDate(),
       remark: "",
     });
-    setEditId(null);
     dispatch(clearUtrError());
   };
 
@@ -119,11 +115,7 @@ const Utr = () => {
     };
 
     try {
-      if (editId) {
-        await dispatch(updateUtr({ id: editId, ...utrData })).unwrap();
-      } else {
-        await dispatch(createUtr(utrData)).unwrap();
-      }
+      await dispatch(createUtr(utrData)).unwrap();
 
       await dispatch(fetchUtrs()).unwrap();
       resetForm();
@@ -137,21 +129,6 @@ const Utr = () => {
         alert("Error saving UTR: " + err);
       }
     }
-  };
-
-  const handleEdit = (utr) => {
-    setFormData({
-      utrNo: utr.utrNo || "",
-      amount: formatNumber(utr.amount || 0),
-      transactionType: utr.transactionType || "deposit",
-      date: utr.date
-        ? new Date(utr.date).toLocaleDateString("en-CA", {
-            timeZone: "Asia/Kolkata",
-          })
-        : getTodayDate(),
-      remark: utr.remark || "",
-    });
-    setEditId(utr._id);
   };
 
   const handleDelete = async (id) => {
@@ -306,19 +283,8 @@ const Utr = () => {
               type="submit"
               className="bg-blue-600 text-white p-2 flex items-center gap-2 rounded-[5px] hover:bg-blue-700 transition duration-200"
             >
-              {editId ? "Update" : "Submit"}
+              Submit
             </button>
-
-            {editId && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="bg-gray-600 text-white p-2 flex items-center gap-2 rounded-[5px] hover:bg-gray-700 transition duration-200"
-              >
-                <FaTimes size={18} />
-                Cancel
-              </button>
-            )}
           </div>
         </form>
 
@@ -361,14 +327,6 @@ const Utr = () => {
                     <td className="p-3">{utr.time || "-"}</td>
                     <td className="p-3">{utr.remark || ""}</td>
                     <td className="p-3 flex gap-2">
-                      <button
-                        onClick={() => handleEdit(utr)}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="Edit UTR"
-                      >
-                        <FaEdit size={18} />
-                      </button>
-
                       <button
                         onClick={() => handleDelete(utr._id)}
                         className="text-red-600 hover:text-red-800"
