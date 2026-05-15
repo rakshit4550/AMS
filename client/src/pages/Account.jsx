@@ -686,11 +686,11 @@ const Account = () => {
         : "text-gray-800";
 
   return (
-    <div className="container mx-auto p-6 z-[99] bg-white min-h-screen">
-      <div className="bg-white shadow-xl rounded-lg p-6">
+    <div className=" mx-auto p-2 z-[99]">
+      <div className="bg-white shadow-xl rounded-lg p-2">
         <form
           onSubmit={handleSubmit}
-          className="mb-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-4 items-end"
+          className="mb-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-4 items-end"
         >
           <div>
             <label className="block mb-1 font-medium text-gray-700">
@@ -874,12 +874,12 @@ const Account = () => {
                 />
                 <div
                   className="w-12 h-7 bg-gray-300 rounded-full peer 
-      peer-checked:bg-gradient-to-r peer-checked:from-green-500 peer-checked:to-green-600 
-      after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
-      after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all 
-      after:shadow-md peer-checked:after:translate-x-[20px] 
-      hover:bg-gray-400 peer-checked:hover:bg-gradient-to-r peer-checked:hover:from-green-600 peer-checked:hover:to-green-700 
-      transition-all duration-300"
+                    peer-checked:bg-gradient-to-r peer-checked:from-green-500 peer-checked:to-green-600 
+                    after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
+                    after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all 
+                    after:shadow-md peer-checked:after:translate-x-[20px] 
+                    hover:bg-gray-400 peer-checked:hover:bg-gradient-to-r peer-checked:hover:from-green-600 peer-checked:hover:to-green-700 
+                    transition-all duration-300"
                 ></div>
                 <span
                   className={`ml-3 text-sm font-semibold ${
@@ -898,12 +898,9 @@ const Account = () => {
         <div className="mb-8">
           {formData.partyname && groupedAccounts[formData.partyname] ? (
             <div className="mb-8 overflow-x-auto">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-semibold text-gray-800">
-                  {groupedAccounts[formData.partyname].partyname}
-                </h3>
+              <div className="flex justify-end items-start mb-4">
                 <div
-                  className={`bg-white flex gap-4 border-2 border-gray-300 p-4 rounded-lg shadow-xl xl:w-1/3 bg-gradient-to-br ${
+                  className={`bg-white flex gap-4 border-2 border-gray-300 p-2 rounded-lg shadow-xl xl:w-1/4 bg-gradient-to-br ${
                     balance > 0
                       ? "from-red-50 to-red-100"
                       : balance < 0
@@ -913,13 +910,13 @@ const Account = () => {
                 >
                   <div className="border-b border-gray-400  pb-2 mb-1">
                     <span
-                      className={` text-2xl font-bold font-sans ${balanceColor}`}
+                      className={` text-xl font-bold font-sans ${balanceColor}`}
                     >
                       Closing Balance
                     </span>
                   </div>
                   <div
-                    className={` text-2xl font-extrabold font-sans ${balanceColor}`}
+                    className={` text-xl font-extrabold font-sans ${balanceColor}`}
                   >
                     ₹ {balValue} {balSign}
                   </div>
@@ -932,60 +929,6 @@ const Account = () => {
                 </p>
               ) : (
                 <>
-                  <div className="flex justify-between items-center mb-4">
-                    <p className="text-gray-600">
-                      Showing {indexOfFirst + 1} to{" "}
-                      {Math.min(indexOfLast, sortedAccounts.length)} of{" "}
-                      {sortedAccounts.length} entries
-                    </p>
-                    <div className="flex gap-4 items-center">
-                      <div className="flex items-center gap-2">
-                        <label className="text-gray-700">Show</label>
-                        <Select
-                          options={entriesPerPageOptions}
-                          value={entriesPerPageOptions.find(
-                            (option) => option.value === entriesPerPage,
-                          )}
-                          onChange={handleEntriesPerPageChange}
-                          className="w-24"
-                          classNamePrefix="select"
-                          styles={{
-                            control: (base) => ({
-                              ...base,
-                              borderColor: "#d1d5db",
-                              padding: "2px",
-                              borderRadius: "0.375rem",
-                              boxShadow: "none",
-                              "&:hover": {
-                                borderColor: "#3b82f6",
-                              },
-                              "&:focus": {
-                                borderColor: "#3b82f6",
-                                boxShadow: "0 0 0 2px rgba(59, 130, 246, 0.5)",
-                              },
-                            }),
-                          }}
-                        />
-                        <label className="text-gray-700">entries</label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          value={pageInput}
-                          onChange={handlePageInputChange}
-                          placeholder="Page"
-                          className="border border-gray-300 p-2 rounded w-20 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                        />
-                        <button
-                          onClick={handleGoToPage}
-                          className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition duration-200"
-                          title="Go to Page"
-                        >
-                          <FaArrowRight size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
                   <table className="w-full border-collapse bg-white shadow-md rounded-lg">
                     <thead>
                       <tr className="bg-blue-900 text-white">
@@ -1085,29 +1028,6 @@ const Account = () => {
                       })}
                     </tbody>
                   </table>
-                  <div className="flex justify-between items-center mt-4">
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.max(prev - 1, 1))
-                      }
-                      disabled={currentPage === 1}
-                      className="bg-blue-600 text-white p-2 rounded disabled:bg-gray-400 hover:bg-blue-700 transition duration-200"
-                    >
-                      Previous
-                    </button>
-                    <span>
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                      }
-                      disabled={currentPage === totalPages}
-                      className="bg-blue-600 text-white p-2 rounded disabled:bg-gray-400 hover:bg-blue-700 transition duration-200"
-                    >
-                      Next
-                    </button>
-                  </div>
                 </>
               )}
             </div>
@@ -1116,6 +1036,94 @@ const Account = () => {
               Please select a party to view accounts.
             </p>
           )}
+        </div>
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mt-4 mb-4">
+          {/* Left Side */}
+          <div className="text-gray-600 text-sm sm:text-base">
+            Showing {indexOfFirst + 1} to{" "}
+            {Math.min(indexOfLast, sortedAccounts.length)} of{" "}
+            {sortedAccounts.length} entries
+          </div>
+
+          {/* Right Side */}
+          <div className="flex flex-col md:flex-row md:items-center gap-4 w-full lg:w-auto">
+            {/* Entries Select */}
+            <div className="flex items-center z-[999] gap-2">
+              <label className="text-gray-700 whitespace-nowrap">Show</label>
+
+              <Select
+                options={entriesPerPageOptions}
+                value={entriesPerPageOptions.find(
+                  (option) => option.value === entriesPerPage,
+                )}
+                onChange={handleEntriesPerPageChange}
+                className="w-24"
+                classNamePrefix="select"
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: "#d1d5db",
+                    padding: "2px",
+                    borderRadius: "0.375rem",
+                    boxShadow: "none",
+                    "&:hover": {
+                      borderColor: "#3b82f6",
+                    },
+                    "&:focus": {
+                      borderColor: "#3b82f6",
+                      boxShadow: "0 0 0 2px rgba(59, 130, 246, 0.5)",
+                    },
+                  }),
+                }}
+              />
+
+              <label className="text-gray-700 whitespace-nowrap">entries</label>
+            </div>
+
+            {/* Go To Page */}
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={pageInput}
+                onChange={handlePageInputChange}
+                placeholder="Page"
+                className="border border-gray-300 p-2 rounded w-20 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
+
+              <button
+                onClick={handleGoToPage}
+                className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition duration-200"
+                title="Go to Page"
+              >
+                <FaArrowRight size={18} />
+              </button>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center gap-2 sm:gap-4">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400 hover:bg-blue-700 transition duration-200"
+              >
+                Previous
+              </button>
+
+              <span className="text-sm sm:text-base whitespace-nowrap">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+                className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400 hover:bg-blue-700 transition duration-200"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       {showPdfPreview && (
