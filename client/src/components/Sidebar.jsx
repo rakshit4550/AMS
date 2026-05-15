@@ -1,6 +1,8 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
+import { IoLogOutOutline } from "react-icons/io5";
 import { AiFillBank, AiFillDashboard } from "react-icons/ai";
 import { GrTransaction } from "react-icons/gr";
 import { FaUser } from "react-icons/fa";
@@ -11,6 +13,7 @@ import { FaDollarSign } from "react-icons/fa";
 import { GiBank } from "react-icons/gi";
 import { FaPiggyBank } from "react-icons/fa6";
 import { BsReceiptCutoff } from "react-icons/bs";
+import { logout } from "../redux/authSlice";
 
 const getIconComponent = (iconName, className = "h-4 w-4") => {
   const cn = className;
@@ -44,8 +47,10 @@ const getIconComponent = (iconName, className = "h-4 w-4") => {
   }
 };
 
-const Sidebar = () => {
-  const { role } = useSelector((state) => state.user);
+const Sidebar = ({ onMenuClick }) => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { role, currentUser } = useSelector((state) => state.user);
 
   const getRoleFromToken = () => {
     try {
@@ -59,6 +64,16 @@ const Sidebar = () => {
   };
 
   const userRole = role || getRoleFromToken();
+
+  const handleSignOut = () => {
+    onMenuClick?.();
+    dispatch(logout());
+    toast.success("Logged out successfully!", {
+      position: "top-center",
+      autoClose: 2000,
+    });
+    navigate("/");
+  };
 
   const navItems = [
     { to: "/dashboard", label: "Dashboard", icon: "AiOutlineDashboard" },
@@ -94,6 +109,7 @@ const Sidebar = () => {
             <li key={to}>
               <NavLink
                 to={to}
+                onClick={() => onMenuClick?.()}
                 className={({ isActive }) =>
                   [
                     "group flex items-center gap-3 rounded-xl px-2.5 py-2.5 text-sm font-medium transition-all duration-200",
@@ -129,6 +145,25 @@ const Sidebar = () => {
           ))}
         </ul>
       </nav>
+
+      <div className="shrink-0 border-t border-slate-200/90 bg-slate-50/80 p-3">
+        {currentUser?.username ? (
+          <p className="mb-2 truncate px-2 text-xs text-slate-600">
+            Signed in as{" "}
+            <span className="font-semibold text-slate-900">
+              {currentUser.username}
+            </span>
+          </p>
+        ) : null}
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200/80 bg-white px-2.5 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50 hover:border-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/40"
+        >
+          <IoLogOutOutline className="h-5 w-5 shrink-0" aria-hidden />
+          Sign out
+        </button>
+      </div>
     </div>
   );
 };
