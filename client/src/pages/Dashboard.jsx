@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { fetchAccounts, fetchParties } from "../redux/accountSlice";
@@ -28,16 +28,6 @@ const partyNameFromAccount = (account, parties) => {
   return row?.partyname || "Unknown";
 };
 
-const topNByField = (rows, field, n = 5) =>
-  [...rows]
-    .filter((r) => (Number(r[field]) || 0) > 0)
-    .sort(
-      (a, b) =>
-        (Number(b[field]) || 0) - (Number(a[field]) || 0) ||
-        String(a.name).localeCompare(String(b.name)),
-    )
-    .slice(0, n);
-
 const formatUtrDate = (d) => {
   if (!d || Number.isNaN(new Date(d).getTime())) return "—";
   return new Date(d).toLocaleDateString("en-GB", {
@@ -48,9 +38,37 @@ const formatUtrDate = (d) => {
   });
 };
 
+/** YYYY-MM-DD in Asia/Kolkata (matches <input type="date"> well for users in India). */
+const getTodayIST = () =>
+  new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+
+const toISTDateString = (value) => {
+  if (!value) return "";
+  const t = new Date(value).getTime();
+  if (Number.isNaN(t)) return "";
+  return new Date(value).toLocaleDateString("en-CA", {
+    timeZone: "Asia/Kolkata",
+  });
+};
+
+const formatISODateLabel = (iso) => {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso || "";
+  return new Date(`${iso}T12:00:00`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+/** Lexicographic min for YYYY-MM-DD strings. */
+const minDateStr = (a, b) => (a <= b ? a : b);
+
 const Dashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [dateFrom, setDateFrom] = useState(() => getTodayIST());
+  const [dateTo, setDateTo] = useState(() => getTodayIST());
+
   const { accounts, parties, loading, error } = useSelector(
     (state) => state.account,
   );
@@ -75,14 +93,20 @@ const Dashboard = () => {
     dispatch(fetchParties())
       .unwrap()
       .catch((err) => {
-        if (err === "No token available" || String(err).includes("Invalid token")) {
+        if (
+          err === "No token available" ||
+          String(err).includes("Invalid token")
+        ) {
           navigate("/");
         }
       });
     dispatch(fetchAccounts())
       .unwrap()
       .catch((err) => {
-        if (err === "No token available" || String(err).includes("Invalid token")) {
+        if (
+          err === "No token available" ||
+          String(err).includes("Invalid token")
+        ) {
           navigate("/");
         }
       });
@@ -93,85 +117,188 @@ const Dashboard = () => {
     dispatch(fetchUtrs())
       .unwrap()
       .catch((err) => {
-        if (err === "No token available" || String(err).includes("Invalid token")) {
+        if (
+          err === "No token available" ||
+          String(err).includes("Invalid token")
+        ) {
           navigate("/");
         }
       });
   }, [dispatch, navigate, isTrader]);
 
-  const { topWithdrawParties, topDepositParties } = useMemo(() => {
-    const map = {};
+  const rangeSummary = useMemo(() => {
+    const from = dateFrom <= dateTo ? dateFrom : dateTo;
+    const to = dateFrom <= dateTo ? dateTo : dateFrom;
+    if (from === to) return formatISODateLabel(from);
+    return `${formatISODateLabel(from)} – ${formatISODateLabel(to)}`;
+  }, [dateFrom, dateTo]);
+
+  const accountsInRange = useMemo(() => {
+    const from = dateFrom <= dateTo ? dateFrom : dateTo;
+    const to = dateFrom <= dateTo ? dateTo : dateFrom;
+    return (accounts || []).filter((acc) => {
+      const d = toISTDateString(acc.date);
+      return d && d >= from && d <= to;
+    });
+  }, [accounts, dateFrom, dateTo]);
+
+  const utrsInRange = useMemo(() => {
+    const from = dateFrom <= dateTo ? dateFrom : dateTo;
+    const to = dateFrom <= dateTo ? dateTo : dateFrom;
+    return (utrs || []).filter((u) => {
+      const d = toISTDateString(u.date);
+      return d && d >= from && d <= to;
+    });
+  }, [utrs, dateFrom, dateTo]);
+
+  const rangeEndStr = dateFrom <= dateTo ? dateTo : dateFrom;
+
+  const { topClosingDrParties, topClosingCrParties } = useMemo(() => {
+    const activeIds = new Set();
+    for (const acc of accountsInRange) {
+      const k = partyKeyFromAccount(acc);
+      if (k) activeIds.add(k);
+    }
+
+    const cumulative = {};
     for (const acc of accounts || []) {
       const key = partyKeyFromAccount(acc);
       if (!key) continue;
-      if (!map[key]) {
-        map[key] = {
+      const d = toISTDateString(acc.date);
+      if (!d || d > rangeEndStr) continue;
+      if (!cumulative[key]) {
+        cumulative[key] = {
           partyId: key,
           name: partyNameFromAccount(acc, parties || []),
-          totalDebit: 0,
-          totalCredit: 0,
+          debit: 0,
+          credit: 0,
         };
       }
-      map[key].totalDebit += Number(acc.debit) || 0;
-      map[key].totalCredit += Number(acc.credit) || 0;
-      map[key].name = partyNameFromAccount(acc, parties || []);
+      cumulative[key].debit += Number(acc.debit) || 0;
+      cumulative[key].credit += Number(acc.credit) || 0;
+      cumulative[key].name = partyNameFromAccount(acc, parties || []);
     }
-    const list = Object.values(map);
-    return {
-      topWithdrawParties: topNByField(list, "totalDebit", 5),
-      topDepositParties: topNByField(list, "totalCredit", 5),
-    };
-  }, [accounts, parties]);
+
+    const rows = Object.values(cumulative)
+      .filter((r) => activeIds.has(r.partyId))
+      .map((r) => ({
+        ...r,
+        closing: r.debit - r.credit,
+      }));
+
+    const topClosingDrParties = rows
+      .filter((r) => r.closing > 0)
+      .sort(
+        (a, b) =>
+          b.closing - a.closing || String(a.name).localeCompare(String(b.name)),
+      )
+      .slice(0, 10);
+
+    const topClosingCrParties = rows
+      .filter((r) => r.closing < 0)
+      .sort(
+        (a, b) =>
+          a.closing - b.closing || String(a.name).localeCompare(String(b.name)),
+      )
+      .slice(0, 10);
+
+    return { topClosingDrParties, topClosingCrParties };
+  }, [accounts, accountsInRange, parties, rangeEndStr]);
 
   const topUtrWithdraw = useMemo(() => {
-    if (!isTrader || !utrs?.length) return [];
-    return [...utrs]
+    if (!isTrader || !utrsInRange.length) return [];
+    return [...utrsInRange]
       .filter((u) => u.transactionType === "withdraw")
       .sort(
         (a, b) =>
           (Number(b.amount) || 0) - (Number(a.amount) || 0) ||
           new Date(b.date) - new Date(a.date),
       )
-      .slice(0, 5);
-  }, [utrs, isTrader]);
+      .slice(0, 10);
+  }, [utrsInRange, isTrader]);
 
   const topUtrDeposit = useMemo(() => {
-    if (!isTrader || !utrs?.length) return [];
-    return [...utrs]
+    if (!isTrader || !utrsInRange.length) return [];
+    return [...utrsInRange]
       .filter((u) => u.transactionType === "deposit")
       .sort(
         (a, b) =>
           (Number(b.amount) || 0) - (Number(a.amount) || 0) ||
           new Date(b.date) - new Date(a.date),
       )
-      .slice(0, 5);
-  }, [utrs, isTrader]);
+      .slice(0, 10);
+  }, [utrsInRange, isTrader]);
 
-  const partyRankList = (items, amountKey, tone) => (
+  const todayStr = getTodayIST();
+  const fromInputMax = minDateStr(dateTo, todayStr);
+
+  const isSingleDayToday = dateFrom === dateTo && dateFrom === todayStr;
+
+  const dateFieldClass =
+    "h-9 min-w-[10.5rem] rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-800 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[#424687]/40";
+
+  const onFromChange = (v) => {
+    const t = getTodayIST();
+    let next = v;
+    if (next > t) next = t;
+    setDateFrom(next);
+    if (next > dateTo) setDateTo(next);
+  };
+
+  const onToChange = (v) => {
+    const t = getTodayIST();
+    let next = v;
+    if (next > t) next = t;
+    setDateTo(next);
+    if (next < dateFrom) setDateFrom(next);
+  };
+
+  const partyClosingList = (items, tone, side) => (
     <ol className="divide-y divide-slate-100">
       {items.length === 0 ? (
         <li className="px-4 py-8 text-center text-sm text-slate-500">
-          No ledger data yet for this view.
+          {side === "dr"
+            ? "No party with Dr closing (debit balance) in this view."
+            : "No party with Cr closing (credit balance) in this view."}
         </li>
       ) : (
         items.map((row, i) => (
           <li
             key={row.partyId}
-            className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-slate-50/80"
+            className="flex items-start justify-between gap-3 px-4 py-3 transition hover:bg-slate-50/80 sm:items-center"
           >
-            <div className="flex min-w-0 items-center gap-3">
-              <span
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums ${tone.rank}`}
-              >
-                {i + 1}
-              </span>
-              <span className="truncate font-medium text-slate-800">{row.name}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start gap-3">
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums ${tone.rank}`}
+                >
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="break-words font-medium leading-snug text-slate-800"
+                    title={row.name}
+                  >
+                    {row.name}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                    {formatISODateLabel(rangeEndStr)} (all ledger up to this
+                    date, IST)
+                  </p>
+                </div>
+              </div>
             </div>
-            <span
-              className={`shrink-0 text-sm font-semibold tabular-nums ${tone.amount}`}
-            >
-              ₹ {formatNumber(row[amountKey])}
-            </span>
+            <div className="shrink-0 text-right">
+              <p
+                className={`text-sm font-semibold tabular-nums ${tone.amount}`}
+              >
+                ₹ {formatNumber(Math.abs(row.closing))}{" "}
+                {side === "dr" ? "Dr" : "Cr"}
+              </p>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                {side === "dr" ? "Debit balance" : "Credit balance"}
+              </p>
+            </div>
           </li>
         ))
       )}
@@ -182,7 +309,7 @@ const Dashboard = () => {
     <ol className="divide-y divide-slate-100">
       {items.length === 0 ? (
         <li className="px-4 py-8 text-center text-sm text-slate-500">
-          No UTR entries in this category.
+          No UTR entries in this date range.
         </li>
       ) : (
         items.map((u, i) => (
@@ -206,7 +333,9 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-            <span className={`text-sm font-semibold tabular-nums ${tone.amount}`}>
+            <span
+              className={`text-sm font-semibold tabular-nums ${tone.amount}`}
+            >
               ₹ {formatNumber(u.amount)}
             </span>
           </li>
@@ -226,12 +355,77 @@ const Dashboard = () => {
             <h1 className="text-base font-bold tracking-tight text-slate-900 sm:text-lg">
               Dashboard
             </h1>
-            <p className="mt-0.5 text-xs leading-relaxed text-slate-600 sm:text-sm">
-              Top parties by total debit (withdraw) and total credit (deposit) across
-              all ledger entries.
-              {isTrader ? " As a trader, your largest UTR deposits and withdrawals are listed too." : ""}
-            </p>
           </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200/90 bg-white/95 p-3 shadow-sm ring-1 ring-slate-100/80 sm:p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            Date range
+          </p>
+          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            {isSingleDayToday && (
+              <span className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-200/80 sm:order-last sm:ml-auto">
+                Today only — all rows dated today (IST)
+              </span>
+            )}
+            <div className="min-w-0 sm:w-auto">
+              <label
+                htmlFor="dash-date-from"
+                className="mb-1 block text-xs font-medium text-slate-600"
+              >
+                From
+              </label>
+              <input
+                id="dash-date-from"
+                type="date"
+                value={dateFrom}
+                max={fromInputMax}
+                onChange={(e) => onFromChange(e.target.value)}
+                className={dateFieldClass}
+              />
+            </div>
+            <div className="min-w-0 sm:w-auto">
+              <label
+                htmlFor="dash-date-to"
+                className="mb-1 block text-xs font-medium text-slate-600"
+              >
+                To
+              </label>
+              <input
+                id="dash-date-to"
+                type="date"
+                value={dateTo}
+                min={dateFrom}
+                max={todayStr}
+                onChange={(e) => onToChange(e.target.value)}
+                className={dateFieldClass}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const t = getTodayIST();
+                setDateFrom(t);
+                setDateTo(t);
+              }}
+              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-white hover:text-[#424687] sm:shrink-0"
+            >
+              Today (IST)
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            Showing data for{" "}
+            <span className="font-semibold text-slate-700">{rangeSummary}</span>{" "}
+            <span className="text-slate-400">(IST)</span>
+            <span className="mx-1.5 text-slate-300">·</span>
+            <span className="text-slate-600">
+              {accountsInRange.length} ledger row
+              {accountsInRange.length === 1 ? "" : "s"}
+              {isTrader
+                ? ` · ${utrsInRange.length} UTR row${utrsInRange.length === 1 ? "" : "s"}`
+                : ""}
+            </span>
+          </p>
         </div>
 
         {error && (
@@ -255,17 +449,18 @@ const Dashboard = () => {
               </span>
               <div>
                 <h2 className="text-sm font-bold text-slate-900 sm:text-base">
-                  Top 5 parties — withdraw (debit)
+                  Top 10 parties — closing Dr
                 </h2>
-                <p className="text-[11px] text-slate-500 sm:text-xs">
-                  Highest total debit per party
-                </p>
               </div>
             </div>
-            {partyRankList(topWithdrawParties, "totalDebit", {
-              rank: "bg-red-100 text-red-800",
-              amount: "text-red-700",
-            })}
+            {partyClosingList(
+              topClosingDrParties,
+              {
+                rank: "bg-red-100 text-red-800",
+                amount: "text-red-700",
+              },
+              "dr",
+            )}
           </div>
 
           <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-100/60">
@@ -275,17 +470,18 @@ const Dashboard = () => {
               </span>
               <div>
                 <h2 className="text-sm font-bold text-slate-900 sm:text-base">
-                  Top 5 parties — deposit (credit)
+                  Top 10 parties — closing Cr
                 </h2>
-                <p className="text-[11px] text-slate-500 sm:text-xs">
-                  Highest total credit per party
-                </p>
               </div>
             </div>
-            {partyRankList(topDepositParties, "totalCredit", {
-              rank: "bg-emerald-100 text-emerald-800",
-              amount: "text-emerald-700",
-            })}
+            {partyClosingList(
+              topClosingCrParties,
+              {
+                rank: "bg-emerald-100 text-emerald-800",
+                amount: "text-emerald-700",
+              },
+              "cr",
+            )}
           </div>
         </div>
 
@@ -298,11 +494,8 @@ const Dashboard = () => {
                 </span>
                 <div>
                   <h2 className="text-sm font-bold text-slate-900 sm:text-base">
-                    Top 5 UTR — withdraw
+                    Top 10 UTR — Total withdraw
                   </h2>
-                  <p className="text-[11px] text-slate-500 sm:text-xs">
-                    Largest withdraw amounts
-                  </p>
                 </div>
               </div>
               {utrLoading ? (
@@ -325,11 +518,8 @@ const Dashboard = () => {
                 </span>
                 <div>
                   <h2 className="text-sm font-bold text-slate-900 sm:text-base">
-                    Top 5 UTR — deposit
+                    Top 10 UTR — Total deposit
                   </h2>
-                  <p className="text-[11px] text-slate-500 sm:text-xs">
-                    Largest deposit amounts
-                  </p>
                 </div>
               </div>
               {utrLoading ? (
