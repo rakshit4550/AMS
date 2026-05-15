@@ -392,8 +392,15 @@ export const loadUser = createAsyncThunk(
         email: response.data.email,
       };
     } catch (error) {
-      if (error.response?.status === 401) {
+      const status = error.response?.status;
+      if (status === 401) {
         localStorage.removeItem("token");
+        return rejectWithValue({
+          sessionInvalid: true,
+          message:
+            error.response?.data?.message ||
+            "Session expired. Please log in again.",
+        });
       }
       return rejectWithValue(
         error.response?.data?.message || "Failed to load user",
@@ -619,8 +626,21 @@ const userSlice = createSlice({
       })
       .addCase(loadUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
-        if (action.payload && action.payload.includes("Invalid token")) {
+        const p = action.payload;
+        const message =
+          typeof p === "object" && p !== null && "message" in p
+            ? p.message
+            : typeof p === "string"
+              ? p
+              : "Failed to load user";
+        state.error = message;
+        const sessionInvalid =
+          (typeof p === "object" &&
+            p !== null &&
+            p.sessionInvalid === true) ||
+          (typeof message === "string" &&
+            /invalid token|unauthoriz|expired|jwt|session/i.test(message));
+        if (sessionInvalid) {
           state.token = null;
           state.currentUser = null;
           state.role = null;
@@ -647,6 +667,13 @@ const userSlice = createSlice({
         state.error = action.payload;
       })
 
+      .addCase(logout.pending, (state) => {
+        state.token = null;
+        state.currentUser = null;
+        state.role = null;
+        state.users = [];
+        state.error = null;
+      })
       .addCase(logout.fulfilled, (state) => {
         state.token = null;
         state.currentUser = null;

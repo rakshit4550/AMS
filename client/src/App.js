@@ -151,7 +151,7 @@
 
 // export default App;
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -159,7 +159,7 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import "tailwindcss/tailwind.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -173,30 +173,56 @@ import Report from "./pages/Report";
 import Dashboard from "./pages/Dashboard";
 import Utr from "./pages/Utr";
 import { jwtDecode } from "jwt-decode";
+import { logout } from "./redux/authSlice";
 
-const ProtectedRoute = ({ children }) => {
-  const { token } = useSelector((state) => state.user);
-  const isAuthenticated = !!token;
+/** Clears Redux + LS when JWT is expired/malformed (e.g. open "/" with stale token). */
+const SessionSync = () => {
+  const dispatch = useDispatch();
+  const token = useSelector((state) => state.user?.token);
 
-  // Check token expiration
-  let isTokenValid = false;
-  if (isAuthenticated) {
+  useLayoutEffect(() => {
+    if (!token) return;
     try {
       const decoded = jwtDecode(token);
-      const currentTime = Date.now() / 1000; // Current time in seconds
-      isTokenValid = decoded.exp > currentTime;
-      if (!isTokenValid) {
-        localStorage.removeItem("token"); // Clear expired token
+      if (decoded.exp <= Date.now() / 1000) {
+        dispatch(logout());
         toast.error("Session expired. Please log in again.");
       }
-    } catch (error) {
-      localStorage.removeItem("token"); // Clear invalid token
+    } catch {
+      dispatch(logout());
       toast.error("Invalid token. Please log in again.");
-      isTokenValid = false;
+    }
+  }, [token, dispatch]);
+
+  return null;
+};
+
+const ProtectedRoute = ({ children }) => {
+  const dispatch = useDispatch();
+  const token = useSelector((state) => state.user.token);
+
+  let jwtOk = false;
+  if (token) {
+    try {
+      jwtOk = jwtDecode(token).exp > Date.now() / 1000;
+    } catch {
+      jwtOk = false;
     }
   }
 
-  return isAuthenticated && isTokenValid ? children : <Navigate to="/" />;
+  useLayoutEffect(() => {
+    if (!token || jwtOk) return;
+    dispatch(logout());
+    try {
+      jwtDecode(token);
+      toast.error("Session expired. Please log in again.");
+    } catch {
+      toast.error("Invalid token. Please log in again.");
+    }
+  }, [token, jwtOk, dispatch]);
+
+  if (!token || !jwtOk) return <Navigate to="/" replace />;
+  return children;
 };
 
 const TraderRoute = ({ children }) => {
@@ -226,11 +252,8 @@ const TraderRoute = ({ children }) => {
 };
 
 const Layout = ({ children }) => {
-  const { token: reduxToken } = useSelector((state) => state.user);
-
-  const token = reduxToken || localStorage.getItem("token");
-
-  const isAuthenticated = !!token;
+  const token = useSelector((state) => state.user?.token);
+  const isAuthenticated = Boolean(token);
   const location = useLocation();
   const [hideHeader, setHideHeader] = useState(false);
 
@@ -241,6 +264,7 @@ const Layout = ({ children }) => {
 
   return (
     <div className="min-h-screen">
+      <SessionSync />
       <ToastContainer
         position="top-center"
         autoClose={2000}
