@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   login,
@@ -31,6 +31,9 @@ const Login = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
 
+  const otpInputRefs = useRef([]);
+  const OTP_LEN = 6;
+
   const isAuthenticated = !!currentUser;
 
   // Load user on component mount to restore state from token
@@ -41,6 +44,70 @@ const Login = () => {
       }
     });
   }, [dispatch, navigate]);
+
+  useEffect(() => {
+    if (showForgotForm && step === 2) {
+      otpInputRefs.current[0]?.focus();
+    }
+  }, [showForgotForm, step]);
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, OTP_LEN);
+    if (!pasted) return;
+    setOtp(pasted);
+    const next = Math.min(pasted.length, OTP_LEN - 1);
+    requestAnimationFrame(() => otpInputRefs.current[next]?.focus());
+  };
+
+  const handleOtpBoxChange = (index, e) => {
+    const code = otp.replace(/\D/g, "").slice(0, OTP_LEN);
+    const raw = e.target.value.replace(/\D/g, "");
+    if (raw.length > 1) {
+      const pasted = raw.slice(0, OTP_LEN);
+      setOtp(pasted);
+      requestAnimationFrame(() =>
+        otpInputRefs.current[Math.min(pasted.length, OTP_LEN - 1)]?.focus(),
+      );
+      return;
+    }
+    if (raw === "") {
+      if (index < code.length) {
+        setOtp(code.slice(0, index) + code.slice(index + 1));
+      }
+      return;
+    }
+    const digit = raw.slice(-1);
+    let nextOtp;
+    if (index < code.length) {
+      nextOtp = (code.slice(0, index) + digit + code.slice(index + 1)).slice(
+        0,
+        OTP_LEN,
+      );
+    } else if (index === code.length && code.length < OTP_LEN) {
+      nextOtp = (code + digit).slice(0, OTP_LEN);
+    } else {
+      return;
+    }
+    setOtp(nextOtp);
+    if (digit && index < OTP_LEN - 1) {
+      requestAnimationFrame(() => otpInputRefs.current[index + 1]?.focus());
+    }
+  };
+
+  const handleOtpBoxKeyDown = (index, e) => {
+    const code = otp.replace(/\D/g, "").slice(0, OTP_LEN);
+    if (e.key !== "Backspace") return;
+    if (code[index]) return;
+    e.preventDefault();
+    if (index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+      setOtp(code.slice(0, index - 1) + code.slice(index));
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -227,15 +294,35 @@ const Login = () => {
                       <label className="block text-sm font-semibold mb-2 text-gray-700">
                         OTP
                       </label>
-                      <input
-                        type="text"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value)}
-                        placeholder="Enter 6-digit OTP"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
-                        required
-                        maxLength={6}
-                      />
+                      <div
+                        className="flex justify-center gap-2 sm:gap-3"
+                        onPaste={handleOtpPaste}
+                        role="group"
+                        aria-label="6-digit one-time password"
+                      >
+                        {Array.from({ length: OTP_LEN }, (_, i) => (
+                          <input
+                            key={i}
+                            ref={(el) => {
+                              otpInputRefs.current[i] = el;
+                            }}
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete={i === 0 ? "one-time-code" : "off"}
+                            maxLength={1}
+                            value={
+                              otp.replace(/\D/g, "").slice(0, OTP_LEN)[i] ?? ""
+                            }
+                            onChange={(e) => handleOtpBoxChange(i, e)}
+                            onKeyDown={(e) => handleOtpBoxKeyDown(i, e)}
+                            className="h-12 w-10 sm:h-14 sm:w-12 shrink-0 rounded-xl border border-gray-200 bg-gray-50 text-center text-lg font-semibold tracking-widest text-gray-900 tabular-nums focus:border-[#424687] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40"
+                            aria-label={`Digit ${i + 1} of ${OTP_LEN}`}
+                          />
+                        ))}
+                      </div>
+                      <p className="mt-2 text-center text-xs text-gray-500">
+                        Enter the 6-digit code from your email
+                      </p>
                     </div>
 
                     <button

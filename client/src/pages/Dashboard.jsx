@@ -253,121 +253,119 @@ const Dashboard = () => {
     if (next < dateFrom) setDateFrom(next);
   };
 
-  const partyClosingList = (items, tone, side) => (
-    <ol className="divide-y divide-slate-100">
-      {items.length === 0 ? (
-        <li className="px-4 py-8 text-center text-sm text-slate-500">
+  /** ~5 rows visible; still renders all top-10 items, scroll for the rest. */
+  const rankedListScrollClass =
+    "max-h-[min(42vh,20rem)] overflow-y-auto overscroll-y-contain scroll-smooth [-webkit-overflow-scrolling:touch]";
+
+  const partyClosingList = (items, tone, side) => {
+    if (items.length === 0) {
+      return (
+        <div className="px-4 py-8 text-center text-sm text-slate-500">
           {side === "dr"
             ? "No party with Dr closing (debit balance) in this view."
             : "No party with Cr closing (credit balance) in this view."}
-        </li>
-      ) : (
-        items.map((row, i) => (
-          <li
-            key={row.partyId}
-            className="flex items-start justify-between gap-3 px-4 py-3 transition hover:bg-slate-50/80 sm:items-center"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="flex items-start gap-3">
+        </div>
+      );
+    }
+    return (
+      <div className={rankedListScrollClass}>
+        <ol className="divide-y divide-slate-100">
+          {items.map((row, i) => (
+            <li
+              key={row.partyId}
+              className="flex items-start justify-between gap-3 px-4 py-3 transition hover:bg-slate-50/80 sm:items-center"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-3">
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums ${tone.rank}`}
+                  >
+                    {i + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="break-words font-medium leading-snug text-slate-800"
+                      title={row.name}
+                    >
+                      {row.name}
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                      {formatISODateLabel(rangeEndStr)} (all ledger up to this
+                      date, IST)
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="shrink-0 text-right">
+                <p
+                  className={`text-sm font-semibold tabular-nums ${tone.amount}`}
+                >
+                  ₹ {formatNumber(Math.abs(row.closing))}{" "}
+                  {side === "dr" ? "Dr" : "Cr"}
+                </p>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                  {side === "dr" ? "Debit balance" : "Credit balance"}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    );
+  };
+
+  const utrRankList = (items, tone) => {
+    if (items.length === 0) {
+      return (
+        <div className="px-4 py-8 text-center text-sm text-slate-500">
+          No UTR entries in this date range.
+        </div>
+      );
+    }
+    return (
+      <div className={rankedListScrollClass}>
+        <ol className="divide-y divide-slate-100">
+          {items.map((u, i) => (
+            <li
+              key={u._id}
+              className="flex flex-col gap-1 px-4 py-3 transition hover:bg-slate-50/80 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex min-w-0 items-center gap-3">
                 <span
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums ${tone.rank}`}
                 >
                   {i + 1}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p
-                    className="break-words font-medium leading-snug text-slate-800"
-                    title={row.name}
-                  >
-                    {row.name}
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-xs font-medium text-slate-800 sm:text-sm">
+                    {u.utrNo}
                   </p>
-                  <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
-                    {formatISODateLabel(rangeEndStr)} (all ledger up to this
-                    date, IST)
+                  <p className="text-[11px] text-slate-500">
+                    {formatUtrDate(u.date)}
+                    {u.time ? ` · ${u.time}` : ""}
                   </p>
                 </div>
               </div>
-            </div>
-            <div className="shrink-0 text-right">
-              <p
+              <span
                 className={`text-sm font-semibold tabular-nums ${tone.amount}`}
               >
-                ₹ {formatNumber(Math.abs(row.closing))}{" "}
-                {side === "dr" ? "Dr" : "Cr"}
-              </p>
-              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                {side === "dr" ? "Debit balance" : "Credit balance"}
-              </p>
-            </div>
-          </li>
-        ))
-      )}
-    </ol>
-  );
-
-  const utrRankList = (items, tone) => (
-    <ol className="divide-y divide-slate-100">
-      {items.length === 0 ? (
-        <li className="px-4 py-8 text-center text-sm text-slate-500">
-          No UTR entries in this date range.
-        </li>
-      ) : (
-        items.map((u, i) => (
-          <li
-            key={u._id}
-            className="flex flex-col gap-1 px-4 py-3 transition hover:bg-slate-50/80 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <span
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums ${tone.rank}`}
-              >
-                {i + 1}
+                ₹ {formatNumber(u.amount)}
               </span>
-              <div className="min-w-0">
-                <p className="truncate font-mono text-xs font-medium text-slate-800 sm:text-sm">
-                  {u.utrNo}
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  {formatUtrDate(u.date)}
-                  {u.time ? ` · ${u.time}` : ""}
-                </p>
-              </div>
-            </div>
-            <span
-              className={`text-sm font-semibold tabular-nums ${tone.amount}`}
-            >
-              ₹ {formatNumber(u.amount)}
-            </span>
-          </li>
-        ))
-      )}
-    </ol>
-  );
+            </li>
+          ))}
+        </ol>
+      </div>
+    );
+  };
 
   return (
     <div className="z-[99] min-h-[calc(100vh-5rem)] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-2 sm:py-3">
       <div className="mx-auto flex w-full max-w-none flex-col gap-4">
-        <div className="flex items-start gap-3 rounded-xl border border-slate-200/90 bg-white/90 px-3 py-3 shadow-sm backdrop-blur-sm sm:items-center sm:gap-4 sm:px-4 sm:py-3.5">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#424687] to-[#353a6e] text-white shadow-md shadow-[#424687]/25">
-            <AiFillDashboard className="h-5 w-5" aria-hidden />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-base font-bold tracking-tight text-slate-900 sm:text-lg">
-              Dashboard
-            </h1>
-          </div>
-        </div>
-
         <div className="rounded-xl border border-slate-200/90 bg-white/95 p-3 shadow-sm ring-1 ring-slate-100/80 sm:p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
             Date range
           </p>
           <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-            {isSingleDayToday && (
-              <span className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-200/80 sm:order-last sm:ml-auto">
-                Today only — all rows dated today (IST)
-              </span>
-            )}
             <div className="min-w-0 sm:w-auto">
               <label
                 htmlFor="dash-date-from"
