@@ -685,262 +685,302 @@ const Account = () => {
         ? "text-green-600"
         : "text-gray-800";
 
-  return (
-    <div className=" mx-auto p-2 z-[99]">
-      <div className="bg-white shadow-xl rounded-lg p-2">
-        <form
-          onSubmit={handleSubmit}
-          className="mb-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-4 items-end"
-        >
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              Party Name
-            </label>
-            <Select
-              options={partyOptions.filter((option) => option.value !== "")}
-              value={
-                partyOptions.find(
-                  (option) => option.value === formData.partyname,
-                ) || null
-              }
-              onChange={handlePartyInputChange}
-              placeholder="Select or type to search party"
-              className="w-full"
-              classNamePrefix="select"
-              isClearable
-              isSearchable
-              styles={{
-                control: (base) => ({
-                  ...base,
-                  borderColor: "#d1d5db",
-                  padding: "2px",
-                  borderRadius: "0.375rem",
-                  boxShadow: "none",
-                  "&:hover": {
-                    borderColor: "#3b82f6",
-                  },
-                  "&:focus": {
-                    borderColor: "#3b82f6",
-                    boxShadow: "0 0 0 2px rgba(59, 130, 246, 0.5)",
-                  },
-                }),
-              }}
-            />
-          </div>
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              To Party
-            </label>
-            <Select
-              options={partyOptions.filter(
-                (option) =>
-                  option.value !== "" && option.value !== formData.partyname,
-              )}
-              value={
-                partyOptions.find(
-                  (option) => option.value === formData.toParty,
-                ) || null
-              }
-              onChange={handleToPartyInputChange}
-              placeholder="Select to party for transfer"
-              className="w-full"
-              classNamePrefix="select"
-              isClearable
-              isSearchable
-              styles={{
-                control: (base) => ({
-                  ...base,
-                  borderColor: "#d1d5db",
-                  padding: "2px",
-                  borderRadius: "0.375rem",
-                  boxShadow: "none",
-                  "&:hover": {
-                    borderColor: "#3b82f6",
-                  },
-                  "&:focus": {
-                    borderColor: "#3b82f6",
-                    boxShadow: "0 0 0 2px rgba(59, 130, 246, 0.5)",
-                  },
-                }),
-              }}
-            />
-          </div>
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              Transaction Type*
-            </label>
-            {formData.toParty ? (
-              <input
-                type="text"
-                value="Transfer"
-                readOnly
-                className="border border-gray-300 p-2 rounded w-full bg-gray-100 text-gray-700 cursor-not-allowed"
-              />
-            ) : (
-              <select
-                name="transactionType"
-                value={formData.transactionType}
-                onChange={handleInputChange}
-                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              >
-                <option value="credit">Deposit (Dena)</option>
-                <option value="debit">Withdraw (Lena)</option>
-              </select>
-            )}
-          </div>
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              Amount*
-            </label>
-            <input
-              type="text"
-              name="amount"
-              value={formData.amount}
-              onChange={handleInputChange}
-              placeholder="Enter amount"
-              className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              required
-            />
-          </div>
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">Date</label>
-            <input
-              type="date"
-              name="date"
-              value={formData.date}
-              onChange={handleInputChange}
-              tabIndex={-1}
-              className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              required
-            />
-          </div>
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              Remark
-            </label>
-            <input
-              type="text"
-              name="remark"
-              value={formData.remark}
-              onChange={handleInputChange}
-              placeholder="Enter remark"
-              className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-            />
-          </div>
-          <div className="flex gap-2 items-center">
-            <button
-              type="submit"
-              className="bg-blue-600 text-white p-2 flex items-center gap-2 rounded-[5px] hover:bg-blue-700 transition duration-200 col-span-1 md:col-auto"
-              title={editId ? "Update Account" : "Submit Account"}
-            >
-              {editId ? "Update" : "Submit"}
-            </button>
-            <button
-              type="button"
-              onClick={handleDownload}
-              className="bg-green-600 text-white p-2 rounded hover:bg-green-700 transition duration-200 col-span-1 md:col-auto"
-              title="Download Statement"
-            >
-              <FaFileDownload size={18} />
-            </button>
-            <button
-              type="button"
-              onClick={handleSendEmail}
-              className="bg-purple-600 text-white p-2 rounded hover:bg-purple-700 transition duration-200 col-span-1 md:col-auto"
-              title="Send JSON via Email"
-            >
-              <FaEnvelope size={18} />
-            </button>
-            <label className="bg-orange-600 text-white p-2 rounded hover:bg-orange-700 transition duration-200 col-span-1 md:col-auto cursor-pointer">
-              <FaUpload size={18} />
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                className="hidden"
-              />
-            </label>
-            <div className="flex ml-2 items-center space-x-3 min-w-fit">
-              <label className="text-gray-800 font-medium text-lg whitespace-nowrap">
-                Auto-Job
-              </label>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={autoJobEnabled}
-                  onChange={handleToggleAutoJob}
-                  className="sr-only peer"
-                  aria-label="Toggle Auto-Job"
-                />
-                <div
-                  className="w-12 h-7 bg-gray-300 rounded-full peer 
-                    peer-checked:bg-gradient-to-r peer-checked:from-green-500 peer-checked:to-green-600 
-                    after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
-                    after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all 
-                    after:shadow-md peer-checked:after:translate-x-[20px] 
-                    hover:bg-gray-400 peer-checked:hover:bg-gradient-to-r peer-checked:hover:from-green-600 peer-checked:hover:to-green-700 
-                    transition-all duration-300"
-                ></div>
-                <span
-                  className={`ml-3 text-sm font-semibold ${
-                    autoJobEnabled ? "text-green-600" : "text-gray-500"
-                  } transition-colors duration-300 whitespace-nowrap`}
-                >
-                  {autoJobEnabled ? "On" : "Off"}
-                </span>
-              </label>
-            </div>
-          </div>
-        </form>
+  const portalSelectStyles = {
+    control: (base) => ({
+      ...base,
+      minHeight: 32,
+      fontSize: "0.8125rem",
+      borderColor: "#cbd5e1",
+      paddingLeft: 4,
+      paddingRight: 4,
+      borderRadius: "0.375rem",
+      boxShadow: "none",
+      "&:hover": {
+        borderColor: "#424687",
+      },
+    }),
+    placeholder: (base) => ({ ...base, fontSize: "0.8125rem" }),
+    singleValue: (base) => ({ ...base, fontSize: "0.8125rem" }),
+    input: (base) => ({ ...base, fontSize: "0.8125rem" }),
+    menu: (base) => ({ ...base, zIndex: 10002 }),
+    menuPortal: (base) => ({ ...base, zIndex: 10002 }),
+    menuList: (base) => ({ ...base, maxHeight: 280 }),
+  };
 
-        {loading && <p className="text-blue-600 text-center">Loading...</p>}
-        {error && <p className="text-red-600 text-center">{error}</p>}
-        <div className="mb-8">
-          {formData.partyname && groupedAccounts[formData.partyname] ? (
-            <div className="mb-8 overflow-x-auto">
-              <div className="flex justify-end items-start mb-4">
+  const selectPortalProps = {
+    menuPortalTarget:
+      typeof document !== "undefined" ? document.body : null,
+    menuPosition: "fixed",
+    menuPlacement: "auto",
+  };
+
+  return (
+    <div className="z-[99] min-h-[calc(100vh-5rem)] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 px-2 py-2 sm:px-4 sm:py-3">
+      <div className="mx-auto flex w-full max-w-none flex-col gap-2 px-0 sm:px-1">
+        {/* Entry form — compact */}
+        <div className="w-full rounded-xl border border-slate-200/90 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-4 sm:py-2.5">
+          <form onSubmit={handleSubmit} className="flex w-full flex-col gap-2">
+            {/* Row 1 — party picks */}
+            <div className="grid w-full grid-cols-1 gap-2 md:grid-cols-2 md:gap-3">
+              <div className="min-w-0 w-full">
+                <label className="mb-0.5 block text-[11px] font-medium leading-tight text-slate-600 sm:text-xs">
+                  Party Name
+                </label>
+                <Select
+                  options={partyOptions.filter((option) => option.value !== "")}
+                  value={
+                    partyOptions.find(
+                      (option) => option.value === formData.partyname,
+                    ) || null
+                  }
+                  onChange={handlePartyInputChange}
+                  placeholder="Select or search party…"
+                  className="w-full"
+                  classNamePrefix="select"
+                  isClearable
+                  isSearchable
+                  {...selectPortalProps}
+                  styles={portalSelectStyles}
+                />
+              </div>
+              <div className="min-w-0 w-full">
+                <label className="mb-0.5 block text-[11px] font-medium leading-tight text-slate-600 sm:text-xs">
+                  To Party
+                </label>
+                <Select
+                  options={partyOptions.filter(
+                    (option) =>
+                      option.value !== "" &&
+                      option.value !== formData.partyname,
+                  )}
+                  value={
+                    partyOptions.find(
+                      (option) => option.value === formData.toParty,
+                    ) || null
+                  }
+                  onChange={handleToPartyInputChange}
+                  placeholder="Transfer to party (optional)…"
+                  className="w-full"
+                  classNamePrefix="select"
+                  isClearable
+                  isSearchable
+                  {...selectPortalProps}
+                  styles={portalSelectStyles}
+                />
+              </div>
+            </div>
+
+            {/* Row 2 — type, amount, date, remark (stack → 2 cols → 4 cols) */}
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2 lg:grid-cols-4 lg:gap-3">
+              <div className="min-w-0 w-full">
+                <label className="mb-0.5 block text-[11px] font-medium leading-tight text-slate-600 sm:text-xs">
+                  Transaction type*
+                </label>
+                {formData.toParty ? (
+                  <input
+                    type="text"
+                    value="Transfer"
+                    readOnly
+                    className="h-8 w-full cursor-not-allowed rounded-md border border-slate-300 bg-slate-100 px-2.5 text-xs text-slate-700 sm:text-sm"
+                  />
+                ) : (
+                  <select
+                    name="transactionType"
+                    value={formData.transactionType}
+                    onChange={handleInputChange}
+                    className="h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-[#424687]/40 sm:text-sm"
+                  >
+                    <option value="credit">Deposit (Dena)</option>
+                    <option value="debit">Withdraw (Lena)</option>
+                  </select>
+                )}
+              </div>
+              <div className="min-w-0 w-full">
+                <label className="mb-0.5 block text-[11px] font-medium leading-tight text-slate-600 sm:text-xs">
+                  Amount*
+                </label>
+                <input
+                  type="text"
+                  name="amount"
+                  value={formData.amount}
+                  onChange={handleInputChange}
+                  placeholder="Enter amount"
+                  className="h-8 w-full rounded-md border border-slate-300 px-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-[#424687]/40 sm:text-sm"
+                  required
+                />
+              </div>
+              <div className="min-w-0 w-full">
+                <label className="mb-0.5 block text-[11px] font-medium leading-tight text-slate-600 sm:text-xs">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleInputChange}
+                  tabIndex={-1}
+                  className="h-8 w-full min-w-0 rounded-md border border-slate-300 px-2 text-xs transition focus:outline-none focus:ring-2 focus:ring-[#424687]/40 sm:text-sm"
+                  required
+                />
+              </div>
+              <div className="min-w-0 w-full">
+                <label className="mb-0.5 block text-[11px] font-medium leading-tight text-slate-600 sm:text-xs">
+                  Remark
+                </label>
+                <input
+                  type="text"
+                  name="remark"
+                  value={formData.remark}
+                  onChange={handleInputChange}
+                  placeholder="Remark (optional)"
+                  className="h-8 w-full rounded-md border border-slate-300 px-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-[#424687]/40 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Row 3 — actions */}
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2 sm:gap-2">
+              <button
+                type="submit"
+                className="inline-flex h-8 items-center gap-1 rounded-md bg-[#424687] px-2.5 text-xs font-medium text-white shadow-sm transition hover:bg-[#353a6e] sm:px-3 sm:text-sm"
+                title={editId ? "Update Account" : "Submit Account"}
+              >
+                {editId ? "Update" : "Submit"}
+              </button>
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="inline-flex h-8 items-center justify-center rounded-md bg-emerald-600 px-2 text-white shadow-sm transition hover:bg-emerald-700"
+                title="Download Statement"
+              >
+                <FaFileDownload size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={handleSendEmail}
+                className="inline-flex h-8 items-center justify-center rounded-md bg-violet-600 px-2 text-white shadow-sm transition hover:bg-violet-700"
+                title="Send JSON via Email"
+              >
+                <FaEnvelope size={14} />
+              </button>
+              <label className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md bg-amber-600 px-2 text-white shadow-sm transition hover:bg-amber-700">
+                <FaUpload size={14} />
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImport}
+                  className="hidden"
+                />
+              </label>
+              <div className="ml-1 flex min-w-0 items-center gap-2 border-l border-slate-200 pl-2">
+                <span className="whitespace-nowrap text-xs font-medium text-slate-600">
+                  Auto-Job
+                </span>
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    checked={autoJobEnabled}
+                    onChange={handleToggleAutoJob}
+                    className="peer sr-only"
+                    aria-label="Toggle Auto-Job"
+                  />
+                  <div
+                    className="relative h-6 w-11 rounded-full bg-slate-300 transition-all after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-all after:content-[''] peer-checked:bg-gradient-to-r peer-checked:from-emerald-500 peer-checked:to-emerald-600 peer-checked:after:translate-x-[18px] peer-hover:bg-slate-400"
+                  ></div>
+                  <span
+                    className={`ml-1.5 text-xs font-semibold ${
+                      autoJobEnabled ? "text-emerald-600" : "text-slate-500"
+                    }`}
+                  >
+                    {autoJobEnabled ? "On" : "Off"}
+                  </span>
+                </label>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {/* Main ledger card — table gets most vertical space */}
+        <div className="flex min-h-[min(78vh,calc(100vh-9rem))] flex-1 flex-col rounded-xl border border-slate-200/90 bg-white shadow-md lg:overflow-x-auto">
+          {loading && (
+            <p className="border-b border-slate-100 bg-slate-50 py-2 text-center text-sm text-[#424687]">
+              Loading…
+            </p>
+          )}
+          {error && (
+            <p className="border-b border-red-100 bg-red-50 py-2 text-center text-sm text-red-600">
+              {error}
+            </p>
+          )}
+          <div className="flex min-h-0 flex-1 flex-col">
+            {formData.partyname && groupedAccounts[formData.partyname] ? (
+              <>
                 <div
-                  className={`bg-white flex gap-4 border-2 border-gray-300 p-2 rounded-lg shadow-xl xl:w-1/4 bg-gradient-to-br ${
+                  className={`flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/90 px-3 py-2.5 sm:px-4 ${
                     balance > 0
-                      ? "from-red-50 to-red-100"
+                      ? "bg-gradient-to-r from-red-50/80 to-white"
                       : balance < 0
-                        ? "from-green-50 to-green-100"
-                        : "from-gray-50 to-gray-100"
+                        ? "bg-gradient-to-r from-emerald-50/80 to-white"
+                        : ""
                   }`}
                 >
-                  <div className="border-b border-gray-400  pb-2 mb-1">
+                  <h2 className="text-sm font-semibold text-slate-800">
+                    {groupedAccounts[formData.partyname].partyname}
+                    <span className="ml-2 font-normal text-slate-500">
+                      · Ledger
+                    </span>
+                  </h2>
+                  <div
+                    className={`flex items-baseline gap-3 rounded-lg border px-3 py-1.5 shadow-sm ${
+                      balance > 0
+                        ? "border-red-200/80 bg-white/90"
+                        : balance < 0
+                          ? "border-emerald-200/80 bg-white/90"
+                          : "border-slate-200 bg-white/90"
+                    }`}
+                  >
+                    <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Closing
+                    </span>
                     <span
-                      className={` text-xl font-bold font-sans ${balanceColor}`}
+                      className={`text-base font-bold tabular-nums sm:text-lg ${balanceColor}`}
                     >
-                      Closing Balance
+                      ₹ {balValue} {balSign}
                     </span>
                   </div>
-                  <div
-                    className={` text-xl font-extrabold font-sans ${balanceColor}`}
-                  >
-                    ₹ {balValue} {balSign}
-                  </div>
                 </div>
-              </div>
-              {sortedAccounts.length === 0 ? (
-                <p className="text-gray-600">
-                  No accounts available for{" "}
-                  {groupedAccounts[formData.partyname].partyname}.
-                </p>
-              ) : (
-                <>
-                  <table className="w-full border-collapse bg-white shadow-md rounded-lg">
-                    <thead>
-                      <tr className="bg-blue-900 text-white">
-                        <th className="p-3 text-left">Date</th>
-                        <th className="p-3 text-left">Debit (-)</th>
-                        <th className="p-3 text-left">Credit (+)</th>
-                        <th className="p-3 text-left">Balance</th>
-                        <th className="p-3 text-left">Remark</th>
-                        <th className="p-3 text-left">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+
+                {sortedAccounts.length === 0 ? (
+                  <p className="flex flex-1 items-center justify-center px-4 py-12 text-center text-sm text-slate-600">
+                    No accounts available for{" "}
+                    {groupedAccounts[formData.partyname].partyname}.
+                  </p>
+                ) : (
+                  <div className="min-h-[min(68vh,calc(100vh-11rem))] flex-1 overflow-auto">
+                    <table className="w-full min-w-[640px] border-collapse text-sm">
+                      <thead className="sticky top-0 z-10 shadow-sm">
+                        <tr className="bg-[#424687] text-white">
+                          <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                            Date
+                          </th>
+                          <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                            Debit (-)
+                          </th>
+                          <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                            Credit (+)
+                          </th>
+                          <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                            Balance
+                          </th>
+                          <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                            Remark
+                          </th>
+                          <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
                       {currentAccounts.map((account, index) => {
                         const currentBalance = sortedAccounts
                           .slice(
@@ -972,84 +1012,97 @@ const Account = () => {
                         return (
                           <tr
                             key={account._id}
-                            className={`${index % 2 === 0 ? "bg-gray-50" : "bg-white"} hover:bg-gray-100 transition-colors`}
+                            className={`border-b border-slate-100/80 ${index % 2 === 0 ? "bg-slate-50/60" : "bg-white"} transition-colors hover:bg-indigo-50/40`}
                           >
-                            <td className="p-3">{formatDate(account.date)}</td>
-                            <td className="p-3 text-red-600">
+                            <td className="whitespace-nowrap px-3 py-3 align-middle text-slate-800">
+                              {formatDate(account.date)}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 align-middle text-right font-medium tabular-nums text-red-600 sm:text-left">
                               {account.debit > 0
                                 ? formatNumber(account.debit)
                                 : ""}
                             </td>
-                            <td className="p-3 text-green-600">
+                            <td className="whitespace-nowrap px-3 py-3 align-middle text-right font-medium tabular-nums text-emerald-600 sm:text-left">
                               {account.credit > 0
                                 ? formatNumber(account.credit)
                                 : ""}
                             </td>
-                            <td className={`p-3 ${currentBalanceColor}`}>
+                            <td
+                              className={`whitespace-nowrap px-3 py-3 align-middle font-semibold tabular-nums ${currentBalanceColor}`}
+                            >
                               ₹ {curBalValue} {curBalSign}
                             </td>
-                            <td className="p-3">{displayRemark}</td>
-                            <td className="p-3 flex gap-2 items-center">
-                              <button
-                                onClick={() => handleEdit(account)}
-                                className="text-blue-600 hover:text-blue-800"
-                                title="Edit Account"
-                              >
-                                <FaEdit size={18} />
-                              </button>
+                            <td className="max-w-[14rem] px-3 py-3 align-middle text-slate-700 sm:max-w-md">
+                              {displayRemark}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 align-middle">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  onClick={() => handleEdit(account)}
+                                  className="rounded-md p-1 text-[#424687] transition hover:bg-[#424687]/10 hover:text-[#353a6e]"
+                                  title="Edit Account"
+                                >
+                                  <FaEdit size={17} />
+                                </button>
 
-                              {!account.verified && (
-                                <>
-                                  <button
-                                    onClick={() => handleDelete(account._id)}
-                                    className="text-red-600 hover:text-red-800"
-                                    title="Delete Account"
-                                  >
-                                    <FaTrash size={18} />
-                                  </button>
-                                  <button
-                                    onClick={() => handleVerify(account._id)}
-                                    className="text-green-600 hover:text-green-800"
-                                    title="Verify Account"
-                                  >
-                                    <FaCheck size={18} />
-                                  </button>
-                                </>
-                              )}
+                                {!account.verified && (
+                                  <>
+                                    <button
+                                      onClick={() =>
+                                        handleDelete(account._id)
+                                      }
+                                      className="rounded-md p-1 text-red-600 transition hover:bg-red-50 hover:text-red-800"
+                                      title="Delete Account"
+                                    >
+                                      <FaTrash size={17} />
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleVerify(account._id)
+                                      }
+                                      className="rounded-md p-1 text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-800"
+                                      title="Verify Account"
+                                    >
+                                      <FaCheck size={17} />
+                                    </button>
+                                  </>
+                                )}
 
-                              {account.verified && (
-                                <span className="text-green-600 font-semibold">
-                                  Verified
-                                </span>
-                              )}
+                                {account.verified && (
+                                  <span className="text-xs font-semibold text-emerald-600">
+                                    Verified
+                                  </span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
-                </>
-              )}
-            </div>
-          ) : (
-            <p className="text-gray-600">
-              Please select a party to view accounts.
-            </p>
-          )}
-        </div>
-        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mt-4 mb-4">
-          {/* Left Side */}
-          <div className="text-gray-600 text-sm sm:text-base">
-            Showing {indexOfFirst + 1} to{" "}
-            {Math.min(indexOfLast, sortedAccounts.length)} of{" "}
-            {sortedAccounts.length} entries
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center px-4 py-20 text-center">
+                <p className="text-sm text-slate-500">
+                  Please select a party to view accounts.
+                </p>
+              </div>
+            )}
           </div>
+          <div className="flex flex-shrink-0 flex-col gap-3 border-t border-slate-100 bg-slate-50/80 px-3 py-3 sm:px-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="text-xs text-slate-600 sm:text-sm">
+              Showing {indexOfFirst + 1} to{" "}
+              {Math.min(indexOfLast, sortedAccounts.length)} of{" "}
+              {sortedAccounts.length} entries
+            </div>
 
-          {/* Right Side */}
-          <div className="flex flex-col md:flex-row md:items-center gap-4 w-full lg:w-auto">
-            {/* Entries Select */}
-            <div className="flex items-center z-[999] gap-2">
-              <label className="text-gray-700 whitespace-nowrap">Show</label>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4 lg:w-auto">
+              <div className="flex items-center gap-2">
+              <label className="whitespace-nowrap text-xs text-slate-600">
+                Show
+              </label>
 
               <Select
                 options={entriesPerPageOptions}
@@ -1057,71 +1110,58 @@ const Account = () => {
                   (option) => option.value === entriesPerPage,
                 )}
                 onChange={handleEntriesPerPageChange}
-                className="w-24"
+                className="w-28 min-w-[7rem]"
                 classNamePrefix="select"
-                styles={{
-                  control: (base) => ({
-                    ...base,
-                    borderColor: "#d1d5db",
-                    padding: "2px",
-                    borderRadius: "0.375rem",
-                    boxShadow: "none",
-                    "&:hover": {
-                      borderColor: "#3b82f6",
-                    },
-                    "&:focus": {
-                      borderColor: "#3b82f6",
-                      boxShadow: "0 0 0 2px rgba(59, 130, 246, 0.5)",
-                    },
-                  }),
-                }}
+                {...selectPortalProps}
+                styles={portalSelectStyles}
               />
 
-              <label className="text-gray-700 whitespace-nowrap">entries</label>
+              <label className="whitespace-nowrap text-xs text-slate-600">
+                entries
+              </label>
             </div>
 
-            {/* Go To Page */}
             <div className="flex items-center gap-2">
               <input
                 type="number"
                 value={pageInput}
                 onChange={handlePageInputChange}
                 placeholder="Page"
-                className="border border-gray-300 p-2 rounded w-20 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#424687]/40"
               />
 
               <button
                 onClick={handleGoToPage}
-                className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition duration-200"
+                className="rounded-md bg-[#424687] px-2.5 py-1.5 text-white shadow-sm transition hover:bg-[#353a6e]"
                 title="Go to Page"
               >
-                <FaArrowRight size={18} />
+                <FaArrowRight size={16} />
               </button>
             </div>
 
-            {/* Pagination */}
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400 hover:bg-blue-700 transition duration-200"
+                className="rounded-md bg-[#424687] px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
               >
                 Previous
               </button>
 
-              <span className="text-sm sm:text-base whitespace-nowrap">
-                Page {currentPage} of {totalPages}
+              <span className="whitespace-nowrap text-xs text-slate-700 sm:text-sm">
+                Page {currentPage} of {totalPages || 1}
               </span>
 
               <button
                 onClick={() =>
                   setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                 }
-                disabled={currentPage === totalPages}
-                className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400 hover:bg-blue-700 transition duration-200"
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="rounded-md bg-[#424687] px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
               >
                 Next
               </button>
+            </div>
             </div>
           </div>
         </div>

@@ -35,10 +35,8 @@ const Login = () => {
 
   // Load user on component mount to restore state from token
   useEffect(() => {
-    console.log("Login: Dispatching loadUser");
     dispatch(loadUser()).then((result) => {
       if (result.type === "user/loadUser/fulfilled") {
-        console.log("User loaded successfully, navigating to /parties");
         navigate("/parties");
       }
     });
@@ -47,33 +45,24 @@ const Login = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!email || !password) {
-      console.log("Validation failed: Email or password missing");
       alert("Please enter both username/email and password");
       return;
     }
-    console.log("Submitting login with:", {
-      email: email.trim(),
-      password: "****",
-    });
+
     dispatch(login({ email: email.trim(), password }))
       .then((result) => {
-        console.log("Login result:", result);
         if (result.type === "user/login/fulfilled") {
-          console.log("Login successful, navigating to /parties");
           navigate("/parties");
         } else {
-          console.log("Login failed:", result.payload);
           alert(result.payload || "Login failed. Please try again.");
         }
       })
       .catch((err) => {
-        console.error("Login error:", err);
         alert("An unexpected error occurred. Please try again.");
       });
   };
 
   const handleLogout = () => {
-    console.log("Logging out");
     dispatch(logout());
     navigate("/");
   };

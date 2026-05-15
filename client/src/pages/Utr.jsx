@@ -441,274 +441,315 @@ const Utr = () => {
 
   const balance = totalDeposit - totalWithdraw;
 
+  const fieldClass =
+    "h-8 w-full min-w-0 rounded-md border border-slate-300 px-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-[#424687]/40 sm:text-sm";
+
   return (
-    <div className="container mx-auto p-6 bg-white min-h-screen">
-      <div className="bg-white shadow-xl rounded-lg p-6">
-        <div className="mb-8 grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-          <form
-            onSubmit={handleSubmit}
-            className="xl:col-span-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end"
-          >
-            <div>
-              <label className="block mb-1 font-medium text-gray-700">
-                UTR No*
-              </label>
-              <input
-                type="text"
-                name="utrNo"
-                value={formData.utrNo}
-                onChange={handleInputChange}
-                placeholder="Enter UTR No"
-                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block mb-1 font-medium text-gray-700">
-                Amount*
-              </label>
-              <input
-                type="text"
-                name="amount"
-                value={formData.amount}
-                onChange={handleInputChange}
-                placeholder="Enter amount"
-                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block mb-1 font-medium text-gray-700">
-                Transaction Type*
-              </label>
-              <select
-                name="transactionType"
-                value={formData.transactionType}
-                onChange={handleInputChange}
-                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              >
-                <option value="deposit">Deposit</option>
-                <option value="withdraw">Withdraw</option>
-              </select>
-            </div>
-
-            {subtypes.length > 0 && (
-              <div>
-                <label className="block mb-1 font-medium text-gray-700">
-                  Sub Type
+    <div className="z-[99] min-h-[calc(100vh-5rem)] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 px-2 py-2 sm:px-4 sm:py-3">
+      <div className="mx-auto flex w-full max-w-none flex-col gap-2">
+        {/* Entry form — compact height */}
+        <div className="w-full rounded-xl border border-slate-200/90 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-4 sm:py-2.5">
+          <form onSubmit={handleSubmit} className="flex w-full flex-col gap-2">
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2 lg:grid-cols-3 lg:gap-3">
+              <div className="min-w-0 w-full">
+                <label className="mb-0.5 block text-[11px] font-medium leading-tight text-slate-600 sm:text-xs">
+                  UTR No*
                 </label>
-
-                <select
-                  name="subtype"
-                  value={formData.subtype}
+                <input
+                  type="text"
+                  name="utrNo"
+                  value={formData.utrNo}
                   onChange={handleInputChange}
-                  className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  placeholder="Enter UTR number"
+                  className={fieldClass}
+                  required
+                />
+              </div>
+              <div className="min-w-0 w-full">
+                <label className="mb-0.5 block text-[11px] font-medium leading-tight text-slate-600 sm:text-xs">
+                  Amount*
+                </label>
+                <input
+                  type="text"
+                  name="amount"
+                  value={formData.amount}
+                  onChange={handleInputChange}
+                  placeholder="Enter amount"
+                  className={fieldClass}
+                  required
+                />
+              </div>
+              <div className="min-w-0 w-full sm:col-span-2 lg:col-span-1">
+                <label className="mb-0.5 block text-[11px] font-medium leading-tight text-slate-600 sm:text-xs">
+                  Transaction type*
+                </label>
+                <select
+                  name="transactionType"
+                  value={formData.transactionType}
+                  onChange={handleInputChange}
+                  className={fieldClass}
                 >
-                  <option value="">Select Sub Type</option>
-
-                  {subtypes.map((item) => (
-                    <option key={item._id} value={item._id}>
-                      {item.name}
-                    </option>
-                  ))}
+                  <option value="deposit">Deposit</option>
+                  <option value="withdraw">Withdraw</option>
                 </select>
               </div>
-            )}
-
-            <div>
-              <label className="block mb-1 font-medium text-gray-700">
-                Date*
-              </label>
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleInputChange}
-                tabIndex={-1}
-                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                required
-              />
             </div>
 
-            <div>
-              <label className="block mb-1 font-medium text-gray-700">
-                Remark
-              </label>
-              <input
-                type="text"
-                name="remark"
-                value={formData.remark}
-                onChange={handleInputChange}
-                placeholder="Enter remark"
-                className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
+            <div
+              className={`grid w-full grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2 lg:gap-3 ${subtypes.length > 0 ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}
+            >
+              {subtypes.length > 0 && (
+                <div className="min-w-0 w-full">
+                  <label className="mb-0.5 block text-[11px] font-medium leading-tight text-slate-600 sm:text-xs">
+                    Sub type
+                  </label>
+                  <select
+                    name="subtype"
+                    value={formData.subtype}
+                    onChange={handleInputChange}
+                    className={fieldClass}
+                  >
+                    <option value="">Select sub type</option>
+                    {subtypes.map((item) => (
+                      <option key={item._id} value={item._id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="min-w-0 w-full">
+                <label className="mb-0.5 block text-[11px] font-medium leading-tight text-slate-600 sm:text-xs">
+                  Date*
+                </label>
+                <input
+                  type="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleInputChange}
+                  tabIndex={-1}
+                  className={fieldClass}
+                  required
+                />
+              </div>
+              <div className="min-w-0 w-full sm:col-span-2 lg:col-span-1">
+                <label className="mb-0.5 block text-[11px] font-medium leading-tight text-slate-600 sm:text-xs">
+                  Remark
+                </label>
+                <input
+                  type="text"
+                  name="remark"
+                  value={formData.remark}
+                  onChange={handleInputChange}
+                  placeholder="Remark (optional)"
+                  className={fieldClass}
+                />
+              </div>
             </div>
 
-            <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap items-center gap-3 pt-2 w-full">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2 sm:gap-2">
               <button
                 type="submit"
-                className="h-[42px] flex-1 sm:flex-none min-w-[100px] bg-blue-600 text-white text-sm font-semibold px-4 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm flex items-center justify-center"
+                className="inline-flex h-8 min-w-[6.5rem] flex-1 items-center justify-center rounded-md bg-[#424687] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-[#353a6e] sm:flex-none sm:text-sm"
               >
                 Submit
               </button>
-
               <button
                 type="button"
                 onClick={() => setSubtypeModalOpen(true)}
-                className="h-[42px] flex-1 sm:flex-none min-w-[140px] bg-purple-600 text-white text-sm font-semibold px-4 rounded-lg hover:bg-purple-700 transition-all duration-200 shadow-sm flex items-center justify-center gap-2"
+                className="inline-flex h-8 min-w-[7.5rem] flex-1 items-center justify-center gap-1.5 rounded-md bg-violet-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700 sm:flex-none sm:text-sm"
               >
-                <FaPlus size={13} />
-                {subtypes.length === 0 ? "Add Subtype" : "Subtype"}
+                <FaPlus size={12} />
+                {subtypes.length === 0 ? "Add subtype" : "Subtype"}
               </button>
-
               <button
                 type="button"
                 onClick={() => setExcelModalOpen(true)}
-                className="h-[42px] flex-1 sm:flex-none min-w-[100px] bg-green-600 text-white text-sm font-semibold px-4 rounded-lg hover:bg-green-700 transition-all duration-200 shadow-sm flex items-center justify-center gap-2"
+                className="inline-flex h-8 min-w-[6.5rem] flex-1 items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:flex-none sm:text-sm"
                 title="Download Excel"
               >
-                <FaFileExcel size={16} />
+                <FaFileExcel size={14} />
                 Excel
               </button>
             </div>
           </form>
+        </div>
 
-          {/* BOXES RIGHT SIDE */}
-          <div className="xl:col-span-4 grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-2 gap-3">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-2">
-              <p className="text-sm text-green-700 font-semibold">
-                Total Deposit
-              </p>
-              <p className="text-[15px] font-bold text-green-700">
-                ₹ {formatNumber(totalDeposit)}
-              </p>
-            </div>
-
-            <div className="bg-red-50 border border-red-200 rounded-lg p-2">
-              <p className="text-sm text-red-700 font-semibold">
-                Total Withdraw
-              </p>
-              <p className="text-[15px] font-bold text-red-700">
-                ₹ {formatNumber(totalWithdraw)}
-              </p>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
-              <p className="text-sm text-blue-700 font-semibold">Balance</p>
-              <p
-                className={`text-[15px] font-bold ${
-                  balance >= 0 ? "text-green-700" : "text-red-700"
-                }`}
-              >
-                ₹ {formatNumber(Math.abs(balance))}
-              </p>
-            </div>
+        {/* Summary — compact strip */}
+        <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-2">
+          <div className="rounded-lg border border-emerald-200/80 bg-gradient-to-br from-emerald-50 to-white px-3 py-2 shadow-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800/80 sm:text-xs">
+              Total deposit
+            </p>
+            <p className="mt-0.5 text-base font-bold tabular-nums text-emerald-700 sm:text-lg">
+              ₹ {formatNumber(totalDeposit)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-red-200/80 bg-gradient-to-br from-red-50 to-white px-3 py-2 shadow-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-red-800/80 sm:text-xs">
+              Total withdraw
+            </p>
+            <p className="mt-0.5 text-base font-bold tabular-nums text-red-700 sm:text-lg">
+              ₹ {formatNumber(totalWithdraw)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-slate-200/90 bg-gradient-to-br from-slate-50 to-white px-3 py-2 shadow-sm sm:col-span-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 sm:text-xs">
+              Balance
+            </p>
+            <p
+              className={`mt-0.5 text-base font-bold tabular-nums sm:text-lg ${balance >= 0 ? "text-emerald-700" : "text-red-700"}`}
+            >
+              ₹ {formatNumber(Math.abs(balance))}
+            </p>
           </div>
         </div>
 
-        {loading && <p className="text-blue-600 text-center">Loading...</p>}
-        {error && <p className="text-red-600 text-center">{error}</p>}
-
-        <div className="overflow-x-auto">
-          {utrs.length === 0 ? (
-            <p className="text-gray-600">No UTR entries available.</p>
-          ) : (
-            <table className="w-full border-collapse bg-white shadow-md rounded-lg">
-              <thead>
-                <tr className="bg-blue-900 text-white">
-                  <th className="p-3 text-left">Date</th>
-                  <th className="p-3 text-left">UTR No</th>
-                  <th className="p-3 text-left">Transaction Type</th>
-                  <th className="p-3 text-left">Sub Type</th>
-                  <th className="p-3 text-left">Amount</th>
-                  <th className="p-3 text-left">Time (IST)</th>
-                  <th className="p-3 text-left">Remark</th>
-                  <th className="p-3 text-left">Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {utrs.map((utr, index) => (
-                  <tr
-                    key={utr._id}
-                    className={`${index % 2 === 0 ? "bg-gray-50" : "bg-white"} hover:bg-gray-100 transition-colors`}
-                  >
-                    <td className="p-3">{formatDate(utr.date)}</td>
-                    <td className="p-3 break-all">{utr.utrNo}</td>
-                    <td
-                      className={`p-3 font-semibold ${utr.transactionType === "deposit" ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {utr.transactionType === "deposit"
-                        ? "Deposit"
-                        : "Withdraw"}
-                    </td>
-                    <td className="p-3">{getSubtypeText(utr)}</td>
-                    <td className="p-3">₹ {formatNumber(utr.amount)}</td>
-                    <td className="p-3">{utr.time || "-"}</td>
-                    <td className="p-3">{utr.remark || ""}</td>
-                    <td className="p-3 flex gap-2">
-                      <button
-                        onClick={() => handleDelete(utr._id)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Delete UTR"
-                      >
-                        <FaTrash size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Table card — taller viewport for data */}
+        <div className="flex min-h-[min(76vh,calc(100vh-10rem))] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md">
+          {loading && (
+            <p className="border-b border-slate-100 bg-slate-50 py-2 text-center text-sm text-[#424687]">
+              Loading…
+            </p>
           )}
+          {error && (
+            <p className="border-b border-red-100 bg-red-50 py-2 text-center text-sm text-red-600">
+              {error}
+            </p>
+          )}
+          <div className="min-h-[min(68vh,calc(100vh-12rem))] flex-1 overflow-auto">
+            {utrs.length === 0 ? (
+              <p className="px-4 py-12 text-center text-sm text-slate-600">
+                No UTR entries available.
+              </p>
+            ) : (
+              <table className="w-full min-w-[720px] border-collapse text-sm">
+                <thead className="sticky top-0 z-10 shadow-sm">
+                  <tr className="bg-[#424687] text-white">
+                    <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                      Date
+                    </th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                      UTR No
+                    </th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                      Type
+                    </th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                      Sub type
+                    </th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                      Amount
+                    </th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                      Time (IST)
+                    </th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                      Remark
+                    </th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {utrs.map((utr, index) => (
+                    <tr
+                      key={utr._id}
+                      className={`border-b border-slate-100/80 ${index % 2 === 0 ? "bg-slate-50/60" : "bg-white"} transition-colors hover:bg-indigo-50/40`}
+                    >
+                      <td className="whitespace-nowrap px-3 py-3 text-slate-800">
+                        {formatDate(utr.date)}
+                      </td>
+                      <td className="max-w-[12rem] break-all px-3 py-3 font-mono text-xs text-slate-800 sm:text-sm">
+                        {utr.utrNo}
+                      </td>
+                      <td
+                        className={`whitespace-nowrap px-3 py-3 font-semibold ${utr.transactionType === "deposit" ? "text-emerald-600" : "text-red-600"}`}
+                      >
+                        {utr.transactionType === "deposit"
+                          ? "Deposit"
+                          : "Withdraw"}
+                      </td>
+                      <td className="px-3 py-3 text-slate-700">
+                        {getSubtypeText(utr)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums text-slate-800">
+                        ₹ {formatNumber(utr.amount)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-slate-600">
+                        {utr.time || "—"}
+                      </td>
+                      <td className="max-w-xs truncate px-3 py-3 text-slate-700 sm:max-w-md sm:whitespace-normal sm:break-words">
+                        {utr.remark || ""}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(utr._id)}
+                          className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-800"
+                          title="Delete UTR"
+                        >
+                          <FaTrash size={17} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
 
       {subtypeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between border-b px-5 py-4">
-              <h2 className="text-lg font-bold text-gray-800">
-                Manage Subtype
+        <div className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/50 px-4 py-6">
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <h2 className="text-lg font-bold text-slate-800">
+                Manage subtype
               </h2>
               <button
                 type="button"
                 onClick={() => setSubtypeModalOpen(false)}
-                className="text-gray-500 hover:text-red-600"
+                className="rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-red-600"
               >
                 <FaTimes size={18} />
               </button>
             </div>
 
             <div className="p-5">
-              <form onSubmit={handleAddSubtype} className="flex gap-2 mb-5">
+              <form
+                onSubmit={handleAddSubtype}
+                className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2"
+              >
                 <input
                   type="text"
                   value={newSubtypeName}
                   onChange={(e) => setNewSubtypeName(e.target.value)}
-                  placeholder="Enter subtype"
-                  className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  placeholder="New subtype name"
+                  className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/40"
                 />
-
                 <button
                   type="submit"
                   disabled={subtypeLoading}
-                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:opacity-60"
+                  className="h-10 shrink-0 rounded-md bg-violet-600 px-4 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:opacity-60"
                 >
                   Add
                 </button>
               </form>
 
-              <div className="max-h-72 overflow-y-auto">
+              <div className="max-h-72 overflow-y-auto rounded-md border border-slate-100">
                 {subtypes.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No subtype added yet.</p>
+                  <p className="p-4 text-sm text-slate-500">
+                    No subtype added yet.
+                  </p>
                 ) : (
-                  <div className="space-y-2">
+                  <ul className="divide-y divide-slate-100">
                     {subtypes.map((item) => (
-                      <div
+                      <li
                         key={item._id}
-                        className="flex items-center justify-between border rounded-lg px-3 py-2 bg-gray-50"
+                        className="flex items-center justify-between gap-2 bg-slate-50/50 px-3 py-2.5"
                       >
                         <button
                           type="button"
@@ -718,26 +759,21 @@ const Utr = () => {
                               subtype: item._id,
                             }))
                           }
-                          className={`text-left font-medium ${
-                            formData.subtype === item._id
-                              ? "text-purple-700"
-                              : "text-gray-800"
-                          }`}
+                          className={`min-w-0 flex-1 truncate text-left text-sm font-medium ${formData.subtype === item._id ? "text-violet-700" : "text-slate-800"}`}
                         >
                           {item.name}
                         </button>
-
                         <button
                           type="button"
                           onClick={() => handleDeleteSubtype(item._id)}
-                          className="text-red-600 hover:text-red-800"
+                          className="shrink-0 rounded-md p-1.5 text-red-600 hover:bg-red-50 hover:text-red-800"
                           title="Delete subtype"
                         >
                           <FaTrash size={15} />
                         </button>
-                      </div>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 )}
               </div>
 
@@ -745,7 +781,7 @@ const Utr = () => {
                 <button
                   type="button"
                   onClick={() => setSubtypeModalOpen(false)}
-                  className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800"
+                  className="rounded-md bg-slate-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
                 >
                   Done
                 </button>
@@ -755,64 +791,61 @@ const Utr = () => {
         </div>
       )}
       {excelModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between border-b px-5 py-4">
-              <h2 className="text-lg font-bold text-gray-800">
-                Download Excel Report
+        <div className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/50 px-4 py-6">
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <h2 className="text-lg font-bold text-slate-800">
+                Download Excel report
               </h2>
               <button
                 type="button"
                 onClick={() => setExcelModalOpen(false)}
-                className="text-gray-500 hover:text-red-600"
+                className="rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-red-600"
               >
                 <FaTimes size={18} />
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="space-y-4 p-5">
               <div>
-                <label className="block mb-1 font-medium text-gray-700">
-                  Start Date
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Start date
                 </label>
                 <input
                   type="date"
                   name="startDate"
                   value={filterData.startDate}
                   onChange={handleFilterChange}
-                  className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
+                  className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                 />
               </div>
-
               <div>
-                <label className="block mb-1 font-medium text-gray-700">
-                  End Date
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  End date
                 </label>
                 <input
                   type="date"
                   name="endDate"
                   value={filterData.endDate}
                   onChange={handleFilterChange}
-                  className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
+                  className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                 />
               </div>
-
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
                 <button
                   type="button"
                   onClick={() => setFilterData({ startDate: "", endDate: "" })}
-                  className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+                  className="rounded-md bg-slate-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
                 >
                   Clear
                 </button>
-
                 <button
                   type="button"
                   onClick={() => {
                     handleDownloadExcel();
                     setExcelModalOpen(false);
                   }}
-                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
+                  className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
                 >
                   <FaFileExcel size={16} />
                   Download
