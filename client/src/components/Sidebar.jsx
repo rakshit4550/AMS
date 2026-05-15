@@ -77,7 +77,7 @@ const Sidebar = () => {
     <div className="flex h-full w-60 flex-col bg-gradient-to-b from-slate-50 via-white to-slate-100/95 shadow-[4px_0_24px_-8px_rgba(66,70,135,0.18)]">
       <div className="shrink-0 bg-gradient-to-br from-[#424687] to-[#353a6e] px-4 py-5 text-white">
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
-          AMS
+          myacbook
         </p>
         <h1 className="text-lg font-bold leading-tight tracking-tight">
           Accounting
@@ -129,12 +129,6 @@ const Sidebar = () => {
           ))}
         </ul>
       </nav>
-
-      <div className="shrink-0 border-t border-slate-200/80 bg-white/50 px-3 py-2.5 backdrop-blur-sm">
-        <p className="text-center text-[10px] font-medium text-slate-400">
-          v1 · AMS
-        </p>
-      </div>
     </div>
   );
 };
