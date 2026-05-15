@@ -37,7 +37,7 @@ const Login = () => {
   useEffect(() => {
     dispatch(loadUser()).then((result) => {
       if (result.type === "user/loadUser/fulfilled") {
-        navigate("/parties");
+        navigate("/dashboard");
       }
     });
   }, [dispatch, navigate]);
@@ -52,7 +52,7 @@ const Login = () => {
     dispatch(login({ email: email.trim(), password }))
       .then((result) => {
         if (result.type === "user/login/fulfilled") {
-          navigate("/parties");
+          navigate("/dashboard");
         } else {
           alert(result.payload || "Login failed. Please try again.");
         }

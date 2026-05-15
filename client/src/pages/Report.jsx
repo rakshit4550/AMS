@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { fetchAccounts, fetchParties } from "../redux/accountSlice";
 import Select from "react-select";
 import { jsPDF } from "jspdf";
-import { FaFileDownload } from "react-icons/fa";
+import { FaFileDownload, FaFilter, FaTimes } from "react-icons/fa";
+import { TbReportAnalytics } from "react-icons/tb";
 
 // Utility function to format numbers with commas
 const formatNumber = (number) => {
@@ -385,6 +386,15 @@ const Report = () => {
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
+  const n = sortedAccounts.length;
+  const rowRunningBalances = new Array(n);
+  let balanceSuffix = 0;
+  for (let i = n - 1; i >= 0; i--) {
+    const acc = sortedAccounts[i];
+    balanceSuffix += (acc.debit || 0) - (acc.credit || 0);
+    rowRunningBalances[i] = balanceSuffix;
+  }
+
   const totalDebit = (selectedPartyAccounts || []).reduce(
     (sum, account) => sum + (account.debit || 0),
     0,
@@ -424,14 +434,13 @@ const Report = () => {
   };
 
   const selectPortalProps = {
-    menuPortalTarget:
-      typeof document !== "undefined" ? document.body : null,
+    menuPortalTarget: typeof document !== "undefined" ? document.body : null,
     menuPosition: "fixed",
     menuPlacement: "auto",
   };
 
   const fieldClass =
-    "h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 transition focus:outline-none focus:ring-2 focus:ring-[#424687]/40";
+    "h-8 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 transition focus:outline-none focus:ring-2 focus:ring-[#424687]/40";
 
   // Get the party name for the selected party
   const selectedPartyName = selectedParty
@@ -440,14 +449,19 @@ const Report = () => {
     : "";
 
   return (
-    <div className="z-[99] min-h-[calc(100vh-5rem)] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 px-2 py-2 sm:px-4 sm:py-3">
+    <div className="z-[99] min-h-[calc(100vh-5rem)] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-2 sm:py-3">
       <div className="mx-auto flex w-full max-w-none flex-col gap-2">
         {/* Toolbar */}
-        <div className="w-full rounded-xl border border-slate-200/90 bg-white/95 px-2.5 py-2.5 shadow-sm backdrop-blur-sm sm:px-4 sm:py-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-            <div className="min-w-0 w-full sm:max-w-md lg:max-w-lg">
-              <label className="mb-0.5 block text-[11px] font-medium text-slate-600 sm:text-xs">
-                Select party
+        <div className="w-full overflow-hidden rounded-xl border border-slate-200/90 bg-white/95 shadow-sm ring-1 ring-slate-100/80 backdrop-blur-sm">
+          <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white px-3 py-2 sm:px-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Selection &amp; export
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4 sm:px-4 sm:py-3.5">
+            <div className="min-w-0 w-full sm:max-w-md lg:max-w-xl">
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
+                Party
               </label>
               <Select
                 options={partyOptions.filter((option) => option.value !== "")}
@@ -467,22 +481,26 @@ const Report = () => {
               />
             </div>
             {selectedParty && (
-              <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+              <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 sm:border-t-0 sm:pt-0">
                 <button
                   type="button"
                   onClick={toggleFilterPopup}
-                  className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-[#424687] shadow-sm transition hover:bg-slate-50 sm:text-sm"
+                  className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-[#424687] shadow-sm transition hover:border-[#424687]/30 hover:bg-[#424687]/5 sm:h-9 sm:text-sm"
                 >
+                  <FaFilter className="h-3.5 w-3.5 opacity-80" aria-hidden />
                   {isFilterOpen ? "Close filters" : "Filters"}
                 </button>
                 <button
                   type="button"
                   onClick={handleDownload}
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:text-sm"
+                  className="inline-flex h-8 items-center justify-center gap-2 rounded-md bg-[#424687] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-[#353a6e] sm:h-9 sm:text-sm"
                   title="Download Statement"
                 >
-                  <FaFileDownload size={15} />
-                  PDF
+                  <FaFileDownload
+                    className="h-3.5 w-3.5 opacity-90"
+                    aria-hidden
+                  />
+                  Export PDF
                 </button>
               </div>
             )}
@@ -500,15 +518,25 @@ const Report = () => {
             />
             <div
               ref={filterRef}
-              className="fixed right-0 top-0 z-[10050] flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl sm:rounded-l-xl"
+              className="fixed right-0 top-0 z-[10050] flex h-full w-full max-w-md flex-col border-l border-slate-200/90 bg-white shadow-2xl sm:rounded-l-2xl"
             >
-              <div className="border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
-                <h3 className="text-base font-bold text-slate-800 sm:text-lg">
-                  Advanced filters
-                </h3>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Narrow the statement by date, type, or verification.
-                </p>
+              <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-[#424687] to-[#353a6e] px-4 py-4 text-white sm:px-5 sm:rounded-tl-2xl">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold sm:text-lg">
+                    Advanced filters
+                  </h3>
+                  <p className="mt-1 text-xs text-white/80">
+                    Date range, transaction type, and verification.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFilterOpen(false)}
+                  className="shrink-0 rounded-lg p-2 text-white/90 transition hover:bg-white/15 hover:text-white"
+                  aria-label="Close filters"
+                >
+                  <FaTimes className="h-4 w-4" />
+                </button>
               </div>
               <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
                 <div>
@@ -566,11 +594,11 @@ const Report = () => {
                   </select>
                 </div>
               </div>
-              <div className="border-t border-slate-100 p-4 sm:p-5">
+              <div className="border-t border-slate-100 bg-slate-50/80 p-4 sm:p-5">
                 <button
                   type="button"
                   onClick={() => setIsFilterOpen(false)}
-                  className="w-full rounded-md bg-[#424687] py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#353a6e]"
+                  className="w-full rounded-lg bg-[#424687] py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#353a6e]"
                 >
                   Apply filters
                 </button>
@@ -580,16 +608,17 @@ const Report = () => {
         )}
 
         {/* Ledger card */}
-        <div className="flex min-h-[min(72vh,calc(100vh-10rem))] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md">
+        <div className="flex min-h-[min(72vh,calc(100vh-10rem))] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-100/60">
           {loading && (
-            <p className="border-b border-slate-100 bg-slate-50 py-2 text-center text-sm text-[#424687]">
-              Loading…
-            </p>
+            <div className="flex items-center justify-center gap-2 border-b border-slate-100 bg-slate-50 py-2.5 text-sm text-[#424687]">
+              <span className="h-3.5 w-3.5 animate-pulse rounded-full bg-[#424687]/40" />
+              <span>Loading…</span>
+            </div>
           )}
           {error && (
-            <p className="border-b border-red-100 bg-red-50 py-2 text-center text-sm text-red-600">
-              {error}
-            </p>
+            <div className="flex items-center justify-center gap-2 border-b border-red-100 bg-red-50 px-3 py-2.5 text-center text-sm text-red-700">
+              <span className="font-medium">{error}</span>
+            </div>
           )}
 
           {selectedParty && selectedPartyAccounts.length > 0 ? (
@@ -603,7 +632,7 @@ const Report = () => {
                       : "bg-slate-50/90"
                 }`}
               >
-                <h3 className="text-sm font-semibold text-slate-800 sm:text-base">
+                <h3 className="text-sm font-semibold tracking-tight text-slate-900 sm:text-base">
                   {selectedPartyName}
                   <span className="ml-2 font-normal text-slate-500">
                     · Statement
@@ -625,7 +654,7 @@ const Report = () => {
                 </div>
               </div>
               <div className="min-h-0 flex-1 overflow-auto">
-                <table className="w-full min-w-[560px] border-collapse text-sm">
+                <table className="w-full min-w-[720px] border-collapse text-sm">
                   <thead className="sticky top-0 z-10 shadow-sm">
                     <tr className="bg-[#424687] text-white">
                       <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
@@ -637,85 +666,152 @@ const Report = () => {
                       <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
                         Credit (+)
                       </th>
+                      <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                        Balance
+                      </th>
                       <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
                         Remark
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedAccounts.map((account) => (
-                      <tr
-                        key={account._id}
-                        className={`border-b border-slate-100/80 transition-colors hover:bg-indigo-50/40 ${
-                          account.verified ? "bg-green-50" : "bg-red-50"
-                        }`}
-                      >
-                        <td className="whitespace-nowrap px-3 py-2.5 text-slate-800">
-                          {new Date(account.date).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2.5 font-medium tabular-nums text-red-600">
-                          {account.debit > 0
-                            ? formatNumber(account.debit)
-                            : ""}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2.5 font-medium tabular-nums text-green-600">
-                          {account.credit > 0
-                            ? formatNumber(account.credit)
-                            : ""}
-                        </td>
-                        <td className="max-w-md px-3 py-2.5 text-slate-700 sm:break-words">
-                          {account.remark || ""}
-                        </td>
-                      </tr>
-                    ))}
+                    {sortedAccounts.map((account, index) => {
+                      const currentBalance = rowRunningBalances[index];
+                      const curBalSign =
+                        currentBalance > 0
+                          ? "Dr"
+                          : currentBalance < 0
+                            ? "Cr"
+                            : "";
+                      const curBalValue = formatNumber(
+                        Math.abs(currentBalance),
+                      );
+                      const currentBalanceColor =
+                        currentBalance > 0
+                          ? "text-red-600"
+                          : currentBalance < 0
+                            ? "text-emerald-600"
+                            : "text-slate-800";
+                      return (
+                        <tr
+                          key={account._id}
+                          className={`border-b border-slate-100/80 ${
+                            index % 2 === 0 ? "bg-slate-50/60" : "bg-white"
+                          } transition-colors hover:bg-indigo-50/40`}
+                        >
+                          <td
+                            className={`whitespace-nowrap px-3 py-3 text-slate-800 ${
+                              account.verified
+                                ? "border-l-[3px]  pl-[10px]"
+                                : "border-l-[3px]  pl-[10px]"
+                            }`}
+                          >
+                            {new Date(account.date).toLocaleDateString(
+                              "en-GB",
+                              {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              },
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums text-red-600">
+                            {account.debit > 0
+                              ? formatNumber(account.debit)
+                              : ""}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums text-emerald-600">
+                            {account.credit > 0
+                              ? formatNumber(account.credit)
+                              : ""}
+                          </td>
+                          <td
+                            className={`whitespace-nowrap px-3 py-3 font-semibold tabular-nums ${currentBalanceColor}`}
+                          >
+                            ₹ {curBalValue} {curBalSign}
+                          </td>
+                          <td className="max-w-xs truncate px-3 py-3 text-slate-700 sm:max-w-md sm:whitespace-normal sm:break-words">
+                            {account.remark || ""}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </>
           ) : selectedParty ? (
-            <p className="flex flex-1 items-center justify-center px-4 py-16 text-center text-sm text-slate-600">
-              No accounts available for selected party.
-            </p>
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-16 text-center">
+              <span className="rounded-full bg-slate-100 p-4 text-slate-400">
+                <TbReportAnalytics className="h-8 w-8" aria-hidden />
+              </span>
+              <p className="max-w-sm text-sm font-medium text-slate-700">
+                No accounts available for this party.
+              </p>
+              <p className="max-w-sm text-xs text-slate-500">
+                Try another party or adjust filters if some rows are hidden.
+              </p>
+            </div>
           ) : (
-            <p className="flex flex-1 items-center justify-center px-4 py-16 text-center text-sm text-slate-600">
-              Please select a party to view their account statement.
-            </p>
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-16 text-center">
+              <span className="rounded-full bg-[#424687]/10 p-4 text-[#424687]">
+                <TbReportAnalytics className="h-8 w-8" aria-hidden />
+              </span>
+              <p className="max-w-sm text-sm font-medium text-slate-700">
+                Select a party to open the statement.
+              </p>
+              <p className="max-w-xs text-xs text-slate-500">
+                Use the party field above to load transactions for export.
+              </p>
+            </div>
           )}
         </div>
       </div>
 
       {showPdfPreview && (
-        <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60 p-4">
-          <div className="flex h-[min(95vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-              <h2 className="text-lg font-bold text-slate-800">PDF preview</h2>
+        <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]">
+          <div className="flex h-[min(95vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xl ring-1 ring-slate-200/50">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 bg-gradient-to-r from-[#424687] to-[#353a6e] px-4 py-3.5 text-white sm:px-5">
+              <div>
+                <h2 className="text-base font-bold sm:text-lg">PDF preview</h2>
+                <p className="text-xs text-white/75">
+                  Review before downloading
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => {
                   setShowPdfPreview(false);
                   URL.revokeObjectURL(pdfPreviewUrl);
                 }}
-                className="rounded-md bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600"
+                className="inline-flex items-center gap-2 rounded-lg bg-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/25"
               >
-                Cancel
+                <FaTimes className="h-3.5 w-3.5" aria-hidden />
+                Close
               </button>
             </div>
-            <div className="min-h-0 flex-1 bg-slate-200">
+            <div className="min-h-0 flex-1 bg-slate-200/90">
               <iframe
                 src={`${pdfPreviewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
                 title="PDF Preview"
                 className="h-full min-h-[50vh] w-full border-0"
               />
             </div>
-            <div className="flex justify-end border-t border-slate-100 px-4 py-3">
+            <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/90 px-4 py-3 sm:px-5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPdfPreview(false);
+                  URL.revokeObjectURL(pdfPreviewUrl);
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
               <button
                 type="button"
                 onClick={handleFinalDownload}
-                className="rounded-md bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                className="rounded-lg bg-[#424687] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#353a6e]"
               >
                 Download PDF
               </button>

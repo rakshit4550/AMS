@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { NavLink } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { AiFillBank, AiFillDashboard } from "react-icons/ai";
@@ -12,39 +12,39 @@ import { GiBank } from "react-icons/gi";
 import { FaPiggyBank } from "react-icons/fa6";
 import { BsReceiptCutoff } from "react-icons/bs";
 
-const getIconComponent = (iconName) => {
+const getIconComponent = (iconName, className = "h-4 w-4") => {
+  const cn = className;
   switch (iconName) {
     case "AiOutlineDashboard":
-      return <AiFillDashboard className="h-4 w-4" />;
+      return <AiFillDashboard className={cn} />;
     case "AiOutlineCreditCard":
-      return <GrTransaction className="h-4 w-4" />;
+      return <GrTransaction className={cn} />;
     case "AiOutlineWallet":
-      return <AiFillBank className="h-4 w-4" />;
+      return <AiFillBank className={cn} />;
     case "AiOutlineFileText":
-      return <FaUser className="h-4 w-4" />;
+      return <FaUser className={cn} />;
     case "AiOutlineTransaction":
-      return <FaMoneyBillTransfer className="h-4 w-4" />;
+      return <FaMoneyBillTransfer className={cn} />;
     case "AiOutlineFileAdd":
-      return <MdSettingsSuggest className="h-4 w-4" />;
+      return <MdSettingsSuggest className={cn} />;
     case "AiOutlineTicket":
-      return <MdPlaylistAddCircle className="h-4 w-4" />;
+      return <MdPlaylistAddCircle className={cn} />;
     case "TbReportAnalytics":
-      return <TbReportAnalytics className="h-4 w-4" />;
+      return <TbReportAnalytics className={cn} />;
     case "GiBank":
-      return <GiBank className="h-4 w-4" />;
+      return <GiBank className={cn} />;
     case "FaDollarSign":
-      return <FaDollarSign className="h-4 w-4" />;
+      return <FaDollarSign className={cn} />;
     case "FaPiggyBank":
-      return <FaPiggyBank className="h-4 w-4" />;
+      return <FaPiggyBank className={cn} />;
     case "BsReceiptCutoff":
-      return <BsReceiptCutoff className="h-4 w-4" />;
+      return <BsReceiptCutoff className={cn} />;
     default:
       return null;
   }
 };
 
 const Sidebar = () => {
-  const [openMenu, setOpenMenu] = useState(null);
   const { role } = useSelector((state) => state.user);
 
   const getRoleFromToken = () => {
@@ -60,145 +60,81 @@ const Sidebar = () => {
 
   const userRole = role || getRoleFromToken();
 
-  const handleToggle = (index) => {
-    setOpenMenu(openMenu === index ? null : index);
-  };
+  const navItems = [
+    { to: "/dashboard", label: "Dashboard", icon: "AiOutlineDashboard" },
+    { to: "/parties", label: "Parties", icon: "AiOutlineWallet" },
+    { to: "/account", label: "Account", icon: "AiOutlineCreditCard" },
+    ...(userRole === "trader"
+      ? [{ to: "/utr", label: "UTR", icon: "BsReceiptCutoff" }]
+      : []),
+    { to: "/report", label: "Report", icon: "TbReportAnalytics" },
+    ...(role === "admin"
+      ? [{ to: "/user", label: "Users", icon: "AiOutlineFileText" }]
+      : []),
+  ];
 
   return (
-    <div className="fixed top-0 left-0 h-screen w-64 bg-white text-black shadow-lg">
-      <div className="p-4 text-2xl font-bold border-b border-gray-200 text-center">
-        Accounting App
+    <div className="flex h-full w-60 flex-col bg-gradient-to-b from-slate-50 via-white to-slate-100/95 shadow-[4px_0_24px_-8px_rgba(66,70,135,0.18)]">
+      <div className="shrink-0 bg-gradient-to-br from-[#424687] to-[#353a6e] px-4 py-5 text-white">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
+          AMS
+        </p>
+        <h1 className="text-lg font-bold leading-tight tracking-tight">
+          Accounting
+        </h1>
+        <p className="mt-1 text-xs text-white/75">Ledger &amp; reports</p>
       </div>
-      <ul className="text-sm p-2">
-        {/* Parties Menu Item */}
-        <li>
-          <div
-            className={`flex items-center p-3 rounded-md transition-transform duration-300 hover:scale-[0.95] ${
-              window.location.pathname === "/parties"
-                ? "text-[#424687] border-r-4 border-[#424687]"
-                : ""
-            }`}
-          >
-            <NavLink
-              to="/parties"
-              className={({ isActive }) =>
-                `flex items-center w-full rounded p-2 hover:bg-gray-200 ${
-                  isActive ? "font-bold text-[#424687] bg-gray-200" : ""
-                }`
-              }
-            >
-              <span className="mr-3">
-                {getIconComponent("AiOutlineWallet")}
-              </span>
-              <span>Parties</span>
-            </NavLink>
-          </div>
-        </li>
 
-        {/* Account Menu Item */}
-        <li>
-          <div
-            className={`flex items-center p-3 rounded-md transition-transform duration-300 hover:scale-[0.95] ${
-              window.location.pathname === "/account"
-                ? "text-[#424687] border-r-4 border-[#424687]"
-                : ""
-            }`}
-          >
-            <NavLink
-              to="/account"
-              className={({ isActive }) =>
-                `flex items-center w-full rounded p-2 hover:bg-gray-200 ${
-                  isActive ? "font-bold text-[#424687] bg-gray-200" : ""
-                }`
-              }
-            >
-              <span className="mr-3">
-                {getIconComponent("AiOutlineCreditCard")}
-              </span>
-              <span>Account</span>
-            </NavLink>
-          </div>
-        </li>
-
-        {/* UTR Menu Item (Trader only) */}
-        {userRole === "trader" && (
-          <li>
-            <div
-              className={`flex items-center p-3 rounded-md transition-transform duration-300 hover:scale-[0.95] ${
-                window.location.pathname === "/utr"
-                  ? "text-[#424687] border-r-4 border-[#424687]"
-                  : ""
-              }`}
-            >
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3">
+        <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          Menu
+        </p>
+        <ul className="space-y-1">
+          {navItems.map(({ to, label, icon }) => (
+            <li key={to}>
               <NavLink
-                to="/utr"
+                to={to}
                 className={({ isActive }) =>
-                  `flex items-center w-full rounded p-2 hover:bg-gray-200 ${
-                    isActive ? "font-bold text-[#424687] bg-gray-200" : ""
-                  }`
+                  [
+                    "group flex items-center gap-3 rounded-xl px-2.5 py-2.5 text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-[#424687]/12 text-[#424687] shadow-sm ring-1 ring-[#424687]/20"
+                      : "text-slate-700 hover:bg-white/80 hover:text-slate-900 hover:shadow-sm",
+                  ].join(" ")
                 }
               >
-                <span className="mr-3">
-                  {getIconComponent("BsReceiptCutoff")}
-                </span>
-                <span>UTR</span>
+                {({ isActive }) => (
+                  <>
+                    <span
+                      className={[
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-200",
+                        isActive
+                          ? "bg-[#424687] text-white shadow-md shadow-[#424687]/25"
+                          : "bg-slate-200/70 text-slate-600 group-hover:bg-slate-200 group-hover:text-slate-800",
+                      ].join(" ")}
+                    >
+                      {getIconComponent(icon, "h-[1.05rem] w-[1.05rem]")}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{label}</span>
+                    {isActive && (
+                      <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#424687]"
+                        aria-hidden
+                      />
+                    )}
+                  </>
+                )}
               </NavLink>
-            </div>
-          </li>
-        )}
+            </li>
+          ))}
+        </ul>
+      </nav>
 
-        {/* Report Menu Item */}
-        <li>
-          <div
-            className={`flex items-center p-3 rounded-md transition-transform duration-300 hover:scale-[0.95] ${
-              window.location.pathname === "/report"
-                ? "text-[#424687] border-r-4 border-[#424687]"
-                : ""
-            }`}
-          >
-            <NavLink
-              to="/report"
-              className={({ isActive }) =>
-                `flex items-center w-full rounded p-2 hover:bg-gray-200 ${
-                  isActive ? "font-bold text-[#424687] bg-gray-200" : ""
-                }`
-              }
-            >
-              <span className="mr-3">
-                {getIconComponent("TbReportAnalytics")}
-              </span>
-              <span>Report</span>
-            </NavLink>
-          </div>
-        </li>
-
-        {/* Users Menu Item (Admin only) */}
-        {role === "admin" && (
-          <li>
-            <div
-              className={`flex items-center p-3 rounded-md transition-transform duration-300 hover:scale-[0.95] ${
-                window.location.pathname === "/user"
-                  ? "text-[#424687] border-r-4 border-[#424687]"
-                  : ""
-              }`}
-            >
-              <NavLink
-                to="/user"
-                className={({ isActive }) =>
-                  `flex items-center w-full rounded p-2 hover:bg-gray-200 ${
-                    isActive ? "font-bold text-[#424687] bg-gray-200" : ""
-                  }`
-                }
-              >
-                <span className="mr-3">
-                  {getIconComponent("AiOutlineFileText")}
-                </span>
-                <span>Users</span>
-              </NavLink>
-            </div>
-          </li>
-        )}
-      </ul>
+      <div className="shrink-0 border-t border-slate-200/80 bg-white/50 px-3 py-2.5 backdrop-blur-sm">
+        <p className="text-center text-[10px] font-medium text-slate-400">
+          v1 · AMS
+        </p>
+      </div>
     </div>
   );
 };

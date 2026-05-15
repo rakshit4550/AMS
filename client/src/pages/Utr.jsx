@@ -445,7 +445,7 @@ const Utr = () => {
     "h-8 w-full min-w-0 rounded-md border border-slate-300 px-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-[#424687]/40 sm:text-sm";
 
   return (
-    <div className="z-[99] min-h-[calc(100vh-5rem)] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 px-2 py-2 sm:px-4 sm:py-3">
+    <div className="z-[99] min-h-[calc(100vh-5rem)] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-2 sm:py-3">
       <div className="mx-auto flex w-full max-w-none flex-col gap-2">
         {/* Entry form — compact height */}
         <div className="w-full rounded-xl border border-slate-200/90 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-4 sm:py-2.5">
