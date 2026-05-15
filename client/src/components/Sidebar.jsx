@@ -147,14 +147,6 @@ const Sidebar = ({ onMenuClick }) => {
       </nav>
 
       <div className="shrink-0 border-t border-slate-200/90 bg-slate-50/80 p-3">
-        {currentUser?.username ? (
-          <p className="mb-2 truncate px-2 text-xs text-slate-600">
-            Signed in as{" "}
-            <span className="font-semibold text-slate-900">
-              {currentUser.username}
-            </span>
-          </p>
-        ) : null}
         <button
           type="button"
           onClick={handleSignOut}
