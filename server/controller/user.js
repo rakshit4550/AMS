@@ -517,10 +517,67 @@ const cleanRole = (role) => {
 };
 
 // Create default admin user
+// export const createDefaultAdmin = async () => {
+//   try {
+//     const adminExists = await User.findOne({ email: 'admin2@gmail.com' });
+//     console.log('Checking for admin with email: admin2@gmail.com, found:', adminExists ? 'Yes' : 'No');
+
+//     if (adminExists) {
+//       if (adminExists.role !== 'admin') {
+//         adminExists.role = 'admin';
+//         await adminExists.save();
+//         console.log('Default admin role updated to admin');
+//       }
+//       const isMatch = await bcrypt.compare('admin', adminExists.password);
+//       if (!isMatch) {
+//         console.log('Resetting admin password');
+//         adminExists.password = 'admin';
+//         await adminExists.save();
+//         console.log('Default admin password reset to admin, new hash:', adminExists.password);
+//       } else {
+//         console.log('Default admin password is correct, hash:', adminExists.password);
+//       }
+//       console.log('Default admin already exists:', {
+//         username: adminExists.username,
+//         email: adminExists.email,
+//         role: adminExists.role,
+//       });
+//     } else {
+//       const admin = new User({
+//         username: 'admin2',
+//         email: 'admin2@gmail.com',
+//         password: 'admin',
+//         role: 'admin',
+//       });
+//       await admin.save();
+//       console.log('Default admin created:', {
+//         username: admin.username,
+//         email: admin.email,
+//         role: admin.role,
+//         passwordHash: admin.password,
+//       });
+//     }
+//   } catch (error) {
+//     if (error.code === 11000) {
+//       console.error('Duplicate key error: Email or username already exists', error);
+//     } else {
+//       console.error('Error creating/updating default admin:', error.message);
+//     }
+//   }
+// };
+
+// Create default admin user
 export const createDefaultAdmin = async () => {
   try {
     const adminExists = await User.findOne({ email: 'admin2@gmail.com' });
-    console.log('Checking for admin with email: admin2@gmail.com, found:', adminExists ? 'Yes' : 'No');
+
+    console.log(
+      'Checking for admin with email: admin2@gmail.com, found:',
+      adminExists ? 'Yes' : 'No'
+    );
+
+    // Secure 10 digit password
+    const defaultPassword = '6381927450';
 
     if (adminExists) {
       if (adminExists.role !== 'admin') {
@@ -528,15 +585,26 @@ export const createDefaultAdmin = async () => {
         await adminExists.save();
         console.log('Default admin role updated to admin');
       }
-      const isMatch = await bcrypt.compare('admin', adminExists.password);
+
+      const isMatch = await bcrypt.compare(
+        defaultPassword,
+        adminExists.password
+      );
+
       if (!isMatch) {
         console.log('Resetting admin password');
-        adminExists.password = 'admin';
+
+        adminExists.password = defaultPassword;
+
         await adminExists.save();
-        console.log('Default admin password reset to admin, new hash:', adminExists.password);
+
+        console.log(
+          'Default admin password reset successfully'
+        );
       } else {
-        console.log('Default admin password is correct, hash:', adminExists.password);
+        console.log('Default admin password is correct');
       }
+
       console.log('Default admin already exists:', {
         username: adminExists.username,
         email: adminExists.email,
@@ -546,22 +614,29 @@ export const createDefaultAdmin = async () => {
       const admin = new User({
         username: 'admin2',
         email: 'admin2@gmail.com',
-        password: 'admin',
+        password: defaultPassword,
         role: 'admin',
       });
+
       await admin.save();
+
       console.log('Default admin created:', {
         username: admin.username,
         email: admin.email,
         role: admin.role,
-        passwordHash: admin.password,
       });
     }
   } catch (error) {
     if (error.code === 11000) {
-      console.error('Duplicate key error: Email or username already exists', error);
+      console.error(
+        'Duplicate key error: Email or username already exists',
+        error
+      );
     } else {
-      console.error('Error creating/updating default admin:', error.message);
+      console.error(
+        'Error creating/updating default admin:',
+        error.message
+      );
     }
   }
 };
@@ -770,11 +845,9 @@ export const verifyToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Decoded JWT:', decoded);
     req.user = { id: decoded.id, role: decoded.role };
     next();
   } catch (error) {
-    console.error('Token verification error:', error.message);
     return res.status(401).json({ message: 'Invalid or expired token', error: error.message });
   }
 };
