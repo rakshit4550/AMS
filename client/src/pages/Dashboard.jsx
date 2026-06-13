@@ -60,14 +60,12 @@ const formatISODateLabel = (iso) => {
   });
 };
 
-/** Lexicographic min for YYYY-MM-DD strings. */
-const minDateStr = (a, b) => (a <= b ? a : b);
 
 const Dashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [dateFrom, setDateFrom] = useState(() => getTodayIST());
-  const [dateTo, setDateTo] = useState(() => getTodayIST());
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const { accounts, parties, loading, error } = useSelector(
     (state) => state.account,
@@ -126,7 +124,16 @@ const Dashboard = () => {
       });
   }, [dispatch, navigate, isTrader]);
 
+  const todayStr = getTodayIST();
+
   const rangeSummary = useMemo(() => {
+    if (!dateFrom && !dateTo) return "No date selected";
+    if (dateFrom && !dateTo) {
+      return `From ${formatISODateLabel(dateFrom)} onwards`;
+    }
+    if (!dateFrom && dateTo) {
+      return `Up to ${formatISODateLabel(dateTo)}`;
+    }
     const from = dateFrom <= dateTo ? dateFrom : dateTo;
     const to = dateFrom <= dateTo ? dateTo : dateFrom;
     if (from === to) return formatISODateLabel(from);
@@ -134,38 +141,34 @@ const Dashboard = () => {
   }, [dateFrom, dateTo]);
 
   const accountsInRange = useMemo(() => {
-    const from = dateFrom <= dateTo ? dateFrom : dateTo;
-    const to = dateFrom <= dateTo ? dateTo : dateFrom;
+    if (!dateFrom && !dateTo) return [];
     return (accounts || []).filter((acc) => {
       const d = toISTDateString(acc.date);
-      return d && d >= from && d <= to;
+      if (!d) return false;
+      if (dateFrom && d < dateFrom) return false;
+      if (dateTo && d > dateTo) return false;
+      if (dateFrom && !dateTo && d > todayStr) return false;
+      return true;
     });
-  }, [accounts, dateFrom, dateTo]);
+  }, [accounts, dateFrom, dateTo, todayStr]);
 
   const utrsInRange = useMemo(() => {
-    const from = dateFrom <= dateTo ? dateFrom : dateTo;
-    const to = dateFrom <= dateTo ? dateTo : dateFrom;
+    if (!dateFrom && !dateTo) return [];
     return (utrs || []).filter((u) => {
       const d = toISTDateString(u.date);
-      return d && d >= from && d <= to;
+      if (!d) return false;
+      if (dateFrom && d < dateFrom) return false;
+      if (dateTo && d > dateTo) return false;
+      if (dateFrom && !dateTo && d > todayStr) return false;
+      return true;
     });
-  }, [utrs, dateFrom, dateTo]);
-
-  const rangeEndStr = dateFrom <= dateTo ? dateTo : dateFrom;
+  }, [utrs, dateFrom, dateTo, todayStr]);
 
   const { topClosingDrParties, topClosingCrParties } = useMemo(() => {
-    const activeIds = new Set();
-    for (const acc of accountsInRange) {
-      const k = partyKeyFromAccount(acc);
-      if (k) activeIds.add(k);
-    }
-
     const cumulative = {};
     for (const acc of accounts || []) {
       const key = partyKeyFromAccount(acc);
       if (!key) continue;
-      const d = toISTDateString(acc.date);
-      if (!d || d > rangeEndStr) continue;
       if (!cumulative[key]) {
         cumulative[key] = {
           partyId: key,
@@ -179,12 +182,10 @@ const Dashboard = () => {
       cumulative[key].name = partyNameFromAccount(acc, parties || []);
     }
 
-    const rows = Object.values(cumulative)
-      .filter((r) => activeIds.has(r.partyId))
-      .map((r) => ({
-        ...r,
-        closing: r.debit - r.credit,
-      }));
+    const rows = Object.values(cumulative).map((r) => ({
+      ...r,
+      closing: r.debit - r.credit,
+    }));
 
     const topClosingDrParties = rows
       .filter((r) => r.closing > 0)
@@ -203,7 +204,7 @@ const Dashboard = () => {
       .slice(0, 10);
 
     return { topClosingDrParties, topClosingCrParties };
-  }, [accounts, accountsInRange, parties, rangeEndStr]);
+  }, [accounts, parties]);
 
   const topUtrWithdraw = useMemo(() => {
     if (!isTrader || !utrsInRange.length) return [];
@@ -229,28 +230,33 @@ const Dashboard = () => {
       .slice(0, 10);
   }, [utrsInRange, isTrader]);
 
-  const todayStr = getTodayIST();
-  const fromInputMax = minDateStr(dateTo, todayStr);
-
-  const isSingleDayToday = dateFrom === dateTo && dateFrom === todayStr;
+  const fromInputMax = dateTo || todayStr;
 
   const dateFieldClass =
     "h-9 min-w-[10.5rem] rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-800 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[#424687]/40";
 
   const onFromChange = (v) => {
+    if (!v) {
+      setDateFrom("");
+      return;
+    }
     const t = getTodayIST();
     let next = v;
     if (next > t) next = t;
     setDateFrom(next);
-    if (next > dateTo) setDateTo(next);
+    if (dateTo && next > dateTo) setDateTo(next);
   };
 
   const onToChange = (v) => {
+    if (!v) {
+      setDateTo("");
+      return;
+    }
     const t = getTodayIST();
     let next = v;
     if (next > t) next = t;
     setDateTo(next);
-    if (next < dateFrom) setDateFrom(next);
+    if (dateFrom && next < dateFrom) setDateFrom(next);
   };
 
   /** ~5 rows visible; still renders all top-10 items, scroll for the rest. */
@@ -262,8 +268,8 @@ const Dashboard = () => {
       return (
         <div className="px-4 py-8 text-center text-sm text-slate-500">
           {side === "dr"
-            ? "No party with Dr closing (debit balance) in this view."
-            : "No party with Cr closing (credit balance) in this view."}
+            ? "No party with Dr closing (debit balance)."
+            : "No party with Cr closing (credit balance)."}
         </div>
       );
     }
@@ -290,8 +296,7 @@ const Dashboard = () => {
                       {row.name}
                     </p>
                     <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
-                      {formatISODateLabel(rangeEndStr)} (all ledger up to this
-                      date, IST)
+                      Overall closing balance (all ledger entries)
                     </p>
                   </div>
                 </div>
@@ -393,7 +398,7 @@ const Dashboard = () => {
                 id="dash-date-to"
                 type="date"
                 value={dateTo}
-                min={dateFrom}
+                min={dateFrom || undefined}
                 max={todayStr}
                 onChange={(e) => onToChange(e.target.value)}
                 className={dateFieldClass}
@@ -412,10 +417,23 @@ const Dashboard = () => {
             </button>
           </div>
           <p className="mt-2 text-xs text-slate-500">
-            Showing data for{" "}
-            <span className="font-semibold text-slate-700">{rangeSummary}</span>{" "}
-            <span className="text-slate-400">(IST)</span>
-            <span className="mx-1.5 text-slate-300">·</span>
+            {dateFrom || dateTo ? (
+              <>
+                Showing data for{" "}
+                <span className="font-semibold text-slate-700">
+                  {rangeSummary}
+                </span>{" "}
+                <span className="text-slate-400">(IST)</span>
+                <span className="mx-1.5 text-slate-300">·</span>
+              </>
+            ) : (
+              <>
+                <span className="font-semibold text-slate-700">
+                  {rangeSummary}
+                </span>
+                <span className="mx-1.5 text-slate-300">·</span>
+              </>
+            )}
             <span className="text-slate-600">
               {accountsInRange.length} ledger row
               {accountsInRange.length === 1 ? "" : "s"}
