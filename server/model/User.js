@@ -20,7 +20,7 @@
 //   },
 //   role: {
 //     type: String,
-//     enum: ['admin', 'user'],
+//     enum: ['admin', 'user', 'trader'],
 //     default: 'user',
 //   },
 //   autoJobEnabled: {
@@ -62,6 +62,8 @@
 // export default User;
 
 
+
+
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 
@@ -90,6 +92,10 @@ const userSchema = new mongoose.Schema({
   autoJobEnabled: {
     type: Boolean,
     default: false, // Default to false (auto-job disabled)
+  },
+  subscriptionExpiresAt: {
+    type: Date,
+    default: null,
   },
   otp: {
     type: String,

@@ -7,8 +7,8 @@
 // const transporter = nodemailer.createTransport({
 //   service: 'gmail',
 //   auth: {
-//     user: 'flagcartshop@gmail.com',
-//     pass: 'dtngccwcvtivixmt',
+//     user: process.env.EMAIL_USER || 'flagcartshop@gmail.com',
+//     pass: process.env.EMAIL_PASS || 'dtngccwcvtivixmt',
 //   },
 // });
 
@@ -17,11 +17,72 @@
 //   return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
 // };
 
+// const cleanRole = (role) => {
+//   return ['admin', 'user', 'trader'].includes(role) ? role : 'user';
+// };
+
+// // Create default admin user
+// // export const createDefaultAdmin = async () => {
+// //   try {
+// //     const adminExists = await User.findOne({ email: 'admin2@gmail.com' });
+// //     console.log('Checking for admin with email: admin2@gmail.com, found:', adminExists ? 'Yes' : 'No');
+
+// //     if (adminExists) {
+// //       if (adminExists.role !== 'admin') {
+// //         adminExists.role = 'admin';
+// //         await adminExists.save();
+// //         console.log('Default admin role updated to admin');
+// //       }
+// //       const isMatch = await bcrypt.compare('admin', adminExists.password);
+// //       if (!isMatch) {
+// //         console.log('Resetting admin password');
+// //         adminExists.password = 'admin';
+// //         await adminExists.save();
+// //         console.log('Default admin password reset to admin, new hash:', adminExists.password);
+// //       } else {
+// //         console.log('Default admin password is correct, hash:', adminExists.password);
+// //       }
+// //       console.log('Default admin already exists:', {
+// //         username: adminExists.username,
+// //         email: adminExists.email,
+// //         role: adminExists.role,
+// //       });
+// //     } else {
+// //       const admin = new User({
+// //         username: 'admin2',
+// //         email: 'admin2@gmail.com',
+// //         password: 'admin',
+// //         role: 'admin',
+// //       });
+// //       await admin.save();
+// //       console.log('Default admin created:', {
+// //         username: admin.username,
+// //         email: admin.email,
+// //         role: admin.role,
+// //         passwordHash: admin.password,
+// //       });
+// //     }
+// //   } catch (error) {
+// //     if (error.code === 11000) {
+// //       console.error('Duplicate key error: Email or username already exists', error);
+// //     } else {
+// //       console.error('Error creating/updating default admin:', error.message);
+// //     }
+// //   }
+// // };
+
 // // Create default admin user
 // export const createDefaultAdmin = async () => {
 //   try {
 //     const adminExists = await User.findOne({ email: 'admin2@gmail.com' });
-//     console.log('Checking for admin with email: admin2@gmail.com, found:', adminExists ? 'Yes' : 'No');
+
+//     console.log(
+//       'Checking for admin with email: admin2@gmail.com, found:',
+//       adminExists ? 'Yes' : 'No'
+//     );
+
+//     // Secure 10 digit password
+//     const defaultPassword = '6381927450';
 
 //     if (adminExists) {
 //       if (adminExists.role !== 'admin') {
@@ -29,15 +90,26 @@
 //         await adminExists.save();
 //         console.log('Default admin role updated to admin');
 //       }
-//       const isMatch = await bcrypt.compare('admin', adminExists.password);
+
+//       const isMatch = await bcrypt.compare(
+//         defaultPassword,
+//         adminExists.password
+//       );
+
 //       if (!isMatch) {
 //         console.log('Resetting admin password');
-//         adminExists.password = 'admin'; // Set plain password, let pre-save hook hash it
+
+//         adminExists.password = defaultPassword;
+
 //         await adminExists.save();
-//         console.log('Default admin password reset to admin, new hash:', adminExists.password);
+
+//         console.log(
+//           'Default admin password reset successfully'
+//         );
 //       } else {
-//         console.log('Default admin password is correct, hash:', adminExists.password);
+//         console.log('Default admin password is correct');
 //       }
+
 //       console.log('Default admin already exists:', {
 //         username: adminExists.username,
 //         email: adminExists.email,
@@ -47,22 +119,29 @@
 //       const admin = new User({
 //         username: 'admin2',
 //         email: 'admin2@gmail.com',
-//         password: 'admin', // Set plain password, let pre-save hook hash it
+//         password: defaultPassword,
 //         role: 'admin',
 //       });
+
 //       await admin.save();
+
 //       console.log('Default admin created:', {
 //         username: admin.username,
 //         email: admin.email,
 //         role: admin.role,
-//         passwordHash: admin.password, // Log hash for debugging
 //       });
 //     }
 //   } catch (error) {
 //     if (error.code === 11000) {
-//       console.error('Duplicate key error: Email or username already exists', error);
+//       console.error(
+//         'Duplicate key error: Email or username already exists',
+//         error
+//       );
 //     } else {
-//       console.error('Error creating/updating default admin:', error.message);
+//       console.error(
+//         'Error creating/updating default admin:',
+//         error.message
+//       );
 //     }
 //   }
 // };
@@ -84,7 +163,7 @@
 //     }
 
 //     const otp = generateOTP();
-//     const otpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes from now
+//     const otpExpiry = Date.now() + 10 * 60 * 1000;
 
 //     user.otp = otp;
 //     user.otpExpiry = otpExpiry;
@@ -92,7 +171,6 @@
 
 //     console.log('Generated OTP for user:', user.email, 'OTP:', otp, 'Expiry:', new Date(otpExpiry));
 
-//     // Send email with OTP
 //     const mailOptions = {
 //       from: process.env.EMAIL_FROM,
 //       to: user.email,
@@ -141,7 +219,6 @@
 //       return res.status(400).json({ message: 'OTP expired' });
 //     }
 
-//     // Do not clear OTP here, let resetPassword handle it
 //     console.log('OTP verified successfully for user:', user.email);
 //     res.status(200).json({ message: 'OTP verified successfully' });
 //   } catch (error) {
@@ -176,7 +253,7 @@
 //       return res.status(400).json({ message: 'OTP expired' });
 //     }
 
-//     user.password = newPassword; // Set plain password, let pre-save hook hash it
+//     user.password = newPassword;
 //     user.otp = undefined;
 //     user.otpExpiry = undefined;
 //     await user.save();
@@ -193,7 +270,7 @@
 // export const login = async (req, res) => {
 //   try {
 //     const { email, password } = req.body;
-//     console.log('Login attempt with payload:', { email: email.trim(), password: '****' });
+//     console.log('Login attempt with payload:', { email: email?.trim(), password: '****' });
 
 //     if (!email || !password) {
 //       console.log('Missing email/username or password');
@@ -243,10 +320,10 @@
 //     );
 
 //     console.log('Login successful for user:', user.username, 'Token generated');
-//     res.status(200).json({ 
-//       message: 'Login successful', 
-//       token, 
-//       role: user.role, 
+//     res.status(200).json({
+//       message: 'Login successful',
+//       token,
+//       role: user.role,
 //       id: user._id,
 //       username: user.username,
 //       email: user.email
@@ -263,7 +340,6 @@
 //   res.status(200).json({ message: 'Logout successful' });
 // };
 
-
 // export const verifyToken = async (req, res, next) => {
 //   const token = req.headers['authorization']?.split(' ')[1];
 
@@ -274,11 +350,9 @@
 
 //   try {
 //     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     console.log('Decoded JWT:', decoded);
-//     req.user = { id: decoded.id, role: decoded.role }; // Ensure id and role are set
+//     req.user = { id: decoded.id, role: decoded.role };
 //     next();
 //   } catch (error) {
-//     console.error('Token verification error:', error.message);
 //     return res.status(401).json({ message: 'Invalid or expired token', error: error.message });
 //   }
 // };
@@ -309,13 +383,13 @@
 //       return res.status(400).json({ message: 'Email or username already exists' });
 //     }
 
-//     const user = new User({ username, email, password, role: role || 'user' });
+//     const user = new User({ username, email, password, role: cleanRole(role) });
 //     await user.save();
-//     console.log('User created successfully:', { id: user._id, username, email, role });
+//     console.log('User created successfully:', { id: user._id, username, email, role: user.role });
 
 //     res.status(201).json({
 //       message: 'User created successfully',
-//       user: { id: user._id, username: user.username, email: user.email, role: user.role },
+//       user: { id: user._id, _id: user._id, username: user.username, email: user.email, role: user.role },
 //     });
 //   } catch (error) {
 //     console.error('Error creating user:', error.message);
@@ -390,13 +464,12 @@
 //       return res.status(404).json({ message: 'User not found' });
 //     }
 
-//     // Update fields only if provided
 //     if (username) user.username = username.trim();
 //     if (email) user.email = email.trim();
-//     if (req.user.role === 'admin' && role) user.role = role;
+//     if (req.user.role === 'admin' && role) user.role = cleanRole(role);
 //     if (password && password.trim()) {
 //       console.log('Updating password for user:', user._id);
-//       user.password = password; // Set plain password, let middleware hash it
+//       user.password = password;
 //     } else {
 //       console.log('No password update requested for user:', user._id);
 //     }
@@ -411,14 +484,7 @@
 //     });
 
 //     const updatedUser = await User.findById(req.params.id).select('-password -otp -otpExpiry');
-//     console.log('User updated successfully:', {
-//       id: updatedUser._id,
-//       username: updatedUser.username,
-//       email: updatedUser.email,
-//       role: updatedUser.role
-//     });
 
-//     // Generate new token if updating current user
 //     let newToken = null;
 //     if (req.user.id === req.params.id) {
 //       newToken = jwt.sign(
@@ -474,7 +540,6 @@
 //     await user.save();
 //     console.log('Auto-job toggled for user:', user._id, 'New state:', user.autoJobEnabled);
 
-//     // Generate new token with updated autoJobEnabled state
 //     const newToken = jwt.sign(
 //       { id: user._id, email: user.email, role: user.role, autoJobEnabled: user.autoJobEnabled },
 //       process.env.JWT_SECRET,
@@ -491,6 +556,8 @@
 //     res.status(500).json({ message: 'Server error', error: error.message });
 //   }
 // };
+
+
 
 
 import jwt from 'jsonwebtoken';
@@ -514,6 +581,84 @@ const generateOTP = () => {
 
 const cleanRole = (role) => {
   return ['admin', 'user', 'trader'].includes(role) ? role : 'user';
+};
+
+const LIMITED_ROLES = ['user', 'trader'];
+
+const normalizeSubscriptionExpiry = ({ role, subscriptionExpiresAt }) => {
+  if (!LIMITED_ROLES.includes(role)) return null;
+
+  if (!subscriptionExpiresAt) {
+    return null;
+  }
+
+  const expiry = new Date(subscriptionExpiresAt);
+  if (Number.isNaN(expiry.getTime())) {
+    return null;
+  }
+
+  // datetime-local se exact expiry time aata hai.
+  // Admin jis date-time ko select karega, usi exact time par account expire hoga.
+  return expiry;
+};
+
+const validateSubscriptionExpiry = ({ role, subscriptionExpiresAt }) => {
+  if (!LIMITED_ROLES.includes(role)) return { ok: true, expiresAt: null };
+
+  const expiresAt = normalizeSubscriptionExpiry({ role, subscriptionExpiresAt });
+  if (!expiresAt) {
+    return { ok: false, message: 'Please select account validity expiry date.' };
+  }
+
+  if (expiresAt.getTime() <= Date.now()) {
+    return { ok: false, message: 'Account validity expiry date must be today or a future date.' };
+  }
+
+  return { ok: true, expiresAt };
+};
+
+const getSubscriptionInfo = (user) => {
+  const expiresAt = user?.subscriptionExpiresAt || null;
+  const isLimitedRole = LIMITED_ROLES.includes(user?.role);
+
+  if (!isLimitedRole) {
+    return {
+      subscriptionExpiresAt: null,
+      subscriptionStatus: 'unlimited',
+      subscriptionRemainingDays: null,
+    };
+  }
+
+  if (!expiresAt) {
+    return {
+      subscriptionExpiresAt: null,
+      subscriptionStatus: 'active',
+      subscriptionRemainingDays: null,
+    };
+  }
+
+  const diffMs = new Date(expiresAt).getTime() - Date.now();
+  return {
+    subscriptionExpiresAt: expiresAt,
+    subscriptionStatus: diffMs <= 0 ? 'expired' : 'active',
+    subscriptionRemainingDays: diffMs <= 0 ? 0 : Math.ceil(diffMs / (24 * 60 * 60 * 1000)),
+  };
+};
+
+const toSafeUser = (user) => ({
+  id: user._id,
+  _id: user._id,
+  username: user.username,
+  email: user.email,
+  role: user.role,
+  autoJobEnabled: user.autoJobEnabled,
+  ...getSubscriptionInfo(user),
+});
+
+const isSubscriptionExpired = (user) => {
+  if (!LIMITED_ROLES.includes(user?.role)) return false;
+  if (!user?.subscriptionExpiresAt) return false; // legacy users remain active until admin sets a validity.
+  return new Date(user.subscriptionExpiresAt).getTime() <= Date.now();
 };
 
 // Create default admin user
@@ -803,13 +948,26 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid username/email or password' });
     }
 
+    if (isSubscriptionExpired(user)) {
+      console.log('Subscription expired for user:', user.username);
+      return res.status(403).json({
+        message: 'Please recharge your account',
+        ...getSubscriptionInfo(user),
+      });
+    }
+
     if (!process.env.JWT_SECRET) {
       console.error('JWT_SECRET is not defined');
       return res.status(500).json({ message: 'Server configuration error: JWT_SECRET is not defined' });
     }
 
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
+      {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        subscriptionExpiresAt: user.subscriptionExpiresAt || null,
+      },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
@@ -821,7 +979,8 @@ export const login = async (req, res) => {
       role: user.role,
       id: user._id,
       username: user.username,
-      email: user.email
+      email: user.email,
+      ...getSubscriptionInfo(user)
     });
   } catch (error) {
     console.error('Login error:', error.message, error.stack);
@@ -845,7 +1004,20 @@ export const verifyToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { id: decoded.id, role: decoded.role };
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({ message: 'User not found. Please log in again.' });
+    }
+
+    if (isSubscriptionExpired(user)) {
+      return res.status(403).json({
+        message: 'Please recharge your account',
+        ...getSubscriptionInfo(user),
+      });
+    }
+
+    req.user = { id: decoded.id, role: user.role };
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Invalid or expired token', error: error.message });
@@ -864,8 +1036,9 @@ export const restrictToAdmin = (req, res, next) => {
 // Create a new user (admin only)
 export const createUser = async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
-    console.log('Creating user with data:', { username, email, role });
+    const { username, email, password, role, subscriptionExpiresAt } = req.body;
+    const safeRole = cleanRole(role);
+    console.log('Creating user with data:', { username, email, role: safeRole, subscriptionExpiresAt });
 
     if (!username || !email || !password) {
       console.log('Missing required fields for user creation');
@@ -878,13 +1051,24 @@ export const createUser = async (req, res) => {
       return res.status(400).json({ message: 'Email or username already exists' });
     }
 
-    const user = new User({ username, email, password, role: cleanRole(role) });
+    const expiryValidation = validateSubscriptionExpiry({ role: safeRole, subscriptionExpiresAt });
+    if (!expiryValidation.ok) {
+      return res.status(400).json({ message: expiryValidation.message });
+    }
+
+    const user = new User({
+      username,
+      email,
+      password,
+      role: safeRole,
+      subscriptionExpiresAt: expiryValidation.expiresAt,
+    });
     await user.save();
     console.log('User created successfully:', { id: user._id, username, email, role: user.role });
 
     res.status(201).json({
       message: 'User created successfully',
-      user: { id: user._id, _id: user._id, username: user.username, email: user.email, role: user.role },
+      user: toSafeUser(user),
     });
   } catch (error) {
     console.error('Error creating user:', error.message);
@@ -897,8 +1081,9 @@ export const getAllUsers = async (req, res) => {
   try {
     console.log('Fetching all users');
     const users = await User.find().select('-password -otp -otpExpiry');
+    const safeUsers = users.map(toSafeUser);
     console.log('Users fetched:', users.length);
-    res.status(200).json(users);
+    res.status(200).json(safeUsers);
   } catch (error) {
     console.error('Error fetching users:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -919,7 +1104,7 @@ export const getUserById = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     console.log('User fetched:', { id: user._id, username: user.username, email: user.email });
-    res.status(200).json(user);
+    res.status(200).json(toSafeUser(user));
   } catch (error) {
     console.error('Error fetching user by ID:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -936,7 +1121,7 @@ export const getOwnUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     console.log('Own user data fetched:', { id: user._id, username: user.username, email: user.email });
-    res.status(200).json(user);
+    res.status(200).json(toSafeUser(user));
   } catch (error) {
     console.error('Error fetching own user:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -952,7 +1137,7 @@ export const updateUser = async (req, res) => {
       return res.status(403).json({ message: 'Access denied: You can only update your own data' });
     }
 
-    const { username, email, password, role } = req.body;
+    const { username, email, password, role, subscriptionExpiresAt } = req.body;
     const user = await User.findById(req.params.id);
     if (!user) {
       console.log('User not found for update:', req.params.id);
@@ -962,6 +1147,17 @@ export const updateUser = async (req, res) => {
     if (username) user.username = username.trim();
     if (email) user.email = email.trim();
     if (req.user.role === 'admin' && role) user.role = cleanRole(role);
+    if (req.user.role === 'admin') {
+      if (!LIMITED_ROLES.includes(user.role)) {
+        user.subscriptionExpiresAt = null;
+      } else {
+        const expiryValidation = validateSubscriptionExpiry({ role: user.role, subscriptionExpiresAt });
+        if (!expiryValidation.ok) {
+          return res.status(400).json({ message: expiryValidation.message });
+        }
+        user.subscriptionExpiresAt = expiryValidation.expiresAt;
+      }
+    }
     if (password && password.trim()) {
       console.log('Updating password for user:', user._id);
       user.password = password;
@@ -983,7 +1179,12 @@ export const updateUser = async (req, res) => {
     let newToken = null;
     if (req.user.id === req.params.id) {
       newToken = jwt.sign(
-        { id: user._id, email: user.email, role: user.role },
+        {
+          id: user._id,
+          email: user.email,
+          role: user.role,
+          subscriptionExpiresAt: user.subscriptionExpiresAt || null,
+        },
         process.env.JWT_SECRET,
         { expiresIn: '1h' }
       );
@@ -992,7 +1193,7 @@ export const updateUser = async (req, res) => {
 
     res.status(200).json({
       message: 'User updated successfully',
-      user: updatedUser,
+      user: toSafeUser(updatedUser),
       token: newToken
     });
   } catch (error) {
@@ -1036,7 +1237,13 @@ export const toggleAutoJob = async (req, res) => {
     console.log('Auto-job toggled for user:', user._id, 'New state:', user.autoJobEnabled);
 
     const newToken = jwt.sign(
-      { id: user._id, email: user.email, role: user.role, autoJobEnabled: user.autoJobEnabled },
+      {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        autoJobEnabled: user.autoJobEnabled,
+        subscriptionExpiresAt: user.subscriptionExpiresAt || null,
+      },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
