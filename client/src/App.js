@@ -340,9 +340,11 @@ const TraderRoute = ({ children }) => {
 
 const Layout = ({ children }) => {
   const token = useSelector((state) => state.user?.token);
+  const { role } = useSelector((state) => state.user);
   const isAuthenticated = Boolean(token);
   const location = useLocation();
   const [hideHeader, setHideHeader] = useState(false);
+  const showValidityBadge = isAuthenticated && role !== "admin";
 
   useEffect(() => {
     const shouldHideHeader = location.pathname?.includes("/pay/");
@@ -378,12 +380,17 @@ const Layout = ({ children }) => {
             hideHeader
               ? "min-w-0 flex-1"
               : isAuthenticated
-                ? "app-main mt-[104px] box-border min-h-[calc(100vh-104px)] w-full min-w-0 flex-1 sm:mt-[72px] sm:min-h-[calc(100vh-72px)] lg:ml-60 lg:w-[calc(100%-15rem)]"
+                ? [
+                    "app-main app-main--authenticated box-border w-full min-w-0 flex-1 lg:ml-60 lg:w-[calc(100%-15rem)]",
+                    showValidityBadge ? "has-validity-badge" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
                 : "min-w-0 w-full flex-1"
           }
         >
           {isAuthenticated && !hideHeader ? (
-            <div className="app-content mx-auto box-border w-full max-w-[1920px] px-3 pb-28 sm:px-4 lg:px-4 lg:pb-8">
+            <div className="app-content mx-auto box-border w-full max-w-[1920px] px-3 sm:px-4 lg:px-4 lg:pb-8">
               {children}
             </div>
           ) : (

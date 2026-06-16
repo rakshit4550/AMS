@@ -7,6 +7,7 @@ import {
   forgotPassword,
   verifyOTP,
   resetPassword,
+  clearError,
 } from "../redux/authSlice";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
@@ -23,9 +24,10 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [popupMessage, setPopupMessage] = useState(
-    location.state?.accountExpiredMessage || "",
+  const [showRechargePopup, setShowRechargePopup] = useState(
+    Boolean(location.state?.accountExpiredMessage),
   );
+  const [formError, setFormError] = useState("");
 
   // Forgot password states
   const [showForgotForm, setShowForgotForm] = useState(false);
@@ -56,16 +58,15 @@ const Login = () => {
   }, [showForgotForm, step]);
 
   useEffect(() => {
-    const message = location.state?.accountExpiredMessage;
-    if (message) {
-      setPopupMessage(message);
+    if (location.state?.accountExpiredMessage) {
+      setShowRechargePopup(true);
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.pathname, location.state, navigate]);
 
-  const showMessage = (message) => {
-    setPopupMessage(message || "Something went wrong. Please try again.");
-  };
+  const isSubscriptionExpiredError = (message) =>
+    typeof message === "string" &&
+    /recharge|validity|expired/i.test(message);
 
   const handleOtpPaste = (e) => {
     e.preventDefault();
@@ -127,22 +128,22 @@ const Login = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setFormError("");
+    dispatch(clearError());
+
     if (!email || !password) {
-      showMessage("Please enter both username/email and password");
+      setFormError("Please enter both username/email and password");
       return;
     }
 
-    dispatch(login({ email: email.trim(), password }))
-      .then((result) => {
-        if (result.type === "user/login/fulfilled") {
-          navigate("/dashboard");
-        } else {
-          showMessage(result.payload || "Login failed. Please try again.");
-        }
-      })
-      .catch(() => {
-        showMessage("An unexpected error occurred. Please try again.");
-      });
+    dispatch(login({ email: email.trim(), password })).then((result) => {
+      if (result.type === "user/login/fulfilled") {
+        navigate("/dashboard");
+      } else if (isSubscriptionExpiredError(result.payload)) {
+        setShowRechargePopup(true);
+        dispatch(clearError());
+      }
+    });
   };
 
   const handleLogout = () => {
@@ -235,7 +236,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#eef2ff] via-white to-[#f5f3ff] flex items-center justify-center p-4">
-      {popupMessage && (
+      {showRechargePopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/45 px-4 backdrop-blur-sm">
           <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-[#424687]/15 bg-white shadow-2xl">
             <div className="bg-gradient-to-r from-[#424687] to-[#252858] px-6 py-4 text-white sm:px-8">
@@ -253,7 +254,7 @@ const Login = () => {
               <div className="mt-7 flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setPopupMessage("")}
+                  onClick={() => setShowRechargePopup(false)}
                   className="rounded-xl bg-[#424687] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#424687]/20 transition hover:bg-[#252858] focus:outline-none focus:ring-2 focus:ring-[#424687]/30"
                 >
                   OK
@@ -520,9 +521,9 @@ const Login = () => {
                   </div>
                 </div>
 
-                {error && (
+                {(formError || error) && (
                   <p className="text-red-500 mt-4 text-sm text-center bg-red-50 border border-red-100 rounded-lg py-2">
-                    {error}
+                    {formError || error}
                   </p>
                 )}
               </form>

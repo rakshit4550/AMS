@@ -13,6 +13,9 @@
     --app-primary-dark: #252858;
     --app-bg: #f4f7fb;
     --app-bottom-nav-height: 74px;
+    --app-mobile-header-height: 7.5rem;
+    --app-mobile-header-height-validity: 9.75rem;
+    --app-desktop-header-height: 4.5rem;
   }
 
   html {
@@ -78,12 +81,34 @@
       linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
   }
 
+  .app-main--authenticated {
+    margin-top: var(--app-mobile-header-height);
+    min-height: calc(100dvh - var(--app-mobile-header-height));
+  }
+
+  .app-main--authenticated.has-validity-badge {
+    margin-top: var(--app-mobile-header-height-validity);
+    min-height: calc(100dvh - var(--app-mobile-header-height-validity));
+  }
+
+  @media (min-width: 640px) {
+    .app-main--authenticated,
+    .app-main--authenticated.has-validity-badge {
+      margin-top: var(--app-desktop-header-height);
+      min-height: calc(100dvh - var(--app-desktop-header-height));
+    }
+  }
+
   .app-content {
     width: 100%;
   }
 
-  .mobile-drawer {
-    animation: mobileDrawerIn 180ms ease-out both;
+  @media (max-width: 1023px) {
+    .app-content {
+      padding-bottom: calc(
+        var(--app-bottom-nav-height) + 1.25rem + env(safe-area-inset-bottom)
+      ) !important;
+    }
   }
 
   .mobile-bottom-nav {
@@ -128,6 +153,17 @@
     background: rgba(66, 70, 135, 0.1);
   }
 
+  .mobile-bottom-nav__item--logout {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #dc2626;
+  }
+
+  .mobile-bottom-nav__item--logout:active {
+    background: rgba(220, 38, 38, 0.08);
+  }
+
   .mobile-bottom-nav__icon {
     display: flex;
     height: 1.35rem;
@@ -142,21 +178,26 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 0.66rem;
+    font-size: 0.62rem;
     font-weight: 800;
     letter-spacing: -0.01em;
   }
 
-  @keyframes mobileDrawerIn {
-    from {
-      transform: translateX(-105%);
-      opacity: 0.7;
+  @media (max-width: 380px) {
+    .mobile-bottom-nav {
+      gap: 0.15rem;
+      padding: 0.3rem;
     }
-    to {
-      transform: translateX(0);
-      opacity: 1;
+
+    .mobile-bottom-nav__label {
+      font-size: 0.56rem;
+    }
+
+    .mobile-bottom-nav__icon {
+      font-size: 1rem;
     }
   }
+
 }
 
 @layer utilities {
