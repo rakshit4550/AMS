@@ -66,6 +66,9 @@ const utrSchema = new mongoose.Schema(
   }
 );
 
+utrSchema.index({ createdBy: 1, createdAt: -1 });
+utrSchema.index({ createdBy: 1, date: -1 });
+
 const Utr = mongoose.model('Utr', utrSchema);
 
 export default Utr;

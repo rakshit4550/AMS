@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { fetchAccounts, fetchParties } from "../redux/accountSlice";
-import { fetchUtrs } from "../redux/utrSlice";
+import { fetchDashboardSummary } from "../api/paginatedApi";
 import { AiFillDashboard } from "react-icons/ai";
 import { FaArrowTrendDown, FaArrowTrendUp } from "react-icons/fa6";
 import { BsReceiptCutoff } from "react-icons/bs";
@@ -10,22 +9,6 @@ import { BsReceiptCutoff } from "react-icons/bs";
 const formatNumber = (n) => {
   if (n === undefined || n === null || Number.isNaN(Number(n))) return "0";
   return Number(n).toLocaleString("en-IN");
-};
-
-const partyKeyFromAccount = (account) => {
-  const p = account?.partyname;
-  if (!p) return null;
-  if (typeof p === "object" && p._id != null) return String(p._id);
-  return String(p);
-};
-
-const partyNameFromAccount = (account, parties) => {
-  const p = account?.partyname;
-  if (p && typeof p === "object" && p.partyname) return p.partyname;
-  const id = partyKeyFromAccount(account);
-  if (!id) return "Unknown";
-  const row = parties.find((x) => String(x._id) === id);
-  return row?.partyname || "Unknown";
 };
 
 const formatUtrDate = (d) => {
@@ -38,18 +21,8 @@ const formatUtrDate = (d) => {
   });
 };
 
-/** YYYY-MM-DD in Asia/Kolkata (matches <input type="date"> well for users in India). */
 const getTodayIST = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-
-const toISTDateString = (value) => {
-  if (!value) return "";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "";
-  return new Date(value).toLocaleDateString("en-CA", {
-    timeZone: "Asia/Kolkata",
-  });
-};
 
 const formatISODateLabel = (iso) => {
   if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso || "";
@@ -60,17 +33,21 @@ const formatISODateLabel = (iso) => {
   });
 };
 
-
 const Dashboard = () => {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [summary, setSummary] = useState({
+    topClosingDrParties: [],
+    topClosingCrParties: [],
+    ledgerCountInRange: 0,
+    utrCountInRange: 0,
+    topUtrWithdraw: [],
+    topUtrDeposit: [],
+  });
 
-  const { accounts, parties, loading, error } = useSelector(
-    (state) => state.account,
-  );
-  const { utrs, loading: utrLoading } = useSelector((state) => state.utr);
   const { role } = useSelector((state) => state.user);
 
   const getRoleFromToken = () => {
@@ -86,47 +63,39 @@ const Dashboard = () => {
 
   const userRole = role || getRoleFromToken();
   const isTrader = userRole === "trader";
-
-  useEffect(() => {
-    dispatch(fetchParties())
-      .unwrap()
-      .catch((err) => {
-        if (
-          err === "No token available" ||
-          String(err).includes("Invalid token")
-        ) {
-          navigate("/");
-        }
-      });
-    dispatch(fetchAccounts())
-      .unwrap()
-      .catch((err) => {
-        if (
-          err === "No token available" ||
-          String(err).includes("Invalid token")
-        ) {
-          navigate("/");
-        }
-      });
-  }, [dispatch, navigate]);
-
-  useEffect(() => {
-    if (!isTrader) return;
-    dispatch(fetchUtrs())
-      .unwrap()
-      .catch((err) => {
-        if (
-          err === "No token available" ||
-          String(err).includes("Invalid token")
-        ) {
-          navigate("/");
-        }
-      });
-  }, [dispatch, navigate, isTrader]);
-
   const todayStr = getTodayIST();
 
-  const rangeSummary = useMemo(() => {
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchDashboardSummary(dateFrom, dateTo);
+        if (!cancelled) setSummary(data);
+      } catch (err) {
+        if (!cancelled) {
+          const message = err.response?.data?.message || err.message;
+          if (
+            message === "No token available" ||
+            String(message).includes("Invalid token")
+          ) {
+            navigate("/");
+          } else {
+            setError(message);
+          }
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [dateFrom, dateTo, navigate]);
+
+  const rangeSummary = (() => {
     if (!dateFrom && !dateTo) return "No date selected";
     if (dateFrom && !dateTo) {
       return `From ${formatISODateLabel(dateFrom)} onwards`;
@@ -138,97 +107,16 @@ const Dashboard = () => {
     const to = dateFrom <= dateTo ? dateTo : dateFrom;
     if (from === to) return formatISODateLabel(from);
     return `${formatISODateLabel(from)} – ${formatISODateLabel(to)}`;
-  }, [dateFrom, dateTo]);
+  })();
 
-  const accountsInRange = useMemo(() => {
-    if (!dateFrom && !dateTo) return [];
-    return (accounts || []).filter((acc) => {
-      const d = toISTDateString(acc.date);
-      if (!d) return false;
-      if (dateFrom && d < dateFrom) return false;
-      if (dateTo && d > dateTo) return false;
-      if (dateFrom && !dateTo && d > todayStr) return false;
-      return true;
-    });
-  }, [accounts, dateFrom, dateTo, todayStr]);
-
-  const utrsInRange = useMemo(() => {
-    if (!dateFrom && !dateTo) return [];
-    return (utrs || []).filter((u) => {
-      const d = toISTDateString(u.date);
-      if (!d) return false;
-      if (dateFrom && d < dateFrom) return false;
-      if (dateTo && d > dateTo) return false;
-      if (dateFrom && !dateTo && d > todayStr) return false;
-      return true;
-    });
-  }, [utrs, dateFrom, dateTo, todayStr]);
-
-  const { topClosingDrParties, topClosingCrParties } = useMemo(() => {
-    const cumulative = {};
-    for (const acc of accounts || []) {
-      const key = partyKeyFromAccount(acc);
-      if (!key) continue;
-      if (!cumulative[key]) {
-        cumulative[key] = {
-          partyId: key,
-          name: partyNameFromAccount(acc, parties || []),
-          debit: 0,
-          credit: 0,
-        };
-      }
-      cumulative[key].debit += Number(acc.debit) || 0;
-      cumulative[key].credit += Number(acc.credit) || 0;
-      cumulative[key].name = partyNameFromAccount(acc, parties || []);
-    }
-
-    const rows = Object.values(cumulative).map((r) => ({
-      ...r,
-      closing: r.debit - r.credit,
-    }));
-
-    const topClosingDrParties = rows
-      .filter((r) => r.closing > 0)
-      .sort(
-        (a, b) =>
-          b.closing - a.closing || String(a.name).localeCompare(String(b.name)),
-      )
-      .slice(0, 10);
-
-    const topClosingCrParties = rows
-      .filter((r) => r.closing < 0)
-      .sort(
-        (a, b) =>
-          a.closing - b.closing || String(a.name).localeCompare(String(b.name)),
-      )
-      .slice(0, 10);
-
-    return { topClosingDrParties, topClosingCrParties };
-  }, [accounts, parties]);
-
-  const topUtrWithdraw = useMemo(() => {
-    if (!isTrader || !utrsInRange.length) return [];
-    return [...utrsInRange]
-      .filter((u) => u.transactionType === "withdraw")
-      .sort(
-        (a, b) =>
-          (Number(b.amount) || 0) - (Number(a.amount) || 0) ||
-          new Date(b.date) - new Date(a.date),
-      )
-      .slice(0, 10);
-  }, [utrsInRange, isTrader]);
-
-  const topUtrDeposit = useMemo(() => {
-    if (!isTrader || !utrsInRange.length) return [];
-    return [...utrsInRange]
-      .filter((u) => u.transactionType === "deposit")
-      .sort(
-        (a, b) =>
-          (Number(b.amount) || 0) - (Number(a.amount) || 0) ||
-          new Date(b.date) - new Date(a.date),
-      )
-      .slice(0, 10);
-  }, [utrsInRange, isTrader]);
+  const {
+    topClosingDrParties,
+    topClosingCrParties,
+    ledgerCountInRange,
+    utrCountInRange,
+    topUtrWithdraw,
+    topUtrDeposit,
+  } = summary;
 
   const fromInputMax = dateTo || todayStr;
 
@@ -259,7 +147,6 @@ const Dashboard = () => {
     if (dateFrom && next < dateFrom) setDateFrom(next);
   };
 
-  /** ~5 rows visible; still renders all top-10 items, scroll for the rest. */
   const rankedListScrollClass =
     "max-h-[min(42vh,20rem)] overflow-y-auto overscroll-y-contain scroll-smooth [-webkit-overflow-scrolling:touch]";
 
@@ -435,10 +322,10 @@ const Dashboard = () => {
               </>
             )}
             <span className="text-slate-600">
-              {accountsInRange.length} ledger row
-              {accountsInRange.length === 1 ? "" : "s"}
+              {ledgerCountInRange} ledger row
+              {ledgerCountInRange === 1 ? "" : "s"}
               {isTrader
-                ? ` · ${utrsInRange.length} UTR row${utrsInRange.length === 1 ? "" : "s"}`
+                ? ` · ${utrCountInRange} UTR row${utrCountInRange === 1 ? "" : "s"}`
                 : ""}
             </span>
           </p>
@@ -514,17 +401,10 @@ const Dashboard = () => {
                   </h2>
                 </div>
               </div>
-              {utrLoading ? (
-                <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500">
-                  <span className="h-3 w-3 animate-pulse rounded-full bg-[#424687]/40" />
-                  Loading UTR…
-                </div>
-              ) : (
-                utrRankList(topUtrWithdraw, {
-                  rank: "bg-slate-200 text-slate-800",
-                  amount: "text-red-700",
-                })
-              )}
+              {utrRankList(topUtrWithdraw, {
+                rank: "bg-slate-200 text-slate-800",
+                amount: "text-red-700",
+              })}
             </div>
 
             <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-100/60">
@@ -538,17 +418,10 @@ const Dashboard = () => {
                   </h2>
                 </div>
               </div>
-              {utrLoading ? (
-                <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500">
-                  <span className="h-3 w-3 animate-pulse rounded-full bg-[#424687]/40" />
-                  Loading UTR…
-                </div>
-              ) : (
-                utrRankList(topUtrDeposit, {
-                  rank: "bg-slate-200 text-slate-800",
-                  amount: "text-emerald-700",
-                })
-              )}
+              {utrRankList(topUtrDeposit, {
+                rank: "bg-slate-200 text-slate-800",
+                amount: "text-emerald-700",
+              })}
             </div>
           </div>
         )}

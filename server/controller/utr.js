@@ -102,25 +102,229 @@ export const createUtr = async (req, res) => {
 };
 
 // Get all UTR entries
+// export const getAllUtrs = async (req, res) => {
+//   try {
+//     if (!canAccessUtr(req)) {
+//       return res.status(403).json({ message: 'Access denied: Trader role required' });
+//     }
+
+//     const query = req.user.role === 'admin' ? {} : { createdBy: req.user.id };
+
+//     const utrs = await Utr.find(query)
+//       .populate('createdBy', 'username email role')
+//       .populate('subtype', 'name createdBy')
+//       .sort({ createdAt: -1 });
+
+//     res.status(200).json(utrs);
+//   } catch (error) {
+//     console.error('Get UTR error:', error.message);
+//     res.status(500).json({ message: 'Server error', error: error.message });
+//   }
+// };
+
+
 export const getAllUtrs = async (req, res) => {
   try {
     if (!canAccessUtr(req)) {
-      return res.status(403).json({ message: 'Access denied: Trader role required' });
+      return res.status(403).json({
+        message: "Access denied: Trader role required",
+      });
     }
 
-    const query = req.user.role === 'admin' ? {} : { createdBy: req.user.id };
+    const search = String(req.query.search || "").trim();
 
-    const utrs = await Utr.find(query)
-      .populate('createdBy', 'username email role')
-      .populate('subtype', 'name createdBy')
-      .sort({ createdAt: -1 });
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
 
-    res.status(200).json(utrs);
+    const requestedLimit = parseInt(req.query.limit, 10) || 10;
+    const limit = Math.min(Math.max(requestedLimit, 1), 100);
+
+    const skip = (page - 1) * limit;
+
+    const fromDate = String(req.query.fromDate || "").trim();
+    const toDate = String(req.query.toDate || "").trim();
+
+    const allowedSortFields = [
+      "createdAt",
+      "updatedAt",
+      "date",
+      "amount",
+      "utr",
+      "utrNumber",
+      "status",
+    ];
+
+    const requestedSortBy = String(
+      req.query.sortBy || "createdAt"
+    ).trim();
+
+    const sortBy = allowedSortFields.includes(requestedSortBy)
+      ? requestedSortBy
+      : "createdAt";
+
+    const sortOrder =
+      String(req.query.sortOrder || "desc").toLowerCase() === "asc"
+        ? 1
+        : -1;
+
+    /*
+     * Admin ko sabhi UTR records milenge.
+     * Baaki allowed users ko sirf unke records milenge.
+     */
+    const query =
+      req.user.role === "admin"
+        ? {}
+        : {
+            createdBy: req.user.id,
+          };
+
+    /*
+     * Search filter
+     *
+     * Aapke UTR model me jo fields available hain unke according
+     * ye fields search hongi.
+     */
+    if (search) {
+      const escapedSearch = search.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&"
+      );
+
+      const searchConditions = [
+        {
+          utr: {
+            $regex: escapedSearch,
+            $options: "i",
+          },
+        },
+        {
+          utrNumber: {
+            $regex: escapedSearch,
+            $options: "i",
+          },
+        },
+        {
+          transactionId: {
+            $regex: escapedSearch,
+            $options: "i",
+          },
+        },
+        {
+          remark: {
+            $regex: escapedSearch,
+            $options: "i",
+          },
+        },
+        {
+          status: {
+            $regex: escapedSearch,
+            $options: "i",
+          },
+        },
+      ];
+
+      /*
+       * Search value amount ho to exact amount se bhi search hoga.
+       */
+      const cleanedNumericSearch = search.replace(/,/g, "").trim();
+      const numericSearch = Number(cleanedNumericSearch);
+
+      if (
+        cleanedNumericSearch !== "" &&
+        Number.isFinite(numericSearch)
+      ) {
+        searchConditions.push({
+          amount: numericSearch,
+        });
+      }
+
+      query.$or = searchConditions;
+    }
+
+    /*
+     * Date filter
+     * UTR creation date ke according filter hoga.
+     */
+    if (fromDate || toDate) {
+      query.createdAt = {};
+
+      if (fromDate) {
+        const parsedFromDate = new Date(
+          `${fromDate}T00:00:00.000Z`
+        );
+
+        if (Number.isNaN(parsedFromDate.getTime())) {
+          return res.status(400).json({
+            message: "Invalid fromDate. Use YYYY-MM-DD format",
+          });
+        }
+
+        query.createdAt.$gte = parsedFromDate;
+      }
+
+      if (toDate) {
+        const parsedToDate = new Date(
+          `${toDate}T23:59:59.999Z`
+        );
+
+        if (Number.isNaN(parsedToDate.getTime())) {
+          return res.status(400).json({
+            message: "Invalid toDate. Use YYYY-MM-DD format",
+          });
+        }
+
+        query.createdAt.$lte = parsedToDate;
+      }
+    }
+
+    /*
+     * Records aur total count parallel me fetch honge.
+     */
+    const [utrs, totalRecords] = await Promise.all([
+      Utr.find(query)
+        .populate("createdBy", "username email role")
+        .populate("subtype", "name createdBy")
+        .sort({
+          [sortBy]: sortOrder,
+          _id: sortOrder,
+        })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      Utr.countDocuments(query),
+    ]);
+
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    return res.status(200).json({
+      success: true,
+      utrs,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalRecords,
+        limit,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+      filters: {
+        search,
+        fromDate: fromDate || null,
+        toDate: toDate || null,
+        sortBy,
+        sortOrder: sortOrder === 1 ? "asc" : "desc",
+      },
+    });
   } catch (error) {
-    console.error('Get UTR error:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Get UTR error:", error);
+
+    return res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
+
 
 // Get single UTR
 export const getUtrById = async (req, res) => {

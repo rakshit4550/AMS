@@ -33,6 +33,8 @@ const partySchema = new mongoose.Schema({
   timestamps: true,
 });
 
+partySchema.index({ createdBy: 1, partyname: 1 });
+
 const Party = mongoose.model('Party', partySchema);
 
 export default Party;

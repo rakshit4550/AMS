@@ -3,15 +3,17 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL + '/parties';
 
-// Async thunks for API calls
-export const fetchParties = createAsyncThunk('party/fetchParties', async (_, { getState, rejectWithValue }) => {
+export const fetchParties = createAsyncThunk('party/fetchParties', async (params = {}, { getState, rejectWithValue }) => {
   try {
     const { user: { token } } = getState();
-    const config = { headers: { Authorization: `Bearer ${token}` } };
+    const config = {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { page: 1, limit: 20, sortBy: 'partyname', sortOrder: 'asc', ...params },
+    };
     const response = await axios.get(API_URL, config);
     return response.data;
   } catch (error) {
-    return rejectWithValue(error.response.data.message);
+    return rejectWithValue(error.response?.data?.message || error.message);
   }
 });
 
@@ -22,7 +24,7 @@ export const createParty = createAsyncThunk('party/createParty', async (partyDat
     const response = await axios.post(API_URL, partyData, config);
     return response.data.party;
   } catch (error) {
-    return rejectWithValue(error.response.data.message);
+    return rejectWithValue(error.response?.data?.message || error.message);
   }
 });
 
@@ -33,7 +35,7 @@ export const updateParty = createAsyncThunk('party/updateParty', async ({ id, ..
     const response = await axios.put(`${API_URL}/${id}`, partyData, config);
     return response.data.party;
   } catch (error) {
-    return rejectWithValue(error.response.data.message);
+    return rejectWithValue(error.response?.data?.message || error.message);
   }
 });
 
@@ -44,14 +46,20 @@ export const deleteParty = createAsyncThunk('party/deleteParty', async (id, { ge
     await axios.delete(`${API_URL}/${id}`, config);
     return id;
   } catch (error) {
-    return rejectWithValue(error.response.data.message);
+    return rejectWithValue(error.response?.data?.message || error.message);
   }
 });
+
+const extractParties = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  return payload?.parties ?? [];
+};
 
 const partySlice = createSlice({
   name: 'party',
   initialState: {
     parties: [],
+    pagination: null,
     loading: false,
     error: null,
   },
@@ -64,7 +72,8 @@ const partySlice = createSlice({
       })
       .addCase(fetchParties.fulfilled, (state, action) => {
         state.loading = false;
-        state.parties = action.payload;
+        state.parties = extractParties(action.payload);
+        state.pagination = action.payload?.pagination ?? null;
       })
       .addCase(fetchParties.rejected, (state, action) => {
         state.loading = false;
@@ -76,7 +85,7 @@ const partySlice = createSlice({
       })
       .addCase(createParty.fulfilled, (state, action) => {
         state.loading = false;
-        state.parties.push(action.payload);
+        state.parties.unshift(action.payload);
       })
       .addCase(createParty.rejected, (state, action) => {
         state.loading = false;

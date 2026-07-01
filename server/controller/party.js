@@ -16,14 +16,112 @@ export const createParty = async (req, res) => {
 };
 
 // Get all parties for the authenticated user
+// export const getAllParties = async (req, res) => {
+//   try {
+//     const parties = await Party.find({ createdBy: req.user.id });
+//     res.status(200).json(parties);
+//   } catch (error) {
+//     res.status(500).json({ message: 'Server error', error: error.message });
+//   }
+// };
+
+
+// Get parties with pagination and search
 export const getAllParties = async (req, res) => {
   try {
-    const parties = await Party.find({ createdBy: req.user.id });
-    res.status(200).json(parties);
+    const userId = req.user.id;
+
+    const search = String(req.query.search || "").trim();
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+
+    const requestedLimit = parseInt(req.query.limit, 10) || 10;
+    const limit = Math.min(Math.max(requestedLimit, 1), 100);
+
+    const skip = (page - 1) * limit;
+
+    const sortByAllowedFields = [
+      "partyname",
+      "createdAt",
+      "updatedAt",
+    ];
+
+    const requestedSortBy = String(
+      req.query.sortBy || "partyname"
+    ).trim();
+
+    const sortBy = sortByAllowedFields.includes(requestedSortBy)
+      ? requestedSortBy
+      : "partyname";
+
+    const sortOrder =
+      String(req.query.sortOrder || "asc").toLowerCase() === "desc"
+        ? -1
+        : 1;
+
+    const query = {
+      createdBy: userId,
+    };
+
+    /*
+     * Search by party name
+     */
+    if (search) {
+      const escapedSearch = search.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&"
+      );
+
+      query.partyname = {
+        $regex: escapedSearch,
+        $options: "i",
+      };
+    }
+
+    /*
+     * Paginated parties and total count parallel me fetch honge
+     */
+    const [parties, totalRecords] = await Promise.all([
+      Party.find(query)
+        .sort({
+          [sortBy]: sortOrder,
+          _id: sortOrder,
+        })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      Party.countDocuments(query),
+    ]);
+
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    return res.status(200).json({
+      success: true,
+      parties,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalRecords,
+        limit,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+      filters: {
+        search: search || "",
+        sortBy,
+        sortOrder: sortOrder === 1 ? "asc" : "desc",
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("getAllParties error:", error);
+
+    return res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
+
 
 // Get a single party by ID
 export const getPartyById = async (req, res) => {

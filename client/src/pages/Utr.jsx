@@ -9,7 +9,9 @@ import {
   deleteUtr,
   clearUtrError,
 } from "../redux/utrSlice";
-import { FaFileExcel, FaPlus, FaTimes, FaTrash } from "react-icons/fa";
+import { fetchAllPages } from "../api/paginatedApi";
+import Select from "react-select";
+import { FaFileExcel, FaPlus, FaTimes, FaTrash, FaArrowRight } from "react-icons/fa";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -47,7 +49,7 @@ const Utr = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { utrs, loading, error } = useSelector((state) => state.utr);
+  const { utrs, loading, error, pagination } = useSelector((state) => state.utr);
   const { role, token: reduxToken } = useSelector((state) => state.user);
   const token = reduxToken || localStorage.getItem("token");
   const getRoleFromToken = () => {
@@ -83,6 +85,36 @@ const Utr = () => {
   const [newSubtypeName, setNewSubtypeName] = useState("");
   const [subtypeLoading, setSubtypeLoading] = useState(false);
   const [excelModalOpen, setExcelModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [pageInput, setPageInput] = useState("");
+
+  const entriesPerPageOptions = [
+    { value: 10, label: "10" },
+    { value: 20, label: "20" },
+    { value: 30, label: "30" },
+    { value: 50, label: "50" },
+    { value: 100, label: "100" },
+  ];
+
+  const totalPages = pagination?.totalPages || 1;
+
+  const paginationSelectStyles = {
+    control: (base) => ({
+      ...base,
+      minHeight: 32,
+      fontSize: "0.8125rem",
+      borderColor: "#cbd5e1",
+    }),
+    menu: (base) => ({ ...base, zIndex: 10002 }),
+    menuPortal: (base) => ({ ...base, zIndex: 10002 }),
+  };
+
+  const selectPortalProps = {
+    menuPortalTarget: typeof document !== "undefined" ? document.body : null,
+    menuPosition: "fixed",
+    menuPlacement: "auto",
+  };
 
   const authConfig = token
     ? { headers: { Authorization: `Bearer ${token}` } }
@@ -114,7 +146,14 @@ const Utr = () => {
       return;
     }
 
-    dispatch(fetchUtrs())
+    dispatch(
+      fetchUtrs({
+        page: currentPage,
+        limit: entriesPerPage,
+        ...(filterData.startDate ? { fromDate: filterData.startDate } : {}),
+        ...(filterData.endDate ? { toDate: filterData.endDate } : {}),
+      }),
+    )
       .unwrap()
       .catch((err) => {
         if (
@@ -124,7 +163,7 @@ const Utr = () => {
           navigate("/");
         }
       });
-  }, [dispatch, navigate, userRole]);
+  }, [dispatch, navigate, userRole, currentPage, entriesPerPage, filterData.startDate, filterData.endDate]);
 
   useEffect(() => {
     loadSubtypes();
@@ -156,6 +195,26 @@ const Utr = () => {
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilterData((prev) => ({ ...prev, [name]: value }));
+    setCurrentPage(1);
+  };
+
+  const handleEntriesPerPageChange = (selectedOption) => {
+    setEntriesPerPage(selectedOption.value);
+    setCurrentPage(1);
+  };
+
+  const handlePageInputChange = (e) => {
+    setPageInput(e.target.value);
+  };
+
+  const handleGoToPage = () => {
+    const pageNumber = parseInt(pageInput, 10);
+    if (pageNumber >= 1 && pageNumber <= totalPages && !isNaN(pageNumber)) {
+      setCurrentPage(pageNumber);
+      setPageInput("");
+    } else {
+      alert("Please enter a valid page number");
+    }
   };
 
   const resetForm = () => {
@@ -237,7 +296,14 @@ const Utr = () => {
         subtype: prev.subtype === id ? "" : prev.subtype,
       }));
 
-      await dispatch(fetchUtrs()).unwrap();
+      await dispatch(
+        fetchUtrs({
+          page: currentPage,
+          limit: entriesPerPage,
+          ...(filterData.startDate ? { fromDate: filterData.startDate } : {}),
+          ...(filterData.endDate ? { toDate: filterData.endDate } : {}),
+        }),
+      ).unwrap();
     } catch (err) {
       const message = err.response?.data?.message || err.message;
 
@@ -274,7 +340,14 @@ const Utr = () => {
     try {
       await dispatch(createUtr(utrData)).unwrap();
 
-      await dispatch(fetchUtrs()).unwrap();
+      await dispatch(
+        fetchUtrs({
+          page: currentPage,
+          limit: entriesPerPage,
+          ...(filterData.startDate ? { fromDate: filterData.startDate } : {}),
+          ...(filterData.endDate ? { toDate: filterData.endDate } : {}),
+        }),
+      ).unwrap();
       resetForm();
     } catch (err) {
       if (
@@ -295,7 +368,14 @@ const Utr = () => {
 
     try {
       await dispatch(deleteUtr(id)).unwrap();
-      await dispatch(fetchUtrs()).unwrap();
+      await dispatch(
+        fetchUtrs({
+          page: currentPage,
+          limit: entriesPerPage,
+          ...(filterData.startDate ? { fromDate: filterData.startDate } : {}),
+          ...(filterData.endDate ? { toDate: filterData.endDate } : {}),
+        }),
+      ).unwrap();
     } catch (err) {
       if (
         err === "No token available" ||
@@ -328,8 +408,29 @@ const Utr = () => {
     });
   };
 
-  const handleDownloadExcel = () => {
-    const dataToDownload = getFilteredUtrsForExcel();
+  const handleDownloadExcel = async () => {
+    let dataToDownload = [];
+    try {
+      const params = {};
+      if (filterData.startDate) params.fromDate = filterData.startDate;
+      if (filterData.endDate) params.toDate = filterData.endDate;
+      const allUtrs = await fetchAllPages(
+        `${API_URL}/utrs`,
+        authConfig,
+        "utrs",
+        params,
+      );
+      dataToDownload = allUtrs.filter((utr) => {
+        const utrDate = getDateOnly(utr.date);
+        if (!utrDate) return false;
+        if (filterData.startDate && utrDate < filterData.startDate) return false;
+        if (filterData.endDate && utrDate > filterData.endDate) return false;
+        return true;
+      });
+    } catch (err) {
+      alert("Failed to load UTR data for export");
+      return;
+    }
 
     if (dataToDownload.length === 0) {
       alert("No UTR data found for selected date filter");
@@ -699,6 +800,82 @@ const Utr = () => {
               </table>
             )}
           </div>
+          {pagination && pagination.totalRecords > 0 && (
+            <div className="flex flex-shrink-0 flex-col gap-3 border-t border-slate-100 bg-slate-50/80 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+              <div className="text-xs text-slate-600 sm:text-sm">
+                Showing{" "}
+                {(currentPage - 1) * entriesPerPage + 1} to{" "}
+                {Math.min(
+                  currentPage * entriesPerPage,
+                  pagination.totalRecords,
+                )}{" "}
+                of {pagination.totalRecords} entries
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="whitespace-nowrap text-xs text-slate-600">
+                    Show
+                  </label>
+                  <Select
+                    options={entriesPerPageOptions}
+                    value={entriesPerPageOptions.find(
+                      (o) => o.value === entriesPerPage,
+                    )}
+                    onChange={handleEntriesPerPageChange}
+                    className="w-28 min-w-[7rem]"
+                    classNamePrefix="select"
+                    {...selectPortalProps}
+                    styles={paginationSelectStyles}
+                  />
+                  <label className="whitespace-nowrap text-xs text-slate-600">
+                    entries
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={pageInput}
+                    onChange={handlePageInputChange}
+                    placeholder="Page"
+                    className="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#424687]/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleGoToPage}
+                    className="rounded-md bg-[#424687] px-2.5 py-1.5 text-white shadow-sm transition hover:bg-[#353a6e]"
+                    title="Go to Page"
+                  >
+                    <FaArrowRight size={16} />
+                  </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    }
+                    disabled={currentPage === 1}
+                    className="rounded-md bg-[#424687] px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                  >
+                    Previous
+                  </button>
+                  <span className="whitespace-nowrap text-xs text-slate-700 sm:text-sm">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                    }
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    className="rounded-md bg-[#424687] px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -834,7 +1011,10 @@ const Utr = () => {
               <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
                 <button
                   type="button"
-                  onClick={() => setFilterData({ startDate: "", endDate: "" })}
+                  onClick={() => {
+                    setFilterData({ startDate: "", endDate: "" });
+                    setCurrentPage(1);
+                  }}
                   className="rounded-md bg-slate-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
                 >
                   Clear

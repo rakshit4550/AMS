@@ -1,11 +1,16 @@
-import React, { useEffect, useState, useRef } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchAccounts, fetchParties } from "../redux/accountSlice";
-import Select from "react-select";
+import AsyncSelect from "react-select/async";
 import { jsPDF } from "jspdf";
-import { FaFileDownload, FaFilter, FaTimes } from "react-icons/fa";
+import { FaFileDownload, FaFilter, FaTimes, FaArrowRight } from "react-icons/fa";
 import { TbReportAnalytics } from "react-icons/tb";
+import Select from "react-select";
+import {
+  createLoadPartyOptions,
+  fetchPartyOptionById,
+  fetchAllPages,
+  fetchAccountsPage,
+} from "../api/paginatedApi";
 
 // Utility function to format numbers with commas
 const formatNumber = (number) => {
@@ -14,23 +19,18 @@ const formatNumber = (number) => {
 };
 
 const Report = () => {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { accounts, parties, loading, error } = useSelector(
-    (state) => state.account,
-  );
+  const [accounts, setAccounts] = useState([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [selectedParty, setSelectedParty] = useState("");
+  const [selectedPartyOption, setSelectedPartyOption] = useState(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState("");
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfFileName, setPdfFileName] = useState("");
-
-  // Prepare options for react-select
-  const partyOptions = [
-    { value: "", label: "Select a Party" },
-    ...parties.map((party) => ({ value: party._id, label: party.partyname })),
-  ];
+  const API_URL = process.env.REACT_APP_API_URL;
 
   const [filters, setFilters] = useState({
     startDate: "",
@@ -38,23 +38,86 @@ const Report = () => {
     transactionType: "",
     verificationStatus: "",
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [pageInput, setPageInput] = useState("");
+  const [accountsPagination, setAccountsPagination] = useState(null);
+  const [partySummary, setPartySummary] = useState(null);
+
+  const entriesPerPageOptions = [
+    { value: 10, label: "10" },
+    { value: 20, label: "20" },
+    { value: 30, label: "30" },
+    { value: 50, label: "50" },
+    { value: 100, label: "100" },
+  ];
+
+  const buildAccountParams = (page = currentPage, limit = entriesPerPage) => {
+    const params = {
+      party: selectedParty,
+      page,
+      limit,
+      sortBy: "createdAt",
+      sortOrder: "desc",
+    };
+    if (filters.startDate) params.fromDate = filters.startDate;
+    if (filters.endDate) params.toDate = filters.endDate;
+    if (filters.transactionType) params.transactionType = filters.transactionType;
+    if (filters.verificationStatus) {
+      params.verificationStatus = filters.verificationStatus;
+    }
+    return params;
+  };
+
+  const loadPartyAccounts = useCallback(async () => {
+    if (!selectedParty) {
+      setAccounts([]);
+      setAccountsPagination(null);
+      setPartySummary(null);
+      return;
+    }
+    try {
+      setAccountsLoading(true);
+      setError(null);
+      const data = await fetchAccountsPage(buildAccountParams());
+      setAccounts(data.accounts || []);
+      setAccountsPagination(data.pagination || null);
+      setPartySummary(data.partySummary || null);
+    } catch (err) {
+      const message = err.response?.data?.message || err.message;
+      if (message === "No token available" || String(message).includes("Invalid token")) {
+        navigate("/");
+      } else {
+        setError(message);
+        setAccounts([]);
+        setAccountsPagination(null);
+        setPartySummary(null);
+      }
+    } finally {
+      setAccountsLoading(false);
+    }
+  }, [
+    selectedParty,
+    currentPage,
+    entriesPerPage,
+    filters.startDate,
+    filters.endDate,
+    filters.transactionType,
+    filters.verificationStatus,
+    navigate,
+  ]);
 
   useEffect(() => {
-    dispatch(fetchParties())
-      .unwrap()
-      .catch((err) => {
-        if (err === "No token available" || err.includes("Invalid token")) {
-          navigate("/");
-        }
-      });
-    dispatch(fetchAccounts())
-      .unwrap()
-      .catch((err) => {
-        if (err === "No token available" || err.includes("Invalid token")) {
-          navigate("/");
-        }
-      });
-  }, [dispatch, navigate]);
+    loadPartyAccounts();
+  }, [loadPartyAccounts]);
+
+  useEffect(() => {
+    if (selectedParty) {
+      fetchPartyOptionById(selectedParty).then(setSelectedPartyOption);
+    } else {
+      setSelectedPartyOption(null);
+    }
+  }, [selectedParty]);
 
   // Handle clicks outside the filter popup to close it
   useEffect(() => {
@@ -70,32 +133,76 @@ const Report = () => {
   }, []);
 
   const handlePartyInputChange = (selectedOption) => {
+    setSelectedPartyOption(selectedOption);
     setSelectedParty(selectedOption ? selectedOption.value : "");
+    setCurrentPage(1);
     setIsFilterOpen(false);
   };
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters({ ...filters, [name]: value });
+    setCurrentPage(1);
+  };
+
+  const handleEntriesPerPageChange = (selectedOption) => {
+    setEntriesPerPage(selectedOption.value);
+    setCurrentPage(1);
+  };
+
+  const handlePageInputChange = (e) => {
+    setPageInput(e.target.value);
+  };
+
+  const totalPages = accountsPagination?.totalPages || 1;
+
+  const handleGoToPage = () => {
+    const pageNumber = parseInt(pageInput, 10);
+    if (pageNumber >= 1 && pageNumber <= totalPages && !isNaN(pageNumber)) {
+      setCurrentPage(pageNumber);
+      setPageInput("");
+    } else {
+      alert("Please enter a valid page number");
+    }
   };
 
   const toggleFilterPopup = () => {
     setIsFilterOpen(!isFilterOpen);
   };
 
-  // Download functionality
-  const handleDownload = () => {
+  // Download functionality — full statement for PDF export
+  const handleDownload = async () => {
     if (!selectedParty) {
       alert("Please select a party to download the statement.");
       return;
     }
-    const party = parties.find((p) => p._id === selectedParty);
+    const party = selectedPartyOption;
     if (!party) {
       return;
     }
-    const validAccounts = selectedPartyAccounts
-      .filter((acc) => acc && acc.date && !isNaN(new Date(acc.date)))
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/");
+      return;
+    }
+
+    let validAccounts = [];
+    try {
+      const rows = await fetchAllPages(
+        `${API_URL}/accounts`,
+        { headers: { Authorization: `Bearer ${token}` } },
+        "accounts",
+        buildAccountParams(1, 100),
+      );
+      validAccounts = rows
+        .filter((acc) => acc && acc.date && !isNaN(new Date(acc.date)))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    } catch {
+      alert("Failed to load accounts for PDF export.");
+      return;
+    }
+
     if (validAccounts.length === 0) {
       alert("No valid accounts available for this party.");
       return;
@@ -111,7 +218,7 @@ const Report = () => {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(14);
     doc.setFont("times", "bold");
-    doc.text(`${party.partyname} Statement`, 10, 10);
+    doc.text(`${party.label} Statement`, 10, 10);
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
     doc.setFont("times", "normal");
@@ -268,7 +375,7 @@ const Report = () => {
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(14);
         doc.setFont("times", "bold");
-        doc.text(`${party.partyname} Statement`, 10, 10);
+        doc.text(`${party.label} Statement`, 10, 10);
         y += 15;
 
         // Closing Balance Box (Right Side, Above Table) - NEW PAGE
@@ -328,7 +435,7 @@ const Report = () => {
     const pdfUrl = URL.createObjectURL(pdfBlob);
 
     setPdfPreviewUrl(pdfUrl);
-    setPdfFileName(`${party.partyname}_account_statement.pdf`);
+    setPdfFileName(`${party.label}_account_statement.pdf`);
     setShowPdfPreview(true);
   };
 
@@ -344,66 +451,10 @@ const Report = () => {
     URL.revokeObjectURL(pdfPreviewUrl);
   };
 
-  // Filter accounts for the selected party and apply advanced filters
-  const selectedPartyAccounts = selectedParty
-    ? accounts.filter((account) => {
-        if (account.partyname?._id !== selectedParty) return false;
-
-        // Date range filter
-        if (
-          filters.startDate &&
-          new Date(account.date) < new Date(filters.startDate)
-        )
-          return false;
-        if (
-          filters.endDate &&
-          new Date(account.date) > new Date(filters.endDate)
-        )
-          return false;
-
-        // Transaction type filter
-        if (filters.transactionType) {
-          if (filters.transactionType === "credit" && account.credit <= 0)
-            return false;
-          if (filters.transactionType === "debit" && account.debit <= 0)
-            return false;
-        }
-
-        // Verification status filter
-        if (filters.verificationStatus) {
-          if (filters.verificationStatus === "verified" && !account.verified)
-            return false;
-          if (filters.verificationStatus === "unverified" && account.verified)
-            return false;
-        }
-
-        return true;
-      })
-    : [];
-
-  // Sort accounts by createdAt timestamp (newest to oldest)
-  const sortedAccounts = [...(selectedPartyAccounts || [])].sort((a, b) => {
-    return new Date(b.createdAt) - new Date(a.createdAt);
-  });
-
-  const n = sortedAccounts.length;
-  const rowRunningBalances = new Array(n);
-  let balanceSuffix = 0;
-  for (let i = n - 1; i >= 0; i--) {
-    const acc = sortedAccounts[i];
-    balanceSuffix += (acc.debit || 0) - (acc.credit || 0);
-    rowRunningBalances[i] = balanceSuffix;
-  }
-
-  const totalDebit = (selectedPartyAccounts || []).reduce(
-    (sum, account) => sum + (account.debit || 0),
-    0,
-  );
-  const totalCredit = (selectedPartyAccounts || []).reduce(
-    (sum, account) => sum + (account.credit || 0),
-    0,
-  );
-  const balance = totalDebit - totalCredit;
+  const sortedAccounts = accounts;
+  const totalDebit = partySummary?.totalDebit ?? 0;
+  const totalCredit = partySummary?.totalCredit ?? 0;
+  const balance = partySummary?.closingBalance ?? totalDebit - totalCredit;
   const balSign = balance > 0 ? "Dr" : balance < 0 ? "Cr" : "";
   const balValue = formatNumber(Math.abs(balance));
   const balanceColor =
@@ -439,14 +490,22 @@ const Report = () => {
     menuPlacement: "auto",
   };
 
+  const paginationSelectStyles = {
+    control: (base) => ({
+      ...base,
+      minHeight: 32,
+      fontSize: "0.8125rem",
+      borderColor: "#cbd5e1",
+    }),
+    menu: (base) => ({ ...base, zIndex: 10002 }),
+    menuPortal: (base) => ({ ...base, zIndex: 10002 }),
+  };
+
   const fieldClass =
     "h-8 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 transition focus:outline-none focus:ring-2 focus:ring-[#424687]/40";
 
-  // Get the party name for the selected party
-  const selectedPartyName = selectedParty
-    ? parties.find((party) => party._id === selectedParty)?.partyname ||
-      "Selected Party"
-    : "";
+  const selectedPartyName = selectedPartyOption?.label || "Selected Party";
+  const loading = accountsLoading;
 
   return (
     <div className="z-[99] min-h-[calc(100vh-5rem)] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-2 sm:py-3">
@@ -463,19 +522,16 @@ const Report = () => {
               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
                 Party
               </label>
-              <Select
-                options={partyOptions.filter((option) => option.value !== "")}
-                value={
-                  partyOptions.find(
-                    (option) => option.value === selectedParty,
-                  ) || null
-                }
+              <AsyncSelect
+                cacheOptions
+                defaultOptions
+                loadOptions={createLoadPartyOptions()}
+                value={selectedPartyOption}
                 onChange={handlePartyInputChange}
                 placeholder="Search or select party…"
                 className="w-full"
                 classNamePrefix="select"
                 isClearable
-                isSearchable
                 {...selectPortalProps}
                 styles={portalSelectStyles}
               />
@@ -621,7 +677,7 @@ const Report = () => {
             </div>
           )}
 
-          {selectedParty && selectedPartyAccounts.length > 0 ? (
+          {selectedParty && sortedAccounts.length > 0 ? (
             <>
               <div
                 className={`flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-3 py-2.5 sm:px-4 ${
@@ -676,7 +732,9 @@ const Report = () => {
                   </thead>
                   <tbody>
                     {sortedAccounts.map((account, index) => {
-                      const currentBalance = rowRunningBalances[index];
+                      const currentBalance =
+                        account.runningBalance ??
+                        (account.debit || 0) - (account.credit || 0);
                       const curBalSign =
                         currentBalance > 0
                           ? "Dr"
@@ -739,6 +797,86 @@ const Report = () => {
                   </tbody>
                 </table>
               </div>
+              {selectedParty && (accountsPagination?.totalRecords ?? 0) > 0 && (
+                <div className="flex flex-shrink-0 flex-col gap-3 border-t border-slate-100 bg-slate-50/80 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+                  <div className="text-xs text-slate-600 sm:text-sm">
+                    Showing{" "}
+                    {(currentPage - 1) * entriesPerPage + 1} to{" "}
+                    {Math.min(
+                      currentPage * entriesPerPage,
+                      accountsPagination.totalRecords,
+                    )}{" "}
+                    of {accountsPagination.totalRecords} entries
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <div className="flex items-center gap-2">
+                      <label className="whitespace-nowrap text-xs text-slate-600">
+                        Show
+                      </label>
+                      <Select
+                        options={entriesPerPageOptions}
+                        value={entriesPerPageOptions.find(
+                          (o) => o.value === entriesPerPage,
+                        )}
+                        onChange={handleEntriesPerPageChange}
+                        className="w-28 min-w-[7rem]"
+                        classNamePrefix="select"
+                        {...selectPortalProps}
+                        styles={paginationSelectStyles}
+                      />
+                      <label className="whitespace-nowrap text-xs text-slate-600">
+                        entries
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={pageInput}
+                        onChange={handlePageInputChange}
+                        placeholder="Page"
+                        className="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#424687]/40"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleGoToPage}
+                        className="rounded-md bg-[#424687] px-2.5 py-1.5 text-white shadow-sm transition hover:bg-[#353a6e]"
+                        title="Go to Page"
+                      >
+                        <FaArrowRight size={16} />
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.max(prev - 1, 1))
+                        }
+                        disabled={currentPage === 1}
+                        className="rounded-md bg-[#424687] px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:bg-slate-300"
+                      >
+                        Previous
+                      </button>
+                      <span className="whitespace-nowrap text-xs text-slate-700 sm:text-sm">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentPage((prev) =>
+                            Math.min(prev + 1, totalPages),
+                          )
+                        }
+                        disabled={
+                          currentPage === totalPages || totalPages === 0
+                        }
+                        className="rounded-md bg-[#424687] px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:bg-slate-300"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           ) : selectedParty ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-16 text-center">

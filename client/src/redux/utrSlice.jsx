@@ -5,7 +5,7 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 export const fetchUtrs = createAsyncThunk(
   "utr/fetchUtrs",
-  async (_, { getState, rejectWithValue }) => {
+  async (params = {}, { getState, rejectWithValue }) => {
     try {
       const reduxToken = getState()?.user?.token;
       const token = reduxToken || localStorage.getItem("token");
@@ -14,9 +14,11 @@ export const fetchUtrs = createAsyncThunk(
         return rejectWithValue("No token available");
       }
 
-      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const config = {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { page: 1, limit: 20, sortBy: "createdAt", sortOrder: "desc", ...params },
+      };
       const response = await axios.get(`${API_URL}/utrs`, config);
-
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);
@@ -66,10 +68,16 @@ export const deleteUtr = createAsyncThunk(
   },
 );
 
+const extractUtrs = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  return payload?.utrs ?? [];
+};
+
 const utrSlice = createSlice({
   name: "utr",
   initialState: {
     utrs: [],
+    pagination: null,
     loading: false,
     error: null,
   },
@@ -86,7 +94,8 @@ const utrSlice = createSlice({
       })
       .addCase(fetchUtrs.fulfilled, (state, action) => {
         state.loading = false;
-        state.utrs = action.payload;
+        state.utrs = extractUtrs(action.payload);
+        state.pagination = action.payload?.pagination ?? null;
       })
       .addCase(fetchUtrs.rejected, (state, action) => {
         state.loading = false;

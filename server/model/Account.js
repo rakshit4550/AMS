@@ -37,6 +37,10 @@ const accountSchema = new mongoose.Schema({
   timestamps: true
 });
 
+accountSchema.index({ createdBy: 1, date: -1 });
+accountSchema.index({ createdBy: 1, partyname: 1, createdAt: -1 });
+accountSchema.index({ createdBy: 1, partyname: 1, date: -1 });
+
 // Validation: Ensure at least one of credit or debit is provided
 accountSchema.pre('validate', function (next) {
   if (this.credit === 0 && this.debit === 0) {

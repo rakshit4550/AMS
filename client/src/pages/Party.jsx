@@ -11,7 +11,9 @@ import { FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 
 const Party = () => {
   const dispatch = useDispatch();
-  const { parties, loading, error } = useSelector((state) => state.party);
+  const { parties, loading, error, pagination } = useSelector(
+    (state) => state.party,
+  );
   const [formData, setFormData] = useState({
     partyname: "",
     mobileNumber: "",
@@ -19,10 +21,29 @@ const Party = () => {
     remark: "",
   });
   const [editId, setEditId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [entriesPerPage, setEntriesPerPage] = useState(20);
+
+  const entriesPerPageOptions = [
+    { value: 10, label: "10" },
+    { value: 20, label: "20" },
+    { value: 50, label: "50" },
+    { value: 100, label: "100" },
+  ];
 
   useEffect(() => {
-    dispatch(fetchParties());
-  }, [dispatch]);
+    dispatch(fetchParties({ page: currentPage, limit: entriesPerPage, search }));
+  }, [dispatch, currentPage, entriesPerPage, search]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -40,7 +61,10 @@ const Party = () => {
       dispatch(updateParty({ id: editId, ...formData }));
       setEditId(null);
     } else {
-      dispatch(createParty(formData));
+      dispatch(createParty(formData)).then(() => {
+        dispatch(fetchParties({ page: 1, limit: entriesPerPage, search }));
+        setCurrentPage(1);
+      });
     }
     setFormData({ partyname: "", mobileNumber: "", city: "", remark: "" });
   };
@@ -59,7 +83,9 @@ const Party = () => {
     if (!window.confirm("Are you sure you want to delete this party?")) {
       return;
     }
-    dispatch(deleteParty(id));
+    dispatch(deleteParty(id)).then(() => {
+      dispatch(fetchParties({ page: currentPage, limit: entriesPerPage, search }));
+    });
   };
 
   const fieldClass =
@@ -151,6 +177,15 @@ const Party = () => {
         </div>
 
         <div className="flex min-h-[min(70vh,calc(100vh-12rem))] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md">
+          <div className="border-b border-slate-100 px-3 py-2 sm:px-4">
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search parties…"
+              className={fieldClass}
+            />
+          </div>
           {loading && (
             <p className="border-b border-slate-100 bg-slate-50 py-2 text-center text-sm text-[#424687]">
               Loading…
@@ -189,7 +224,7 @@ const Party = () => {
                       colSpan={5}
                       className="px-4 py-12 text-center text-sm text-slate-500"
                     >
-                      No parties yet. Add one using the form above.
+                      No parties found.
                     </td>
                   </tr>
                 ) : (
@@ -236,6 +271,62 @@ const Party = () => {
               </tbody>
             </table>
           </div>
+          {pagination && pagination.totalRecords > 0 && (
+            <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs text-slate-600">
+                Showing{" "}
+                {pagination.totalRecords
+                  ? (pagination.currentPage - 1) * pagination.limit + 1
+                  : 0}{" "}
+                to{" "}
+                {Math.min(
+                  pagination.currentPage * pagination.limit,
+                  pagination.totalRecords,
+                )}{" "}
+                of {pagination.totalRecords} parties
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-600">Show</label>
+                  <select
+                    value={entriesPerPage}
+                    onChange={(e) => {
+                      setEntriesPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs"
+                  >
+                    {entriesPerPageOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={!pagination.hasPreviousPage}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+                  <span className="flex items-center text-xs text-slate-600">
+                    Page {pagination.currentPage} of {pagination.totalPages || 1}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={!pagination.hasNextPage}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

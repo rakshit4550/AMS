@@ -5,13 +5,16 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 export const fetchAccounts = createAsyncThunk(
   'account/fetchAccounts',
-  async (_, { getState, rejectWithValue }) => {
+  async (params = {}, { getState, rejectWithValue }) => {
     try {
       const { user: { token } } = getState();
       if (!token) {
         return rejectWithValue('No token available');
       }
-      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const config = {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { page: 1, limit: 20, sortBy: 'createdAt', sortOrder: 'desc', ...params },
+      };
       const response = await axios.get(`${API_URL}/accounts`, config);
       return response.data;
     } catch (error) {
@@ -90,13 +93,16 @@ export const verifyAccount = createAsyncThunk(
 
 export const fetchParties = createAsyncThunk(
   'account/fetchParties',
-  async (_, { getState, rejectWithValue }) => {
+  async (params = {}, { getState, rejectWithValue }) => {
     try {
       const { user: { token } } = getState();
       if (!token) {
         return rejectWithValue('No token available');
       }
-      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const config = {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { page: 1, limit: 20, sortBy: 'partyname', sortOrder: 'asc', ...params },
+      };
       const response = await axios.get(`${API_URL}/parties`, config);
       return response.data;
     } catch (error) {
@@ -163,11 +169,18 @@ export const toggleAutoJob = createAsyncThunk(
   }
 );
 
+const extractList = (payload, key) => {
+  if (Array.isArray(payload)) return payload;
+  return payload?.[key] ?? [];
+};
+
 const accountSlice = createSlice({
   name: 'account',
   initialState: {
     accounts: [],
     parties: [],
+    accountsPagination: null,
+    partiesPagination: null,
     loading: false,
     error: null,
     autoJobEnabled: false,
@@ -181,7 +194,8 @@ const accountSlice = createSlice({
       })
       .addCase(fetchAccounts.fulfilled, (state, action) => {
         state.loading = false;
-        state.accounts = action.payload;
+        state.accounts = extractList(action.payload, 'accounts');
+        state.accountsPagination = action.payload?.pagination ?? null;
       })
       .addCase(fetchAccounts.rejected, (state, action) => {
         state.loading = false;
@@ -191,9 +205,8 @@ const accountSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(createAccount.fulfilled, (state, action) => {
+      .addCase(createAccount.fulfilled, (state) => {
         state.loading = false;
-        state.accounts.push(action.payload);
       })
       .addCase(createAccount.rejected, (state, action) => {
         state.loading = false;
@@ -203,12 +216,8 @@ const accountSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(updateAccount.fulfilled, (state, action) => {
+      .addCase(updateAccount.fulfilled, (state) => {
         state.loading = false;
-        const index = state.accounts.findIndex((account) => account._id === action.payload._id);
-        if (index !== -1) {
-          state.accounts[index] = action.payload;
-        }
       })
       .addCase(updateAccount.rejected, (state, action) => {
         state.loading = false;
@@ -218,9 +227,8 @@ const accountSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(deleteAccount.fulfilled, (state, action) => {
+      .addCase(deleteAccount.fulfilled, (state) => {
         state.loading = false;
-        state.accounts = state.accounts.filter((account) => account._id !== action.payload);
       })
       .addCase(deleteAccount.rejected, (state, action) => {
         state.loading = false;
@@ -230,12 +238,8 @@ const accountSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(verifyAccount.fulfilled, (state, action) => {
+      .addCase(verifyAccount.fulfilled, (state) => {
         state.loading = false;
-        const index = state.accounts.findIndex((account) => account._id === action.payload._id);
-        if (index !== -1) {
-          state.accounts[index] = action.payload;
-        }
       })
       .addCase(verifyAccount.rejected, (state, action) => {
         state.loading = false;
@@ -247,7 +251,8 @@ const accountSlice = createSlice({
       })
       .addCase(fetchParties.fulfilled, (state, action) => {
         state.loading = false;
-        state.parties = action.payload;
+        state.parties = extractList(action.payload, 'parties');
+        state.partiesPagination = action.payload?.pagination ?? null;
       })
       .addCase(fetchParties.rejected, (state, action) => {
         state.loading = false;
