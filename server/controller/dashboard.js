@@ -103,18 +103,20 @@ export const getDashboardSummary = async (req, res) => {
     const utrsForRange = isTrader ? results[3] : [];
 
     const topClosingDrParties = partyRows
-      .filter((r) => r.closing > 0)
+      .filter((r) => Number(r.closing) > 0)
       .sort(
         (a, b) =>
-          b.closing - a.closing || String(a.name).localeCompare(String(b.name)),
+          Number(b.closing) - Number(a.closing) ||
+          String(a.name).localeCompare(String(b.name)),
       )
       .slice(0, 10);
 
     const topClosingCrParties = partyRows
-      .filter((r) => r.closing < 0)
+      .filter((r) => Number(r.closing) < 0)
       .sort(
         (a, b) =>
-          a.closing - b.closing || String(a.name).localeCompare(String(b.name)),
+          Number(a.closing) - Number(b.closing) ||
+          String(a.name).localeCompare(String(b.name)),
       )
       .slice(0, 10);
 

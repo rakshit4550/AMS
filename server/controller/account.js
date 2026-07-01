@@ -854,18 +854,6 @@ export const getAllAccounts = async (req, res) => {
 
     if (partyId) {
       fetchTasks.push(
-        Account.aggregate([
-          { $match: query },
-          {
-            $group: {
-              _id: null,
-              totalDebit: { $sum: "$debit" },
-              totalCredit: { $sum: "$credit" },
-            },
-          },
-        ]),
-      );
-      fetchTasks.push(
         Account.find(query)
           .select("debit credit createdAt _id")
           .sort(sortSpec)
@@ -879,8 +867,7 @@ export const getAllAccounts = async (req, res) => {
 
     let partySummary = null;
     if (partyId) {
-      const summaryRow = fetchResults[2]?.[0];
-      const balanceRows = fetchResults[3] || [];
+      const balanceRows = fetchResults[2] || [];
       const balanceById = {};
       let suffixSum = 0;
       for (let i = balanceRows.length - 1; i >= 0; i -= 1) {
@@ -893,8 +880,15 @@ export const getAllAccounts = async (req, res) => {
         runningBalance: balanceById[String(acc._id)] ?? 0,
       }));
 
-      const totalDebit = Number(summaryRow?.totalDebit) || 0;
-      const totalCredit = Number(summaryRow?.totalCredit) || 0;
+      // Same as old client-side: sum ALL party ledger rows (not just current page)
+      const totalDebit = balanceRows.reduce(
+        (sum, row) => sum + (Number(row.debit) || 0),
+        0,
+      );
+      const totalCredit = balanceRows.reduce(
+        (sum, row) => sum + (Number(row.credit) || 0),
+        0,
+      );
       partySummary = {
         totalDebit,
         totalCredit,
