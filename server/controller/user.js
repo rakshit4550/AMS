@@ -610,13 +610,76 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-// Set new password for the logged-in user (no current password required)
+const PASSWORD_CHANGE_PURPOSE = 'password-change';
+
+const createPasswordChangeToken = (userId) =>
+  jwt.sign(
+    { id: userId, purpose: PASSWORD_CHANGE_PURPOSE },
+    process.env.JWT_SECRET,
+    { expiresIn: '10m' }
+  );
+
+const isValidPasswordChangeToken = (token, userId) => {
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return (
+      decoded.purpose === PASSWORD_CHANGE_PURPOSE &&
+      String(decoded.id) === String(userId)
+    );
+  } catch {
+    return false;
+  }
+};
+
+// Step 1: Verify current password before allowing password change
+export const verifyOldPassword = async (req, res) => {
+  try {
+    const { oldPassword } = req.body;
+
+    if (!oldPassword || !String(oldPassword).trim()) {
+      return res.status(400).json({ message: 'Current password is required' });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: 'Server configuration error: JWT_SECRET is not defined' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isOldPasswordValid = await user.comparePassword(String(oldPassword).trim());
+    if (!isOldPasswordValid) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    const passwordChangeToken = createPasswordChangeToken(user._id);
+
+    return res.status(200).json({
+      message: 'Current password verified successfully',
+      verified: true,
+      passwordChangeToken,
+    });
+  } catch (error) {
+    console.error('Error verifying old password:', error.message);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Step 2: Set new password after old password was verified
 export const changePassword = async (req, res) => {
   try {
-    const { password, confirmPassword } = req.body;
+    const { password, confirmPassword, passwordChangeToken } = req.body;
+
+    if (!passwordChangeToken || !String(passwordChangeToken).trim()) {
+      return res.status(400).json({
+        message: 'Please verify your current password first',
+      });
+    }
 
     if (!password || !String(password).trim()) {
-      return res.status(400).json({ message: 'Password is required' });
+      return res.status(400).json({ message: 'New password is required' });
     }
 
     if (!confirmPassword || !String(confirmPassword).trim()) {
@@ -632,6 +695,12 @@ export const changePassword = async (req, res) => {
 
     if (trimmedPassword.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    if (!isValidPasswordChangeToken(passwordChangeToken, req.user.id)) {
+      return res.status(401).json({
+        message: 'Password verification expired or invalid. Please verify your current password again',
+      });
     }
 
     const user = await User.findById(req.user.id);

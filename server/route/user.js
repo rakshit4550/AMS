@@ -12,6 +12,7 @@ import {
   restrictToAdmin, 
   toggleAutoJob,
   changePassword,
+  verifyOldPassword,
   forgotPassword,
   verifyOTP,
   resetPassword,
@@ -34,7 +35,8 @@ router.get('/users/:id', getUserById); // Self or admin
 router.get('/me', getOwnUser); // Own data for any authenticated user
 router.put('/users/:id', updateUser); // Self or admin
 router.delete('/users/:id', restrictToAdmin, deleteUser); // Admin only
-router.put('/change-password', changePassword); // Logged-in user sets new password
+router.post('/verify-old-password', verifyOldPassword); // Step 1: verify current password
+router.put('/change-password', changePassword); // Step 2: set new password
 router.put('/toggle-auto-job', toggleAutoJob); // Any authenticated user
 
 export default router;
