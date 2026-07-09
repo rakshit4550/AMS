@@ -38,7 +38,16 @@ const userSchema = new mongoose.Schema({
   otpExpiry: {
     type: Date,
     default: null
-  }
+  },
+  twoFactorSecret: {
+    type: String,
+    default: null,
+    select: false,
+  },
+  twoFactorEnabled: {
+    type: Boolean,
+    default: false,
+  },
 }, {
   timestamps: true,
   collation: { locale: 'en', strength: 2 }, // Case-insensitive collation

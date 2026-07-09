@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import speakeasy from 'speakeasy';
+import QRCode from 'qrcode';
 import User from '../model/User.js';
 import nodemailer from 'nodemailer'; // Add this import for email sending
 
@@ -90,8 +92,63 @@ const toSafeUser = (user) => ({
   email: user.email,
   role: user.role,
   autoJobEnabled: user.autoJobEnabled,
+  twoFactorEnabled: Boolean(user.twoFactorEnabled),
   ...getSubscriptionInfo(user),
 });
+
+const TOTP_APP_NAME = process.env.TOTP_APP_NAME || 'myacbook';
+const TWO_FA_LOGIN_PURPOSE = '2fa-login';
+
+const signAuthToken = (user) =>
+  jwt.sign(
+    {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      autoJobEnabled: user.autoJobEnabled || false,
+      subscriptionExpiresAt: user.subscriptionExpiresAt || null,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '1h' }
+  );
+
+const buildLoginSuccessPayload = (user) => ({
+  message: 'Login successful',
+  token: signAuthToken(user),
+  role: user.role,
+  id: user._id,
+  username: user.username,
+  email: user.email,
+  twoFactorEnabled: Boolean(user.twoFactorEnabled),
+  ...getSubscriptionInfo(user),
+});
+
+const createTempLoginToken = (userId) =>
+  jwt.sign(
+    { id: userId, purpose: TWO_FA_LOGIN_PURPOSE },
+    process.env.JWT_SECRET,
+    { expiresIn: '10m' }
+  );
+
+const getUserIdFromTempLoginToken = (token) => {
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.purpose !== TWO_FA_LOGIN_PURPOSE || !decoded.id) {
+      return null;
+    }
+    return decoded.id;
+  } catch {
+    return null;
+  }
+};
+
+const verifyTotpCode = (secret, code) =>
+  speakeasy.totp.verify({
+    secret,
+    encoding: 'base32',
+    token: String(code).trim(),
+    window: 1,
+  });
 
 const isSubscriptionExpired = (user) => {
   if (!LIMITED_ROLES.includes(user?.role)) return false;
@@ -349,30 +406,201 @@ export const login = async (req, res) => {
       return res.status(500).json({ message: 'Server configuration error: JWT_SECRET is not defined' });
     }
 
-    const token = jwt.sign(
-      {
-        id: user._id,
-        email: user.email,
-        role: user.role,
-        subscriptionExpiresAt: user.subscriptionExpiresAt || null,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    if (user.twoFactorEnabled) {
+      const userWithSecret = await User.findById(user._id).select('+twoFactorSecret');
+      if (userWithSecret?.twoFactorSecret) {
+        const tempToken = createTempLoginToken(user._id);
+        console.log('2FA required for user:', user.username);
+        return res.status(200).json({
+          requires2FA: true,
+          message: 'Enter Google Authenticator code',
+          tempToken,
+        });
+      }
+
+      user.twoFactorEnabled = false;
+      await user.save();
+    }
 
     console.log('Login successful for user:', user.username, 'Token generated');
-    res.status(200).json({
-      message: 'Login successful',
-      token,
-      role: user.role,
-      id: user._id,
-      username: user.username,
-      email: user.email,
-      ...getSubscriptionInfo(user)
-    });
+    return res.status(200).json(buildLoginSuccessPayload(user));
   } catch (error) {
     console.error('Login error:', error.message, error.stack);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Step 2 of login: verify Google Authenticator code
+export const verify2FA = async (req, res) => {
+  try {
+    const { tempToken, code } = req.body;
+
+    if (!tempToken || !String(tempToken).trim()) {
+      return res.status(400).json({ message: 'Temporary login token is required' });
+    }
+
+    if (!code || !String(code).trim()) {
+      return res.status(400).json({ message: 'Authenticator code is required' });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: 'Server configuration error: JWT_SECRET is not defined' });
+    }
+
+    const userId = getUserIdFromTempLoginToken(tempToken);
+    if (!userId) {
+      return res.status(401).json({
+        message: 'Login session expired or invalid. Please log in again',
+      });
+    }
+
+    const user = await User.findById(userId).select('+twoFactorSecret');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+      return res.status(400).json({ message: 'Two-factor authentication is not enabled for this account' });
+    }
+
+    if (isSubscriptionExpired(user)) {
+      return res.status(403).json({
+        message: 'Please recharge your account',
+        ...getSubscriptionInfo(user),
+      });
+    }
+
+    const isCodeValid = verifyTotpCode(user.twoFactorSecret, code);
+    if (!isCodeValid) {
+      return res.status(400).json({ message: 'Invalid authenticator code' });
+    }
+
+    return res.status(200).json(buildLoginSuccessPayload(user));
+  } catch (error) {
+    console.error('verify2FA error:', error.message);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Generate Google Authenticator secret and QR code (logged-in user)
+export const setup2FA = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('+twoFactorSecret');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.twoFactorEnabled) {
+      return res.status(400).json({ message: 'Two-factor authentication is already enabled' });
+    }
+
+    const secret = speakeasy.generateSecret({
+      name: `${TOTP_APP_NAME} (${user.email})`,
+      length: 20,
+    });
+
+    user.twoFactorSecret = secret.base32;
+    user.twoFactorEnabled = false;
+    await user.save();
+
+    const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+
+    return res.status(200).json({
+      message: 'Scan the QR code in Google Authenticator, then confirm with a code',
+      secret: secret.base32,
+      qrCode,
+    });
+  } catch (error) {
+    console.error('setup2FA error:', error.message);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Confirm and enable 2FA after scanning QR code
+export const enable2FA = async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code || !String(code).trim()) {
+      return res.status(400).json({ message: 'Authenticator code is required' });
+    }
+
+    const user = await User.findById(req.user.id).select('+twoFactorSecret');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.twoFactorEnabled) {
+      return res.status(400).json({ message: 'Two-factor authentication is already enabled' });
+    }
+
+    if (!user.twoFactorSecret) {
+      return res.status(400).json({ message: 'Please set up two-factor authentication first' });
+    }
+
+    const isCodeValid = verifyTotpCode(user.twoFactorSecret, code);
+    if (!isCodeValid) {
+      return res.status(400).json({ message: 'Invalid authenticator code' });
+    }
+
+    user.twoFactorEnabled = true;
+    await user.save();
+
+    return res.status(200).json({
+      message: 'Two-factor authentication enabled successfully',
+      twoFactorEnabled: true,
+      user: toSafeUser(user),
+    });
+  } catch (error) {
+    console.error('enable2FA error:', error.message);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Disable 2FA (requires password + authenticator code)
+export const disable2FA = async (req, res) => {
+  try {
+    const { password, code } = req.body;
+
+    if (!password || !String(password).trim()) {
+      return res.status(400).json({ message: 'Password is required' });
+    }
+
+    if (!code || !String(code).trim()) {
+      return res.status(400).json({ message: 'Authenticator code is required' });
+    }
+
+    const user = await User.findById(req.user.id).select('+twoFactorSecret');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+      return res.status(400).json({ message: 'Two-factor authentication is not enabled' });
+    }
+
+    const isPasswordValid = await user.comparePassword(String(password).trim());
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: 'Password is incorrect' });
+    }
+
+    const isCodeValid = verifyTotpCode(user.twoFactorSecret, code);
+    if (!isCodeValid) {
+      return res.status(400).json({ message: 'Invalid authenticator code' });
+    }
+
+    user.twoFactorSecret = null;
+    user.twoFactorEnabled = false;
+    await user.save();
+
+    return res.status(200).json({
+      message: 'Two-factor authentication disabled successfully',
+      twoFactorEnabled: false,
+      user: toSafeUser(user),
+    });
+  } catch (error) {
+    console.error('disable2FA error:', error.message);
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 

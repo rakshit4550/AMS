@@ -13,6 +13,10 @@ import {
   toggleAutoJob,
   changePassword,
   verifyOldPassword,
+  verify2FA,
+  setup2FA,
+  enable2FA,
+  disable2FA,
   forgotPassword,
   verifyOTP,
   resetPassword,
@@ -23,6 +27,7 @@ const router = express.Router();
 // Public routes
 router.post('/login', login);
 router.post('/logout', logout);
+router.post('/verify-2fa', verify2FA);
 router.post('/forgot-password', forgotPassword); // New public route
 router.post('/verify-otp', verifyOTP);           // New public route
 router.post('/reset-password', resetPassword);   // New public route
@@ -37,6 +42,9 @@ router.put('/users/:id', updateUser); // Self or admin
 router.delete('/users/:id', restrictToAdmin, deleteUser); // Admin only
 router.post('/verify-old-password', verifyOldPassword); // Step 1: verify current password
 router.put('/change-password', changePassword); // Step 2: set new password
+router.post('/2fa/setup', setup2FA);
+router.post('/2fa/enable', enable2FA);
+router.post('/2fa/disable', disable2FA);
 router.put('/toggle-auto-job', toggleAutoJob); // Any authenticated user
 
 export default router;
