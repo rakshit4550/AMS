@@ -11,9 +11,10 @@ import {
   verifyToken, 
   restrictToAdmin, 
   toggleAutoJob,
-  forgotPassword,  // New import
-  verifyOTP,       // New import
-  resetPassword    // New import
+  changePassword,
+  forgotPassword,
+  verifyOTP,
+  resetPassword,
 } from '../controller/user.js';
 
 const router = express.Router();
@@ -33,6 +34,7 @@ router.get('/users/:id', getUserById); // Self or admin
 router.get('/me', getOwnUser); // Own data for any authenticated user
 router.put('/users/:id', updateUser); // Self or admin
 router.delete('/users/:id', restrictToAdmin, deleteUser); // Admin only
+router.put('/change-password', changePassword); // Logged-in user sets new password
 router.put('/toggle-auto-job', toggleAutoJob); // Any authenticated user
 
 export default router;

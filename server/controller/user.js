@@ -610,6 +610,52 @@ export const deleteUser = async (req, res) => {
   }
 };
 
+// Set new password for the logged-in user (no current password required)
+export const changePassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password || !String(password).trim()) {
+      return res.status(400).json({ message: 'Password is required' });
+    }
+
+    const trimmedPassword = String(password).trim();
+
+    if (trimmedPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.password = trimmedPassword;
+    await user.save();
+
+    const newToken = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        autoJobEnabled: user.autoJobEnabled,
+        subscriptionExpiresAt: user.subscriptionExpiresAt || null,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    return res.status(200).json({
+      message: 'Password updated successfully',
+      token: newToken,
+      user: toSafeUser(user),
+    });
+  } catch (error) {
+    console.error('Error changing password:', error.message);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // Toggle auto-job (daily email) setting
 export const toggleAutoJob = async (req, res) => {
   try {
