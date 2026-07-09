@@ -613,13 +613,22 @@ export const deleteUser = async (req, res) => {
 // Set new password for the logged-in user (no current password required)
 export const changePassword = async (req, res) => {
   try {
-    const { password } = req.body;
+    const { password, confirmPassword } = req.body;
 
     if (!password || !String(password).trim()) {
       return res.status(400).json({ message: 'Password is required' });
     }
 
+    if (!confirmPassword || !String(confirmPassword).trim()) {
+      return res.status(400).json({ message: 'Confirm password is required' });
+    }
+
     const trimmedPassword = String(password).trim();
+    const trimmedConfirmPassword = String(confirmPassword).trim();
+
+    if (trimmedPassword !== trimmedConfirmPassword) {
+      return res.status(400).json({ message: 'Password and confirm password do not match' });
+    }
 
     if (trimmedPassword.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
