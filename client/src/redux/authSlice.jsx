@@ -131,6 +131,60 @@ export const resetPassword = createAsyncThunk(
   },
 );
 
+// Verify current password (step 1 of change password)
+export const verifyOldPassword = createAsyncThunk(
+  "user/verifyOldPassword",
+  async (oldPassword, { getState, rejectWithValue }) => {
+    try {
+      const {
+        user: { token },
+      } = getState();
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const response = await axios.post(
+        `${API_URL}/verify-old-password`,
+        { oldPassword },
+        config,
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to verify current password",
+      );
+    }
+  },
+);
+
+// Change password (step 2 — requires passwordChangeToken from verifyOldPassword)
+export const changePassword = createAsyncThunk(
+  "user/changePassword",
+  async (
+    { password, confirmPassword, passwordChangeToken },
+    { getState, rejectWithValue },
+  ) => {
+    try {
+      const {
+        user: { token },
+      } = getState();
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const response = await axios.put(
+        `${API_URL}/change-password`,
+        { password, confirmPassword, passwordChangeToken },
+        config,
+      );
+
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+      }
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to change password",
+      );
+    }
+  },
+);
+
 // Fetch users
 export const fetchUsers = createAsyncThunk(
   "user/fetchUsers",
@@ -368,6 +422,12 @@ const userSlice = createSlice({
       .addCase(resetPassword.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+
+      .addCase(changePassword.fulfilled, (state, action) => {
+        if (action.payload.token) {
+          state.token = action.payload.token;
+        }
       })
 
       .addCase(fetchUsers.pending, (state) => {
