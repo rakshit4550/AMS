@@ -169,6 +169,86 @@ const getFrontendBaseUrl = () =>
 const build2FAResetLink = (resetToken) =>
   `${getFrontendBaseUrl()}/reset-authenticator?token=${encodeURIComponent(resetToken)}`;
 
+const generateOtpAuthUrl = (secretBase32, email) =>
+  speakeasy.otpauthURL({
+    secret: secretBase32,
+    label: `${TOTP_APP_NAME} (${email})`,
+    issuer: TOTP_APP_NAME,
+    encoding: 'base32',
+  });
+
+const generateAndSave2FAResetSecret = async (user) => {
+  const secret = speakeasy.generateSecret({
+    name: `${TOTP_APP_NAME} (${user.email})`,
+    length: 20,
+  });
+
+  user.twoFactorSecret = secret.base32;
+  user.twoFactorEnabled = false;
+  await user.save();
+
+  const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+  return qrCode;
+};
+
+const getExisting2FAResetQrCode = async (user) => {
+  const qrCode = await QRCode.toDataURL(
+    generateOtpAuthUrl(user.twoFactorSecret, user.email)
+  );
+  return qrCode;
+};
+
+const build2FAResetEmail = ({ username, resetLink, qrCode }) => {
+  const qrBase64 = String(qrCode).replace(/^data:image\/png;base64,/, '');
+
+  const text = `Hello ${username},
+
+You requested to reset your Google Authenticator for AMS.
+
+1. Open this email on your phone.
+2. Scan the QR code image in Google Authenticator.
+3. Open this link within 30 minutes to confirm your new code:
+${resetLink}
+4. After confirmation, login again.
+
+If you did not request this, you can ignore this email.`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #222; line-height: 1.5;">
+      <p>Hello <strong>${username}</strong>,</p>
+      <p>You requested to reset your Google Authenticator for AMS.</p>
+      <ol>
+        <li>Open this email on your phone.</li>
+        <li>Scan the QR code below in Google Authenticator.</li>
+        <li>Click the confirm link and enter the 6-digit code.</li>
+        <li>Login again after confirmation.</li>
+      </ol>
+      <p style="margin: 24px 0;">
+        <img src="cid:authenticator-qr" alt="Authenticator QR Code" width="220" height="220" />
+      </p>
+      <p>
+        <a href="${resetLink}" style="display:inline-block;padding:10px 16px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">
+          Confirm Authenticator Reset
+        </a>
+      </p>
+      <p style="font-size: 13px; color: #666;">This link is valid for 30 minutes.</p>
+      <p style="font-size: 13px; color: #666;">If you did not request this, you can ignore this email.</p>
+    </div>
+  `;
+
+  return {
+    text,
+    html,
+    attachments: [
+      {
+        filename: 'authenticator-qr.png',
+        content: Buffer.from(qrBase64, 'base64'),
+        cid: 'authenticator-qr',
+      },
+    ],
+  };
+};
+
 const verifyTotpCode = (secret, code) =>
   speakeasy.totp.verify({
     secret,
@@ -405,7 +485,7 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-// Forgot Authenticator - send reset link to user's registered email
+// Forgot Authenticator - send QR code and confirm link to user's registered email
 export const forgot2FA = async (req, res) => {
   try {
     const { username } = req.body;
@@ -423,7 +503,7 @@ export const forgot2FA = async (req, res) => {
       { username: trimmedUsername },
       null,
       { collation: { locale: 'en', strength: 2 } }
-    );
+    ).select('+twoFactorSecret');
 
     if (!user || !user.twoFactorEnabled || !user.email) {
       return res.status(200).json({ message: FORGOT_2FA_GENERIC_MESSAGE });
@@ -431,24 +511,23 @@ export const forgot2FA = async (req, res) => {
 
     const resetToken = create2FAResetToken(user._id);
     const resetLink = build2FAResetLink(resetToken);
+    const qrCode = await generateAndSave2FAResetSecret(user);
+    const emailContent = build2FAResetEmail({
+      username: user.username,
+      resetLink,
+      qrCode,
+    });
 
     await transporter.sendMail({
       from: process.env.EMAIL_FROM,
       to: user.email,
       subject: 'Reset Your Authenticator - AMS',
-      text: `Hello ${user.username},
-
-You requested to reset your Google Authenticator for AMS.
-
-Open this link within 30 minutes:
-${resetLink}
-
-Scan the new QR code shown on that page, confirm with a code, then login again.
-
-If you did not request this, you can ignore this email.`,
+      text: emailContent.text,
+      html: emailContent.html,
+      attachments: emailContent.attachments,
     });
 
-    console.log('2FA reset link sent for user:', user.username);
+    console.log('2FA reset email with QR sent for user:', user.username);
 
     return res.status(200).json({ message: FORGOT_2FA_GENERIC_MESSAGE });
   } catch (error) {
@@ -457,7 +536,7 @@ If you did not request this, you can ignore this email.`,
   }
 };
 
-// Open reset link: verify token and return a new Authenticator QR code
+// Open reset link: return existing QR from email flow, or generate if missing
 export const getReset2FASetup = async (req, res) => {
   try {
     const token = String(req.query.token || '').trim();
@@ -482,23 +561,18 @@ export const getReset2FASetup = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const secret = speakeasy.generateSecret({
-      name: `${TOTP_APP_NAME} (${user.email})`,
-      length: 20,
-    });
-
-    user.twoFactorSecret = secret.base32;
-    user.twoFactorEnabled = false;
-    await user.save();
-
-    const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+    let qrCode;
+    if (user.twoFactorSecret && !user.twoFactorEnabled) {
+      qrCode = await getExisting2FAResetQrCode(user);
+    } else {
+      qrCode = await generateAndSave2FAResetSecret(user);
+    }
 
     return res.status(200).json({
       message: 'Scan the QR code in Google Authenticator, then confirm with a code',
       username: user.username,
       qrCode,
       resetToken: token,
-      redirectTo: '/login',
     });
   } catch (error) {
     console.error('getReset2FASetup error:', error.message);
@@ -553,7 +627,6 @@ export const confirmReset2FA = async (req, res) => {
     return res.status(200).json({
       message: 'Authenticator reset successfully. Please login.',
       twoFactorEnabled: true,
-      redirectTo: '/login',
     });
   } catch (error) {
     console.error('confirmReset2FA error:', error.message);
