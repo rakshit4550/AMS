@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { FiCalendar, FiChevronDown, FiClock, FiLock } from "react-icons/fi";
+import { FiCalendar, FiChevronDown, FiClock, FiLock, FiShield } from "react-icons/fi";
 import { logout } from "../redux/authSlice";
 import ChangePasswordModal from "./ChangePasswordModal";
+import TwoFactorModal from "./TwoFactorModal";
 
 const IST = "Asia/Kolkata";
 
@@ -13,6 +14,7 @@ const Header = () => {
   const [now, setNow] = useState(() => new Date());
   const [profileOpen, setProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [twoFactorOpen, setTwoFactorOpen] = useState(false);
   const profileRef = useRef(null);
   const expiryLogoutDoneRef = useRef(false);
   const { currentUser, role } = useSelector((state) => state.user);
@@ -134,6 +136,11 @@ const Header = () => {
     setChangePasswordOpen(true);
   };
 
+  const openTwoFactor = () => {
+    setProfileOpen(false);
+    setTwoFactorOpen(true);
+  };
+
   return (
     <>
       <div className="app-header fixed left-0 right-0 top-0 z-[100] border-b border-indigo-200/30 bg-gradient-to-r from-[#eef2ff]/95 via-white/95 to-[#f5f3ff]/95 shadow-[0_4px_24px_-8px_rgba(37,40,88,0.12)] backdrop-blur-xl lg:left-60 lg:right-0">
@@ -186,11 +193,17 @@ const Header = () => {
                 aria-haspopup="menu"
                 aria-label="Profile menu"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#424687] to-[#353a6e] text-sm font-bold text-white">
+                <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#424687] to-[#353a6e] text-sm font-bold text-white">
                   {initials}
+                  {currentUser?.twoFactorEnabled && (
+                    <span
+                      className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500"
+                      title="2FA enabled"
+                    />
+                  )}
                 </span>
-                <span className="hidden max-w-[120px] truncate font-medium text-slate-700 md:inline">
-                  {displayName}
+                <span className="max-w-[88px] truncate text-xs font-semibold text-slate-700 sm:max-w-[120px] sm:text-sm">
+                  Profile
                 </span>
                 <FiChevronDown
                   className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${
@@ -217,9 +230,30 @@ const Header = () => {
                     {role && (
                       <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-[#424687]">
                         {role}
+                        {currentUser?.twoFactorEnabled && (
+                          <span className="ml-1.5 normal-case text-green-600">
+                            · 2FA on
+                          </span>
+                        )}
                       </p>
                     )}
                   </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={openTwoFactor}
+                    className="flex w-full flex-col gap-0.5 border-b border-slate-100 px-4 py-3 text-left transition hover:bg-[#424687]/5"
+                  >
+                    <span className="flex items-center gap-2.5 text-sm font-medium text-slate-700 hover:text-[#424687]">
+                      <FiShield className="h-4 w-4 shrink-0" aria-hidden />
+                      Two-Factor Auth (2FA)
+                    </span>
+                    <span className="pl-6 text-xs text-slate-500">
+                      {currentUser?.twoFactorEnabled
+                        ? "Enabled — Google Authenticator"
+                        : "Enable with Google Authenticator app"}
+                    </span>
+                  </button>
                   <button
                     type="button"
                     role="menuitem"
@@ -250,6 +284,10 @@ const Header = () => {
 
       {changePasswordOpen && (
         <ChangePasswordModal onClose={() => setChangePasswordOpen(false)} />
+      )}
+
+      {twoFactorOpen && (
+        <TwoFactorModal onClose={() => setTwoFactorOpen(false)} />
       )}
     </>
   );

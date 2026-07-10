@@ -4,6 +4,8 @@ import {
   login,
   logout,
   loadUser,
+  verify2FA,
+  forgot2FA,
   forgotPassword,
   verifyOTP,
   resetPassword,
@@ -28,6 +30,12 @@ const Login = () => {
     Boolean(location.state?.accountExpiredMessage),
   );
   const [formError, setFormError] = useState("");
+  const [pending2FA, setPending2FA] = useState(false);
+  const [tempToken, setTempToken] = useState("");
+  const [twoFACode, setTwoFACode] = useState("");
+  const [showForgot2FA, setShowForgot2FA] = useState(false);
+  const [forgot2FAUsername, setForgot2FAUsername] = useState("");
+  const [forgot2FAMessage, setForgot2FAMessage] = useState("");
 
   // Forgot password states
   const [showForgotForm, setShowForgotForm] = useState(false);
@@ -138,12 +146,82 @@ const Login = () => {
 
     dispatch(login({ email: email.trim(), password })).then((result) => {
       if (result.type === "user/login/fulfilled") {
+        if (result.payload?.requires2FA) {
+          setPending2FA(true);
+          setTempToken(result.payload.tempToken || "");
+          setTwoFACode("");
+          dispatch(clearError());
+          return;
+        }
         navigate("/dashboard");
       } else if (isSubscriptionExpiredError(result.payload)) {
         setShowRechargePopup(true);
         dispatch(clearError());
       }
     });
+  };
+
+  const handle2FASubmit = (e) => {
+    e.preventDefault();
+    setFormError("");
+    dispatch(clearError());
+
+    if (!twoFACode.trim()) {
+      setFormError("Please enter the 6-digit authenticator code");
+      return;
+    }
+
+    dispatch(verify2FA({ tempToken, code: twoFACode.trim() })).then(
+      (result) => {
+        if (result.type === "user/verify2FA/fulfilled") {
+          setPending2FA(false);
+          setTempToken("");
+          navigate("/dashboard");
+        } else if (isSubscriptionExpiredError(result.payload)) {
+          setShowRechargePopup(true);
+          setPending2FA(false);
+          dispatch(clearError());
+        }
+      },
+    );
+  };
+
+  const handleBackFrom2FA = () => {
+    setPending2FA(false);
+    setTempToken("");
+    setTwoFACode("");
+    setShowForgot2FA(false);
+    setForgot2FAUsername("");
+    setForgot2FAMessage("");
+    setFormError("");
+    dispatch(clearError());
+  };
+
+  const openForgot2FA = () => {
+    const loginId = email.trim();
+    setForgot2FAUsername(loginId.includes("@") ? "" : loginId);
+    setForgot2FAMessage("");
+    setFormError("");
+    setShowForgot2FA(true);
+  };
+
+  const handleForgot2FASubmit = async (e) => {
+    e.preventDefault();
+    setFormError("");
+    setForgot2FAMessage("");
+
+    if (!forgot2FAUsername.trim()) {
+      setFormError("Please enter your username");
+      return;
+    }
+
+    const result = await dispatch(forgot2FA(forgot2FAUsername.trim()));
+    if (forgot2FA.fulfilled.match(result)) {
+      setForgot2FAMessage(result.payload);
+      return;
+    }
+
+    setFormError(result.payload || "Failed to send reset link");
   };
 
   const handleLogout = () => {
@@ -423,6 +501,140 @@ const Login = () => {
                   </p>
                 )}
               </div>
+            ) : pending2FA && showForgot2FA ? (
+              <div className="w-full">
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl font-extrabold text-gray-900">
+                    Forgot Authenticator
+                  </h2>
+                  <p className="text-gray-500 mt-2 text-sm">
+                    Username daalo — email mein <strong>QR code</strong> aur
+                    confirm link dono jayenge (30 min valid)
+                  </p>
+                </div>
+
+                <div className="mb-5 rounded-xl border border-[#424687]/15 bg-[#424687]/5 px-3 py-3 text-xs leading-relaxed text-slate-600">
+                  <p className="font-semibold text-[#424687]">Email mein kya aayega:</p>
+                  <ol className="mt-1.5 list-decimal space-y-1 pl-4">
+                    <li>QR code image — Google Authenticator se scan karo</li>
+                    <li>Confirm link — code enter karke 2FA enable karo</li>
+                  </ol>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgot2FA(false);
+                    setForgot2FAMessage("");
+                    setFormError("");
+                  }}
+                  className="mb-5 text-[#424687] font-medium hover:underline"
+                >
+                  ← Back to Authenticator Code
+                </button>
+
+                <form onSubmit={handleForgot2FASubmit} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2 text-gray-700">
+                      Username
+                    </label>
+                    <input
+                      type="text"
+                      value={forgot2FAUsername}
+                      onChange={(e) => setForgot2FAUsername(e.target.value)}
+                      placeholder="Enter your username"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
+                      required
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-[#424687] to-[#252858] text-white py-3 rounded-xl font-bold shadow-lg transition disabled:opacity-50"
+                  >
+                    {loading ? "Sending…" : "Send Reset Email"}
+                  </button>
+                </form>
+
+                {forgot2FAMessage && (
+                  <div className="mt-4 space-y-2 rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-800">
+                    <p>{forgot2FAMessage}</p>
+                    <p className="text-xs leading-relaxed text-green-900/80">
+                      Registered email check karo → QR scan karo → email ka
+                      confirm link kholo → 6-digit code daalo.
+                    </p>
+                  </div>
+                )}
+
+                {(formError || error) && (
+                  <p className="text-red-500 mt-4 text-sm text-center bg-red-50 border border-red-100 rounded-lg py-2">
+                    {formError || error}
+                  </p>
+                )}
+              </div>
+            ) : pending2FA ? (
+              <form onSubmit={handle2FASubmit} className="w-full">
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl font-extrabold text-gray-900">
+                    Two-Factor Auth
+                  </h2>
+                  <p className="text-gray-500 mt-2">
+                    Enter the 6-digit code from Google Authenticator
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleBackFrom2FA}
+                  className="mb-5 text-[#424687] font-medium hover:underline"
+                >
+                  ← Back to Login
+                </button>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-gray-700">
+                    Authenticator Code
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={twoFACode}
+                    onChange={(e) =>
+                      setTwoFACode(
+                        e.target.value.replace(/\D/g, "").slice(0, 6),
+                      )
+                    }
+                    placeholder="000000"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-center text-xl font-semibold tracking-[0.4em] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
+                    autoFocus
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="mt-6 w-full bg-gradient-to-r from-[#424687] to-[#252858] text-white py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition disabled:opacity-50"
+                >
+                  {loading ? "Verifying..." : "Verify & Login"}
+                </button>
+
+                <p className="mt-4 text-center">
+                  <button
+                    type="button"
+                    onClick={openForgot2FA}
+                    className="text-[#424687] hover:underline text-sm font-semibold"
+                  >
+                    Lost access to Authenticator?
+                  </button>
+                </p>
+
+                {(formError || error) && (
+                  <p className="text-red-500 mt-4 text-sm text-center bg-red-50 border border-red-100 rounded-lg py-2">
+                    {formError || error}
+                  </p>
+                )}
+              </form>
             ) : (
               <form onSubmit={handleSubmit} className="w-full">
                 <div className="text-center mb-8">

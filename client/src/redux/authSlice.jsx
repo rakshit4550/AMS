@@ -3,6 +3,18 @@ import axios from "axios";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
+const mapAuthUser = (data, token) => ({
+  token,
+  role: data.role,
+  id: data.id || data._id,
+  username: data.username,
+  email: data.email,
+  twoFactorEnabled: Boolean(data.twoFactorEnabled),
+  subscriptionExpiresAt: data.subscriptionExpiresAt || null,
+  subscriptionStatus: data.subscriptionStatus || null,
+  subscriptionRemainingDays: data.subscriptionRemainingDays ?? null,
+});
+
 // Load current user from token
 export const loadUser = createAsyncThunk(
   "user/loadUser",
@@ -17,14 +29,7 @@ export const loadUser = createAsyncThunk(
       const response = await axios.get(`${API_URL}/me`, config);
 
       return {
-        token,
-        role: response.data.role,
-        id: response.data._id,
-        username: response.data.username,
-        email: response.data.email,
-        subscriptionExpiresAt: response.data.subscriptionExpiresAt || null,
-        subscriptionStatus: response.data.subscriptionStatus || null,
-        subscriptionRemainingDays: response.data.subscriptionRemainingDays ?? null,
+        ...mapAuthUser(response.data, token),
       };
     } catch (error) {
       const status = error.response?.status;
@@ -53,20 +58,163 @@ export const login = createAsyncThunk(
     try {
       const response = await axios.post(`${API_URL}/login`, loginData);
 
+      if (response.data.requires2FA) {
+        return {
+          requires2FA: true,
+          tempToken: response.data.tempToken,
+          message: response.data.message,
+        };
+      }
+
       localStorage.setItem("token", response.data.token);
 
       return {
-        token: response.data.token,
-        role: response.data.role,
-        id: response.data.id,
-        username: response.data.username,
-        email: response.data.email,
-        subscriptionExpiresAt: response.data.subscriptionExpiresAt || null,
-        subscriptionStatus: response.data.subscriptionStatus || null,
-        subscriptionRemainingDays: response.data.subscriptionRemainingDays ?? null,
+        requires2FA: false,
+        ...mapAuthUser(response.data, response.data.token),
       };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Login failed");
+    }
+  },
+);
+
+// Verify 2FA code (login step 2)
+export const verify2FA = createAsyncThunk(
+  "user/verify2FA",
+  async ({ tempToken, code }, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(`${API_URL}/verify-2fa`, {
+        tempToken,
+        code: String(code).trim(),
+      });
+
+      localStorage.setItem("token", response.data.token);
+
+      return {
+        requires2FA: false,
+        ...mapAuthUser(response.data, response.data.token),
+      };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Invalid authenticator code",
+      );
+    }
+  },
+);
+
+// Setup 2FA — get QR code
+export const setup2FA = createAsyncThunk(
+  "user/setup2FA",
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const {
+        user: { token },
+      } = getState();
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const response = await axios.post(`${API_URL}/2fa/setup`, {}, config);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to setup 2FA",
+      );
+    }
+  },
+);
+
+// Enable 2FA after scanning QR
+export const enable2FA = createAsyncThunk(
+  "user/enable2FA",
+  async (code, { getState, rejectWithValue }) => {
+    try {
+      const {
+        user: { token },
+      } = getState();
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const response = await axios.post(
+        `${API_URL}/2fa/enable`,
+        { code: String(code).trim() },
+        config,
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to enable 2FA",
+      );
+    }
+  },
+);
+
+// Disable 2FA
+export const disable2FA = createAsyncThunk(
+  "user/disable2FA",
+  async ({ password, code }, { getState, rejectWithValue }) => {
+    try {
+      const {
+        user: { token },
+      } = getState();
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const response = await axios.post(
+        `${API_URL}/2fa/disable`,
+        { password, code: String(code).trim() },
+        config,
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to disable 2FA",
+      );
+    }
+  },
+);
+
+// Forgot Authenticator — email reset link (username required)
+export const forgot2FA = createAsyncThunk(
+  "user/forgot2FA",
+  async (username, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(`${API_URL}/forgot-2fa`, {
+        username: String(username).trim(),
+      });
+      return response.data.message;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to send reset link",
+      );
+    }
+  },
+);
+
+// Open reset link — get new QR code
+export const fetchReset2FASetup = createAsyncThunk(
+  "user/fetchReset2FASetup",
+  async (token, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`${API_URL}/reset-2fa`, {
+        params: { token },
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Invalid or expired reset link",
+      );
+    }
+  },
+);
+
+// Confirm new Authenticator after reset link
+export const confirmReset2FA = createAsyncThunk(
+  "user/confirmReset2FA",
+  async ({ token, code }, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(`${API_URL}/reset-2fa/confirm`, {
+        token,
+        code: String(code).trim(),
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to reset authenticator",
+      );
     }
   },
 );
@@ -320,6 +468,7 @@ const userSlice = createSlice({
           id: action.payload.id,
           username: action.payload.username,
           email: action.payload.email,
+          twoFactorEnabled: action.payload.twoFactorEnabled,
           subscriptionExpiresAt: action.payload.subscriptionExpiresAt || null,
           subscriptionStatus: action.payload.subscriptionStatus || null,
           subscriptionRemainingDays: action.payload.subscriptionRemainingDays ?? null,
@@ -355,12 +504,15 @@ const userSlice = createSlice({
       })
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
+        if (action.payload.requires2FA) return;
+
         state.token = action.payload.token;
         state.role = action.payload.role;
         state.currentUser = {
           id: action.payload.id,
           username: action.payload.username,
           email: action.payload.email,
+          twoFactorEnabled: action.payload.twoFactorEnabled,
           subscriptionExpiresAt: action.payload.subscriptionExpiresAt || null,
           subscriptionStatus: action.payload.subscriptionStatus || null,
           subscriptionRemainingDays: action.payload.subscriptionRemainingDays ?? null,
@@ -369,6 +521,41 @@ const userSlice = createSlice({
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+
+      .addCase(verify2FA.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(verify2FA.fulfilled, (state, action) => {
+        state.loading = false;
+        state.token = action.payload.token;
+        state.role = action.payload.role;
+        state.currentUser = {
+          id: action.payload.id,
+          username: action.payload.username,
+          email: action.payload.email,
+          twoFactorEnabled: action.payload.twoFactorEnabled,
+          subscriptionExpiresAt: action.payload.subscriptionExpiresAt || null,
+          subscriptionStatus: action.payload.subscriptionStatus || null,
+          subscriptionRemainingDays: action.payload.subscriptionRemainingDays ?? null,
+        };
+      })
+      .addCase(verify2FA.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      .addCase(enable2FA.fulfilled, (state) => {
+        if (state.currentUser) {
+          state.currentUser.twoFactorEnabled = true;
+        }
+      })
+
+      .addCase(disable2FA.fulfilled, (state) => {
+        if (state.currentUser) {
+          state.currentUser.twoFactorEnabled = false;
+        }
       })
 
       .addCase(logout.pending, (state) => {
@@ -394,6 +581,18 @@ const userSlice = createSlice({
         state.loading = false;
       })
       .addCase(forgotPassword.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      .addCase(forgot2FA.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(forgot2FA.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(forgot2FA.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

@@ -250,6 +250,7 @@ import "tailwindcss/tailwind.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Login from "./pages/Login";
+import ResetAuthenticator from "./pages/ResetAuthenticator";
 import Party from "./pages/Party";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
@@ -411,6 +412,14 @@ function App() {
           element={
             <Layout>
               <Login />
+            </Layout>
+          }
+        />
+        <Route
+          path="/reset-authenticator"
+          element={
+            <Layout>
+              <ResetAuthenticator />
             </Layout>
           }
         />
