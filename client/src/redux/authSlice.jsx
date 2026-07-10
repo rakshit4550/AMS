@@ -167,7 +167,7 @@ export const disable2FA = createAsyncThunk(
   },
 );
 
-// Forgot Authenticator — email reset link (username required)
+// Forgot Authenticator — email QR only; returns resetToken for confirm page
 export const forgot2FA = createAsyncThunk(
   "user/forgot2FA",
   async (username, { rejectWithValue }) => {
@@ -175,10 +175,10 @@ export const forgot2FA = createAsyncThunk(
       const response = await axios.post(`${API_URL}/forgot-2fa`, {
         username: String(username).trim(),
       });
-      return response.data.message;
+      return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to send reset link",
+        error.response?.data?.message || "Failed to send reset email",
       );
     }
   },

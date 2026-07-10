@@ -198,7 +198,7 @@ const getExisting2FAResetQrCode = async (user) => {
   return qrCode;
 };
 
-const build2FAResetEmail = ({ username, resetLink, qrCode }) => {
+const build2FAResetEmail = ({ username, qrCode }) => {
   const qrBase64 = String(qrCode).replace(/^data:image\/png;base64,/, '');
 
   const text = `Hello ${username},
@@ -207,9 +207,7 @@ You requested to reset your Google Authenticator for AMS.
 
 1. Open this email on your phone.
 2. Scan the QR code image in Google Authenticator.
-3. Open this link within 30 minutes to confirm your new code:
-${resetLink}
-4. After confirmation, login again.
+3. Return to the login page on your browser and enter the 6-digit code to confirm.
 
 If you did not request this, you can ignore this email.`;
 
@@ -220,18 +218,11 @@ If you did not request this, you can ignore this email.`;
       <ol>
         <li>Open this email on your phone.</li>
         <li>Scan the QR code below in Google Authenticator.</li>
-        <li>Click the confirm link and enter the 6-digit code.</li>
-        <li>Login again after confirmation.</li>
+        <li>Return to the login page in your browser and confirm with the 6-digit code.</li>
       </ol>
       <p style="margin: 24px 0;">
         <img src="cid:authenticator-qr" alt="Authenticator QR Code" width="220" height="220" />
       </p>
-      <p>
-        <a href="${resetLink}" style="display:inline-block;padding:10px 16px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">
-          Confirm Authenticator Reset
-        </a>
-      </p>
-      <p style="font-size: 13px; color: #666;">This link is valid for 30 minutes.</p>
       <p style="font-size: 13px; color: #666;">If you did not request this, you can ignore this email.</p>
     </div>
   `;
@@ -485,7 +476,7 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-// Forgot Authenticator - send QR code and confirm link to user's registered email
+// Forgot Authenticator - send QR code only; return resetToken for in-app confirm page
 export const forgot2FA = async (req, res) => {
   try {
     const { username } = req.body;
@@ -510,11 +501,9 @@ export const forgot2FA = async (req, res) => {
     }
 
     const resetToken = create2FAResetToken(user._id);
-    const resetLink = build2FAResetLink(resetToken);
     const qrCode = await generateAndSave2FAResetSecret(user);
     const emailContent = build2FAResetEmail({
       username: user.username,
-      resetLink,
       qrCode,
     });
 
@@ -529,7 +518,10 @@ export const forgot2FA = async (req, res) => {
 
     console.log('2FA reset email with QR sent for user:', user.username);
 
-    return res.status(200).json({ message: FORGOT_2FA_GENERIC_MESSAGE });
+    return res.status(200).json({
+      message: 'QR code sent to your registered email. Confirm on the next screen.',
+      resetToken,
+    });
   } catch (error) {
     console.error('forgot2FA error:', error.message);
     return res.status(500).json({ message: 'Server error', error: error.message });

@@ -217,11 +217,18 @@ const Login = () => {
 
     const result = await dispatch(forgot2FA(forgot2FAUsername.trim()));
     if (forgot2FA.fulfilled.match(result)) {
-      setForgot2FAMessage(result.payload);
+      const { resetToken, message } = result.payload || {};
+      if (resetToken) {
+        navigate(
+          `/reset-authenticator?token=${encodeURIComponent(resetToken)}`,
+        );
+        return;
+      }
+      setForgot2FAMessage(message || "If this username exists and has 2FA enabled, a reset email has been sent.");
       return;
     }
 
-    setFormError(result.payload || "Failed to send reset link");
+    setFormError(result.payload || "Failed to send reset email");
   };
 
   const handleLogout = () => {
@@ -508,16 +515,17 @@ const Login = () => {
                     Forgot Authenticator
                   </h2>
                   <p className="text-gray-500 mt-2 text-sm">
-                    Username daalo — email mein <strong>QR code</strong> aur
-                    confirm link dono jayenge (30 min valid)
+                    Username daalo — email mein sirf <strong>QR code</strong>{' '}
+                    jayega. Confirm yahi app par hoga.
                   </p>
                 </div>
 
                 <div className="mb-5 rounded-xl border border-[#424687]/15 bg-[#424687]/5 px-3 py-3 text-xs leading-relaxed text-slate-600">
-                  <p className="font-semibold text-[#424687]">Email mein kya aayega:</p>
+                  <p className="font-semibold text-[#424687]">Steps:</p>
                   <ol className="mt-1.5 list-decimal space-y-1 pl-4">
-                    <li>QR code image — Google Authenticator se scan karo</li>
-                    <li>Confirm link — code enter karke 2FA enable karo</li>
+                    <li>Send Reset Email dabao</li>
+                    <li>Email ka QR phone par scan karo</li>
+                    <li>Confirm page par code daalo → login</li>
                   </ol>
                 </div>
 
@@ -558,12 +566,8 @@ const Login = () => {
                 </form>
 
                 {forgot2FAMessage && (
-                  <div className="mt-4 space-y-2 rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-800">
+                  <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-800">
                     <p>{forgot2FAMessage}</p>
-                    <p className="text-xs leading-relaxed text-green-900/80">
-                      Registered email check karo → QR scan karo → email ka
-                      confirm link kholo → 6-digit code daalo.
-                    </p>
                   </div>
                 )}
 

@@ -24,7 +24,7 @@ const ResetAuthenticator = () => {
   useEffect(() => {
     if (!token) {
       setLoading(false);
-      setLoadError("Reset link is invalid. Please request a new one.");
+      setLoadError("Invalid reset session. Please request a new reset from login.");
       return;
     }
 
@@ -43,7 +43,7 @@ const ResetAuthenticator = () => {
         return;
       }
 
-      setLoadError(result.payload || "Invalid or expired reset link.");
+      setLoadError(result.payload || "Reset session expired. Please try again from login.");
       setLoading(false);
     };
 
@@ -70,9 +70,9 @@ const ResetAuthenticator = () => {
     setSubmitting(false);
 
     if (confirmReset2FA.fulfilled.match(result)) {
-      toast.success("Authenticator reset successfully. Please login.", {
+      toast.success("Authenticator reset! Ab login karo.", {
         position: "top-center",
-        autoClose: 3000,
+        autoClose: 2500,
       });
       navigate("/", { replace: true });
       return;
@@ -88,7 +88,7 @@ const ResetAuthenticator = () => {
           Confirm Authenticator Reset
         </h1>
         <p className="text-gray-500 text-center mt-2 text-sm">
-          Email wale QR se scan kar chuke ho? Bas code daalo aur confirm karo.
+          Pehle email ka QR scan karo, phir yahan code daalo
         </p>
 
         {loading && (
@@ -99,10 +99,6 @@ const ResetAuthenticator = () => {
           <div className="mt-6 space-y-4">
             <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {loadError}
-            </p>
-            <p className="text-center text-xs text-slate-500">
-              Link expire ho gaya ho to login par jaake dubara &quot;Forgot
-              Authenticator&quot; request karo.
             </p>
             <Link
               to="/"
@@ -122,19 +118,17 @@ const ResetAuthenticator = () => {
             )}
 
             <div className="rounded-xl border border-[#424687]/15 bg-[#424687]/5 px-3 py-3 text-xs leading-relaxed text-slate-600">
-              <p className="font-semibold text-[#424687]">Steps:</p>
+              <p className="font-semibold text-[#424687]">Ab kya karna hai:</p>
               <ol className="mt-1.5 list-decimal space-y-1 pl-4">
-                <li>
-                  Email ka QR scan karo (ya neeche wala same QR use karo)
-                </li>
-                <li>Google Authenticator ka 6-digit code yahan daalo</li>
-                <li>Confirm dabao — phir login karo</li>
+                <li>Registered email kholo → QR scan karo (Google Authenticator)</li>
+                <li>App ka 6-digit code neeche daalo</li>
+                <li>Confirm dabao → login page par redirect</li>
               </ol>
             </div>
 
             <div className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
               <p className="text-xs font-medium text-slate-500">
-                Same QR as email (scan again if needed)
+                Email wala same QR (dubara scan kar sakte ho)
               </p>
               <img src={qrCode} alt="Authenticator QR code" className="h-44 w-44" />
             </div>
@@ -167,14 +161,14 @@ const ResetAuthenticator = () => {
               disabled={submitting}
               className="w-full bg-gradient-to-r from-[#424687] to-[#252858] text-white py-3 rounded-xl font-bold shadow-lg transition disabled:opacity-50"
             >
-              {submitting ? "Confirming…" : "Confirm & Enable 2FA"}
+              {submitting ? "Confirming…" : "Confirm & Go to Login"}
             </button>
 
             <Link
               to="/"
               className="block text-center text-sm font-semibold text-[#424687] hover:underline"
             >
-              Go to Login
+              Cancel — Back to Login
             </Link>
           </form>
         )}
