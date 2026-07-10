@@ -111,7 +111,7 @@ cron.schedule('0 0 11 * * *', async () => {
       const jsonData = JSON.stringify(grouped, null, 2);
 
       const mailOptions = {
-        from: process.env.EMAIL_FROM || 'AMS Admin <flagcartshop@gmail.com>',
+        from: process.env.EMAIL_FROM || 'AMS Admin',
         to: user.email,
         subject: 'Daily Account Statement JSON',
         text: 'Attached is your daily account data in JSON format.',

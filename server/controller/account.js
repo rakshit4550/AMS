@@ -518,7 +518,7 @@ export const sendStatementEmail = async (req, res) => {
     });
 
     const mailOptions = {
-      from: process.env.EMAIL_FROM || `AMS Admin <flagcartshop@gmail.com>`,
+      from: process.env.EMAIL_FROM || 'AMS Admin',
       to: toEmail,
       subject: "Account Statement JSON",
       text: "Attached is your account data in JSON format.",
