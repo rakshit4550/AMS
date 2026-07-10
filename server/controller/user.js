@@ -97,6 +97,9 @@ const toSafeUser = (user) => ({
 
 const TOTP_APP_NAME = process.env.TOTP_APP_NAME || 'myacbook';
 const TWO_FA_LOGIN_PURPOSE = '2fa-login';
+const TWO_FA_RESET_PURPOSE = '2fa-reset';
+const FORGOT_2FA_GENERIC_MESSAGE =
+  'If this username exists and has 2FA enabled, a reset link has been sent to the registered email.';
 
 const signAuthToken = (user) =>
   jwt.sign(
@@ -140,6 +143,31 @@ const getUserIdFromTempLoginToken = (token) => {
     return null;
   }
 };
+
+const create2FAResetToken = (userId) =>
+  jwt.sign(
+    { id: userId, purpose: TWO_FA_RESET_PURPOSE },
+    process.env.JWT_SECRET,
+    { expiresIn: '30m' }
+  );
+
+const getUserIdFrom2FAResetToken = (token) => {
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.purpose !== TWO_FA_RESET_PURPOSE || !decoded.id) {
+      return null;
+    }
+    return decoded.id;
+  } catch {
+    return null;
+  }
+};
+
+const getFrontendBaseUrl = () =>
+  String(process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+
+const build2FAResetLink = (resetToken) =>
+  `${getFrontendBaseUrl()}/reset-authenticator?token=${encodeURIComponent(resetToken)}`;
 
 const verifyTotpCode = (secret, code) =>
   speakeasy.totp.verify({
@@ -374,6 +402,162 @@ export const resetPassword = async (req, res) => {
   } catch (error) {
     console.error('Reset password error:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Forgot Authenticator - send reset link to user's registered email
+export const forgot2FA = async (req, res) => {
+  try {
+    const { username } = req.body;
+    const trimmedUsername = String(username || '').trim();
+
+    if (!trimmedUsername) {
+      return res.status(400).json({ message: 'Username is required' });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: 'Server configuration error: JWT_SECRET is not defined' });
+    }
+
+    const user = await User.findOne(
+      { username: trimmedUsername },
+      null,
+      { collation: { locale: 'en', strength: 2 } }
+    );
+
+    if (!user || !user.twoFactorEnabled || !user.email) {
+      return res.status(200).json({ message: FORGOT_2FA_GENERIC_MESSAGE });
+    }
+
+    const resetToken = create2FAResetToken(user._id);
+    const resetLink = build2FAResetLink(resetToken);
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to: user.email,
+      subject: 'Reset Your Authenticator - AMS',
+      text: `Hello ${user.username},
+
+You requested to reset your Google Authenticator for AMS.
+
+Open this link within 30 minutes:
+${resetLink}
+
+Scan the new QR code shown on that page, confirm with a code, then login again.
+
+If you did not request this, you can ignore this email.`,
+    });
+
+    console.log('2FA reset link sent for user:', user.username);
+
+    return res.status(200).json({ message: FORGOT_2FA_GENERIC_MESSAGE });
+  } catch (error) {
+    console.error('forgot2FA error:', error.message);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Open reset link: verify token and return a new Authenticator QR code
+export const getReset2FASetup = async (req, res) => {
+  try {
+    const token = String(req.query.token || '').trim();
+
+    if (!token) {
+      return res.status(400).json({ message: 'Reset token is required' });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: 'Server configuration error: JWT_SECRET is not defined' });
+    }
+
+    const userId = getUserIdFrom2FAResetToken(token);
+    if (!userId) {
+      return res.status(401).json({
+        message: 'Reset link is invalid or expired. Please request a new one.',
+      });
+    }
+
+    const user = await User.findById(userId).select('+twoFactorSecret');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const secret = speakeasy.generateSecret({
+      name: `${TOTP_APP_NAME} (${user.email})`,
+      length: 20,
+    });
+
+    user.twoFactorSecret = secret.base32;
+    user.twoFactorEnabled = false;
+    await user.save();
+
+    const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+
+    return res.status(200).json({
+      message: 'Scan the QR code in Google Authenticator, then confirm with a code',
+      username: user.username,
+      qrCode,
+      resetToken: token,
+      redirectTo: '/login',
+    });
+  } catch (error) {
+    console.error('getReset2FASetup error:', error.message);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Confirm new Authenticator after scanning QR from reset link
+export const confirmReset2FA = async (req, res) => {
+  try {
+    const { token, code } = req.body;
+    const resetToken = String(token || req.query.token || '').trim();
+
+    if (!resetToken) {
+      return res.status(400).json({ message: 'Reset token is required' });
+    }
+
+    if (!code || !String(code).trim()) {
+      return res.status(400).json({ message: 'Authenticator code is required' });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: 'Server configuration error: JWT_SECRET is not defined' });
+    }
+
+    const userId = getUserIdFrom2FAResetToken(resetToken);
+    if (!userId) {
+      return res.status(401).json({
+        message: 'Reset link is invalid or expired. Please request a new one.',
+      });
+    }
+
+    const user = await User.findById(userId).select('+twoFactorSecret');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.twoFactorSecret) {
+      return res.status(400).json({
+        message: 'Please open the reset link again to generate a new QR code',
+      });
+    }
+
+    const isCodeValid = verifyTotpCode(user.twoFactorSecret, code);
+    if (!isCodeValid) {
+      return res.status(400).json({ message: 'Invalid authenticator code' });
+    }
+
+    user.twoFactorEnabled = true;
+    await user.save();
+
+    return res.status(200).json({
+      message: 'Authenticator reset successfully. Please login.',
+      twoFactorEnabled: true,
+      redirectTo: '/login',
+    });
+  } catch (error) {
+    console.error('confirmReset2FA error:', error.message);
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 

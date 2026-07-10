@@ -20,6 +20,9 @@ import {
   forgotPassword,
   verifyOTP,
   resetPassword,
+  forgot2FA,
+  getReset2FASetup,
+  confirmReset2FA,
 } from '../controller/user.js';
 
 const router = express.Router();
@@ -28,9 +31,12 @@ const router = express.Router();
 router.post('/login', login);
 router.post('/logout', logout);
 router.post('/verify-2fa', verify2FA);
-router.post('/forgot-password', forgotPassword); // New public route
-router.post('/verify-otp', verifyOTP);           // New public route
-router.post('/reset-password', resetPassword);   // New public route
+router.post('/forgot-password', forgotPassword);
+router.post('/verify-otp', verifyOTP);
+router.post('/reset-password', resetPassword);
+router.post('/forgot-2fa', forgot2FA);
+router.get('/reset-2fa', getReset2FASetup);
+router.post('/reset-2fa/confirm', confirmReset2FA);
 
 // Protected routes
 router.use(verifyToken); // Apply JWT verification to all routes below
