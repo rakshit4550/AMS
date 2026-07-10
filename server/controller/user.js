@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import User from '../model/User.js';
@@ -157,76 +156,103 @@ const isSubscriptionExpired = (user) => {
 };
 
 
+const getAdminEnvCredentials = () => ({
+  email: String(process.env.ADMIN_EMAIL || '').trim(),
+  username: String(process.env.ADMIN_USERNAME || '').trim(),
+  password: String(process.env.ADMIN_PASSWORD || '').trim(),
+  syncFromEnv: process.env.ADMIN_SYNC_CREDENTIALS === 'true',
+});
+
 export const createDefaultAdmin = async () => {
   try {
-    const adminExists = await User.findOne({ email: 'admin2@gmail.com' });
+    const { email, username, password, syncFromEnv } = getAdminEnvCredentials();
 
-    console.log(
-      'Checking for admin with email: admin2@gmail.com, found:',
-      adminExists ? 'Yes' : 'No'
-    );
-
-    // Secure 10 digit password
-    const defaultPassword = '6381927450';
-
-    if (adminExists) {
-      if (adminExists.role !== 'admin') {
-        adminExists.role = 'admin';
-        await adminExists.save();
-        console.log('Default admin role updated to admin');
-      }
-
-      const isMatch = await bcrypt.compare(
-        defaultPassword,
-        adminExists.password
+    if (!email || !username || !password) {
+      console.log(
+        'Admin bootstrap skipped: set ADMIN_EMAIL, ADMIN_USERNAME, and ADMIN_PASSWORD in .env'
       );
+      return;
+    }
 
-      if (!isMatch) {
-        console.log('Resetting admin password');
+    const adminByEmail = await User.findOne({ email });
+    const primaryAdmin =
+      adminByEmail || (await User.findOne({ role: 'admin' }).sort({ createdAt: 1 }));
 
-        adminExists.password = defaultPassword;
+    if (syncFromEnv) {
+      if (primaryAdmin) {
+        primaryAdmin.email = email;
+        primaryAdmin.username = username;
+        primaryAdmin.password = password;
+        primaryAdmin.role = 'admin';
+        await primaryAdmin.save();
 
-        await adminExists.save();
-
-        console.log(
-          'Default admin password reset successfully'
-        );
-      } else {
-        console.log('Default admin password is correct');
+        console.log('Admin credentials synced from .env to database:', {
+          email: primaryAdmin.email,
+          username: primaryAdmin.username,
+          role: primaryAdmin.role,
+        });
+        return;
       }
 
-      console.log('Default admin already exists:', {
-        username: adminExists.username,
-        email: adminExists.email,
-        role: adminExists.role,
-      });
-    } else {
       const admin = new User({
-        username: 'admin2',
-        email: 'admin2@gmail.com',
-        password: defaultPassword,
+        username,
+        email,
+        password,
         role: 'admin',
       });
-
       await admin.save();
 
-      console.log('Default admin created:', {
-        username: admin.username,
+      console.log('Admin created from .env (sync mode):', {
         email: admin.email,
+        username: admin.username,
         role: admin.role,
       });
+      return;
     }
+
+    if (adminByEmail) {
+      if (adminByEmail.role !== 'admin') {
+        adminByEmail.role = 'admin';
+        await adminByEmail.save();
+        console.log('Admin role restored for user:', adminByEmail.email);
+      }
+
+      console.log('Admin already exists, credentials unchanged:', {
+        email: adminByEmail.email,
+        username: adminByEmail.username,
+        role: adminByEmail.role,
+      });
+      return;
+    }
+
+    if (primaryAdmin) {
+      console.log(
+        'An admin account already exists with a different email. Credentials were not changed. Set ADMIN_SYNC_CREDENTIALS=true in .env and restart to update email, username, or password from .env.'
+      );
+      return;
+    }
+
+    const admin = new User({
+      username,
+      email,
+      password,
+      role: 'admin',
+    });
+    await admin.save();
+
+    console.log('Default admin created from .env:', {
+      email: admin.email,
+      username: admin.username,
+      role: admin.role,
+    });
   } catch (error) {
     if (error.code === 11000) {
       console.error(
-        'Duplicate key error: Email or username already exists',
-        error
-      );
-    } else {
-      console.error(
-        'Error creating/updating default admin:',
+        'Admin bootstrap failed: email or username already exists for another user',
         error.message
       );
+    } else {
+      console.error('Error creating/updating default admin:', error.message);
     }
   }
 };
