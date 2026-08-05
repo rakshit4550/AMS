@@ -8,8 +8,8 @@ import nodemailer from 'nodemailer'; // Add this import for email sending
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER || 'flagcartshop@gmail.com',
-    pass: process.env.EMAIL_PASS || 'dtngccwcvtivixmt',
+    user: process.env.EMAIL_USER || 'alertmail438@gmail.com',
+    pass: process.env.EMAIL_PASS || 'dbugmyfnqzvdfhpj',
   },
 });
 
