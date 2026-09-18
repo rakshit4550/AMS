@@ -1243,6 +1243,7 @@ import {
   FaEnvelope,
   FaUpload,
 } from "react-icons/fa";
+import PdfPreviewModal from "../components/PdfPreviewModal";
 
 // Utility function to format numbers with commas
 const formatNumber = (number) => {
@@ -2402,45 +2403,15 @@ const Account = () => {
           </div>
         </div>
       </div>
-      {showPdfPreview && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white w-full max-w-5xl h-[100vh] rounded-xl overflow-hidden shadow-2xl flex flex-col">
-            {/* Header */}
-            <div className="flex justify-between items-center p-4 border-b">
-              <h2 className="text-xl font-bold text-gray-800">PDF Preview</h2>
-
-              <button
-                onClick={() => {
-                  setShowPdfPreview(false);
-                  URL.revokeObjectURL(pdfPreviewUrl);
-                }}
-                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-              >
-                Cancel
-              </button>
-            </div>
-
-            {/* PDF Preview */}
-            <div className="flex-1 bg-gray-200">
-              <iframe
-                src={`${pdfPreviewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-                title="PDF Preview"
-                className="w-full h-full border-0"
-              />
-            </div>
-
-            {/* Footer */}
-            <div className="p-4 border-t flex justify-end">
-              <button
-                onClick={handleFinalDownload}
-                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-              >
-                Download PDF
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PdfPreviewModal
+        open={showPdfPreview}
+        url={pdfPreviewUrl}
+        onClose={() => {
+          setShowPdfPreview(false);
+          if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+        }}
+        onDownload={handleFinalDownload}
+      />
     </div>
   );
 };

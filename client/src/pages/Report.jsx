@@ -5,6 +5,7 @@ import { jsPDF } from "jspdf";
 import { FaFileDownload, FaFilter, FaTimes, FaArrowRight } from "react-icons/fa";
 import { TbReportAnalytics } from "react-icons/tb";
 import Select from "react-select";
+import PdfPreviewModal from "../components/PdfPreviewModal";
 import {
   createLoadPartyOptions,
   fetchPartyOptionById,
@@ -906,57 +907,15 @@ const Report = () => {
         </div>
       </div>
 
-      {showPdfPreview && (
-        <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]">
-          <div className="flex h-[min(95vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xl ring-1 ring-slate-200/50">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 bg-gradient-to-r from-[#424687] to-[#353a6e] px-4 py-3.5 text-white sm:px-5">
-              <div>
-                <h2 className="text-base font-bold sm:text-lg">PDF preview</h2>
-                <p className="text-xs text-white/75">
-                  Review before downloading
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPdfPreview(false);
-                  URL.revokeObjectURL(pdfPreviewUrl);
-                }}
-                className="inline-flex items-center gap-2 rounded-lg bg-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/25"
-              >
-                <FaTimes className="h-3.5 w-3.5" aria-hidden />
-                Close
-              </button>
-            </div>
-            <div className="min-h-0 flex-1 bg-slate-200/90">
-              <iframe
-                src={`${pdfPreviewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-                title="PDF Preview"
-                className="h-full min-h-[50vh] w-full border-0"
-              />
-            </div>
-            <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/90 px-4 py-3 sm:px-5">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPdfPreview(false);
-                  URL.revokeObjectURL(pdfPreviewUrl);
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleFinalDownload}
-                className="rounded-lg bg-[#424687] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#353a6e]"
-              >
-                Download PDF
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PdfPreviewModal
+        open={showPdfPreview}
+        url={pdfPreviewUrl}
+        onClose={() => {
+          setShowPdfPreview(false);
+          if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+        }}
+        onDownload={handleFinalDownload}
+      />
     </div>
   );
 };
