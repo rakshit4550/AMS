@@ -200,6 +200,89 @@
 
 }
 
+@layer components {
+  .landing-page {
+    --landing-ink: #0b1220;
+    --landing-brand: #424687;
+    --landing-accent: #2dd4bf;
+    font-family: "Source Sans 3", "Segoe UI", sans-serif;
+  }
+
+  .landing-brand,
+  .landing-page h1,
+  .landing-page h2,
+  .landing-page h3 {
+    font-family: Sora, "Source Sans 3", sans-serif;
+  }
+
+  .landing-header {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .landing-hero-copy {
+    animation: landing-fade-up 0.9s ease-out both;
+  }
+
+  .landing-stack {
+    isolation: isolate;
+    perspective: 1200px;
+  }
+
+  .landing-stack-stage {
+    isolation: isolate;
+  }
+
+  .landing-stack-card {
+    transform-origin: center top;
+    backface-visibility: hidden;
+    will-change: transform, opacity, filter, box-shadow;
+    transition:
+      transform 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.5s ease,
+      filter 0.5s ease,
+      box-shadow 0.5s ease;
+    pointer-events: none;
+  }
+
+  /* Next card waits below, then becomes the front of the deck */
+  .landing-stack-card--next {
+    transform: translate3d(0, 112%, 0) scale(0.98);
+    opacity: 0;
+    filter: brightness(0.85);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+  }
+
+  /* Front window */
+  .landing-stack-card--active {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+    filter: brightness(1);
+    pointer-events: auto;
+    box-shadow:
+      0 22px 50px rgba(0, 0, 0, 0.45),
+      0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+
+  /* Behind windows — transform set inline for stack depth; keep filter soft */
+  .landing-stack-card--past {
+    filter: brightness(0.78);
+    box-shadow:
+      0 12px 28px rgba(0, 0, 0, 0.35),
+      0 0 0 1px rgba(255, 255, 255, 0.04);
+  }
+}
+
+@keyframes landing-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @layer utilities {
   .scrollbar-soft {
     scrollbar-width: thin;

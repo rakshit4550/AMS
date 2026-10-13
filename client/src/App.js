@@ -249,6 +249,7 @@ import { useDispatch, useSelector } from "react-redux";
 import "tailwindcss/tailwind.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import ResetAuthenticator from "./pages/ResetAuthenticator";
 import Party from "./pages/Party";
@@ -409,6 +410,14 @@ function App() {
       <Routes>
         <Route
           path="/"
+          element={
+            <Layout>
+              <Landing />
+            </Layout>
+          }
+        />
+        <Route
+          path="/login"
           element={
             <Layout>
               <Login />
