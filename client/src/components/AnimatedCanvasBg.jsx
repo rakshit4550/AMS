@@ -1,8 +1,7 @@
 import React, { useEffect, useRef } from "react";
 
 /**
- * Full-page Milky-Way style galaxy background with strong hover FX.
- * Fixed to viewport so it covers the entire landing scroll.
+ * Full-page galaxy background — polished existing layers only (no extra gimmicks).
  */
 const AnimatedCanvasBg = ({ className = "" }) => {
   const canvasRef = useRef(null);
@@ -37,36 +36,34 @@ const AnimatedCanvasBg = ({ className = "" }) => {
     const rand = (a, b) => a + Math.random() * (b - a);
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-    // Seeded-ish star layers
     const makeFarStars = (n) =>
       Array.from({ length: n }, () => ({
         x: Math.random(),
         y: Math.random(),
-        r: rand(0.25, 1.1),
-        a: rand(0.25, 0.75),
+        r: rand(0.3, 1.15),
+        a: rand(0.28, 0.78),
         tw: rand(0, Math.PI * 2),
-        tws: rand(0.6, 1.8),
+        tws: rand(0.55, 1.7),
       }));
 
     const makeNearStars = (n) =>
       Array.from({ length: n }, () => ({
         x: Math.random(),
         y: Math.random(),
-        r: rand(0.8, 2.6),
-        a: rand(0.5, 1),
+        r: rand(0.85, 2.7),
+        a: rand(0.55, 1),
         tw: rand(0, Math.PI * 2),
-        tws: rand(1, 2.6),
+        tws: rand(1, 2.5),
         hue: Math.random(),
-        spike: Math.random() > 0.82,
+        spike: Math.random() > 0.8,
       }));
 
-    // Spiral arm starlets (precomputed polar params)
     const makeArmStars = (n) =>
       Array.from({ length: n }, () => {
         const arm = (Math.random() * 4) | 0;
         return {
           arm,
-          p: Math.random(), // 0..1 along arm
+          p: Math.random(),
           jitter: rand(-0.045, 0.045),
           r: rand(0.5, 2.2),
           bright: Math.random(),
@@ -78,26 +75,26 @@ const AnimatedCanvasBg = ({ className = "" }) => {
       Array.from({ length: n }, () => ({
         x: Math.random(),
         y: Math.random(),
-        vx: rand(0.0012, 0.0045) * (Math.random() > 0.5 ? 1 : -1),
-        vy: rand(-0.0012, 0.0012),
-        r: rand(0.7, 2.4),
+        vx: rand(0.0012, 0.0042) * (Math.random() > 0.5 ? 1 : -1),
+        vy: rand(-0.001, 0.001),
+        r: rand(0.7, 2.3),
         a: rand(0.45, 0.95),
-        trail: rand(8, 22),
+        trail: rand(8, 20),
       }));
 
-    let farStars = makeFarStars(320);
-    let nearStars = makeNearStars(100);
-    let armStars = makeArmStars(480);
-    let drifters = makeDrifters(45);
+    let farStars = makeFarStars(280);
+    let nearStars = makeNearStars(90);
+    let armStars = makeArmStars(440);
+    let drifters = makeDrifters(40);
     let shootingStars = [];
 
     const nebulaClouds = [
-      { x: 0.52, y: 0.42, rx: 0.72, ry: 0.32, rot: -0.45, c: [130, 90, 220], a: 0.32 },
-      { x: 0.4, y: 0.4, rx: 0.48, ry: 0.24, rot: -0.4, c: [40, 200, 240], a: 0.26 },
-      { x: 0.64, y: 0.44, rx: 0.45, ry: 0.22, rot: -0.5, c: [240, 70, 150], a: 0.24 },
-      { x: 0.32, y: 0.48, rx: 0.4, ry: 0.18, rot: -0.35, c: [80, 120, 255], a: 0.2 },
-      { x: 0.72, y: 0.36, rx: 0.36, ry: 0.16, rot: -0.55, c: [190, 100, 255], a: 0.18 },
-      { x: 0.5, y: 0.42, rx: 0.3, ry: 0.14, rot: -0.45, c: [255, 200, 140], a: 0.16 },
+      { x: 0.52, y: 0.42, rx: 0.7, ry: 0.3, rot: -0.45, c: [125, 85, 220], a: 0.34 },
+      { x: 0.4, y: 0.4, rx: 0.46, ry: 0.23, rot: -0.4, c: [35, 195, 235], a: 0.28 },
+      { x: 0.64, y: 0.44, rx: 0.44, ry: 0.21, rot: -0.5, c: [235, 65, 145], a: 0.26 },
+      { x: 0.32, y: 0.48, rx: 0.38, ry: 0.17, rot: -0.35, c: [75, 115, 255], a: 0.22 },
+      { x: 0.72, y: 0.36, rx: 0.34, ry: 0.15, rot: -0.55, c: [185, 95, 255], a: 0.2 },
+      { x: 0.5, y: 0.42, rx: 0.28, ry: 0.13, rot: -0.45, c: [255, 195, 135], a: 0.17 },
     ];
 
     const resize = () => {
@@ -111,10 +108,10 @@ const AnimatedCanvasBg = ({ className = "" }) => {
       canvas.style.height = `${h}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      farStars = makeFarStars(mobile ? 180 : 360);
-      nearStars = makeNearStars(mobile ? 55 : 110);
-      armStars = makeArmStars(mobile ? 280 : 520);
-      drifters = makeDrifters(mobile ? 28 : 50);
+      farStars = makeFarStars(mobile ? 160 : 300);
+      nearStars = makeNearStars(mobile ? 50 : 95);
+      armStars = makeArmStars(mobile ? 260 : 480);
+      drifters = makeDrifters(mobile ? 24 : 42);
     };
 
     const onMove = (e) => {
@@ -123,8 +120,7 @@ const AnimatedCanvasBg = ({ className = "" }) => {
       mouse.inside = true;
       mouse.energy = Math.min(1, mouse.energy + 0.08);
 
-      // Trail particles while moving
-      if (Math.random() > 0.4) {
+      if (Math.random() > 0.42) {
         trails.push({
           x: mouse.tx,
           y: mouse.ty,
@@ -147,8 +143,7 @@ const AnimatedCanvasBg = ({ className = "" }) => {
       mouse.energy = 1;
       ripples.push({ x: mouse.tx, y: mouse.ty, life: 0, max: 1.4 });
 
-      // Burst sparks on click
-      for (let i = 0; i < (mobile ? 14 : 28); i += 1) {
+      for (let i = 0; i < (mobile ? 14 : 26); i += 1) {
         const ang = rand(0, Math.PI * 2);
         const sp = rand(0.004, 0.018);
         sparks.push({
@@ -200,9 +195,9 @@ const AnimatedCanvasBg = ({ className = "" }) => {
         h * 0.5,
         Math.max(w, h) * 0.9,
       );
-      g.addColorStop(0, "#0d1230");
-      g.addColorStop(0.35, "#070a18");
-      g.addColorStop(0.7, "#04060f");
+      g.addColorStop(0, "#10183a");
+      g.addColorStop(0.35, "#080e22");
+      g.addColorStop(0.7, "#040812");
       g.addColorStop(1, "#02040a");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
@@ -224,8 +219,10 @@ const AnimatedCanvasBg = ({ className = "" }) => {
       const c = galaxyCenter();
       nebulaClouds.forEach((cloud, i) => {
         const breathe = 0.92 + 0.08 * Math.sin(t * 0.25 + i);
-        const cx = (cloud.x + (mouse.x - 0.5) * 0.04 + Math.sin(t * 0.12 + i) * 0.01) * w;
-        const cy = (cloud.y + (mouse.y - 0.5) * 0.03 + Math.cos(t * 0.1 + i) * 0.01) * h;
+        const cx =
+          (cloud.x + (mouse.x - 0.5) * 0.04 + Math.sin(t * 0.12 + i) * 0.01) * w;
+        const cy =
+          (cloud.y + (mouse.y - 0.5) * 0.03 + Math.cos(t * 0.1 + i) * 0.01) * h;
         const rx = cloud.rx * Math.max(w, h) * breathe;
         const ry = cloud.ry * Math.max(w, h) * breathe;
 
@@ -233,7 +230,7 @@ const AnimatedCanvasBg = ({ className = "" }) => {
         ctx.translate(cx, cy);
         ctx.rotate(cloud.rot + Math.sin(t * 0.08 + i) * 0.03);
         const [r, g, b] = cloud.c;
-        const a = cloud.a * (0.85 + mouse.energy * 0.35);
+        const a = cloud.a * (0.88 + mouse.energy * 0.32);
         const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
         grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
         grad.addColorStop(0.4, `rgba(${r},${g},${b},${a * 0.45})`);
@@ -246,13 +243,12 @@ const AnimatedCanvasBg = ({ className = "" }) => {
         ctx.restore();
       });
 
-      // Soft milky lane across
       ctx.save();
       ctx.translate(c.x * w, c.y * h);
       ctx.rotate(-0.45);
       const lane = ctx.createLinearGradient(0, -h * 0.08, 0, h * 0.08);
       lane.addColorStop(0, "rgba(180,160,255,0)");
-      lane.addColorStop(0.5, "rgba(200,190,255,0.08)");
+      lane.addColorStop(0.5, "rgba(200,190,255,0.09)");
       lane.addColorStop(1, "rgba(180,160,255,0)");
       ctx.fillStyle = lane;
       ctx.fillRect(-w * 0.9, -h * 0.08, w * 1.8, h * 0.16);
@@ -267,13 +263,12 @@ const AnimatedCanvasBg = ({ className = "" }) => {
       const arms = 4;
       const rot = t * 0.1;
 
-      // Bigger bright core
       const coreR = scale * 0.34;
       const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
-      core.addColorStop(0, "rgba(255,255,255,0.92)");
-      core.addColorStop(0.08, "rgba(255, 240, 200, 0.7)");
-      core.addColorStop(0.22, "rgba(200, 160, 255, 0.45)");
-      core.addColorStop(0.45, "rgba(90, 110, 220, 0.22)");
+      core.addColorStop(0, "rgba(255,255,255,0.95)");
+      core.addColorStop(0.08, "rgba(255, 240, 200, 0.72)");
+      core.addColorStop(0.22, "rgba(200, 160, 255, 0.48)");
+      core.addColorStop(0.45, "rgba(90, 110, 220, 0.24)");
       core.addColorStop(0.7, "rgba(40, 60, 160, 0.1)");
       core.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = core;
@@ -281,19 +276,16 @@ const AnimatedCanvasBg = ({ className = "" }) => {
       ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
       ctx.fill();
 
-      // Pulsing secondary bloom
-      const bloom =
-        coreR * (1.15 + 0.08 * Math.sin(t * 2.2));
+      const bloom = coreR * (1.12 + 0.08 * Math.sin(t * 2.1));
       const bloomG = ctx.createRadialGradient(cx, cy, 0, cx, cy, bloom);
-      bloomG.addColorStop(0, "rgba(255,180,255,0.12)");
-      bloomG.addColorStop(0.5, "rgba(80,200,255,0.08)");
+      bloomG.addColorStop(0, "rgba(255,180,255,0.13)");
+      bloomG.addColorStop(0.5, "rgba(80,200,255,0.09)");
       bloomG.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = bloomG;
       ctx.beginPath();
       ctx.arc(cx, cy, bloom, 0, Math.PI * 2);
       ctx.fill();
 
-      // Dust lanes (dark)
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(-0.45 + rot * 0.2);
@@ -308,7 +300,6 @@ const AnimatedCanvasBg = ({ className = "" }) => {
       }
       ctx.restore();
 
-      // Spiral arm stars — wider galaxy
       armStars.forEach((s) => {
         s.tw += 0.055;
         const p = s.p;
@@ -386,10 +377,10 @@ const AnimatedCanvasBg = ({ className = "" }) => {
         s.tw += 0.04 * s.tws;
         const tw = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(s.tw));
         const pt = attract(s.x, s.y, 1.1);
-        const boost = mouse.inside && pt.dist < 0.35 ? 1 + (1 - pt.dist) * 1.4 : 1;
+        const boost =
+          mouse.inside && pt.dist < 0.35 ? 1 + (1 - pt.dist) * 1.4 : 1;
         const r = s.r * boost;
 
-        // color temperature mix
         const col =
           s.hue > 0.66
             ? `rgba(180,220,255,${s.a * tw})`
@@ -435,7 +426,6 @@ const AnimatedCanvasBg = ({ className = "" }) => {
       const e = mouse.energy * (mouse.down ? 1.35 : 1);
       const R = Math.min(w, h) * (0.16 + e * 0.14);
 
-      // Gravity well darken + bright ring
       const well = ctx.createRadialGradient(px, py, 0, px, py, R * 2.4);
       well.addColorStop(0, `rgba(255,255,255,${0.2 * e})`);
       well.addColorStop(0.15, `rgba(120, 220, 255, ${0.16 * e})`);
@@ -447,7 +437,6 @@ const AnimatedCanvasBg = ({ className = "" }) => {
       ctx.arc(px, py, R * 2.4, 0, Math.PI * 2);
       ctx.fill();
 
-      // Rotating hex rings
       ctx.save();
       ctx.translate(px, py);
       for (let ring = 0; ring < 3; ring += 1) {
@@ -468,7 +457,6 @@ const AnimatedCanvasBg = ({ className = "" }) => {
         ctx.rotate(-spin);
       }
 
-      // Orbiting plasma beads
       for (let i = 0; i < 6; i += 1) {
         const ang = t * 1.8 + (i * Math.PI * 2) / 6;
         const rr = R * (0.55 + (i % 3) * 0.15);
@@ -488,7 +476,6 @@ const AnimatedCanvasBg = ({ className = "" }) => {
       }
       ctx.restore();
 
-      // Cross flare
       ctx.save();
       ctx.translate(px, py);
       ctx.rotate(t * 0.2);
@@ -576,8 +563,8 @@ const AnimatedCanvasBg = ({ className = "" }) => {
     };
 
     const drawShootingStars = () => {
-      const maxShots = mobile ? 2 : 4;
-      if (shootingStars.length < maxShots && Math.random() < 0.03) {
+      const maxShots = mobile ? 2 : 3;
+      if (shootingStars.length < maxShots && Math.random() < 0.025) {
         const left = Math.random() > 0.35;
         shootingStars.push({
           x: left ? rand(-0.05, 0.3) : rand(0.7, 1.05),
@@ -586,7 +573,7 @@ const AnimatedCanvasBg = ({ className = "" }) => {
           vy: rand(0.008, 0.02),
           life: 0,
           max: rand(0.45, 0.9),
-          w: rand(2, 3.2),
+          ww: rand(2, 3.2),
         });
       }
 
@@ -613,13 +600,12 @@ const AnimatedCanvasBg = ({ className = "" }) => {
         g.addColorStop(0.7, `rgba(232, 121, 249, ${0.25 * (1 - p)})`);
         g.addColorStop(1, "rgba(255,255,255,0)");
         ctx.strokeStyle = g;
-        ctx.lineWidth = shot.w;
+        ctx.lineWidth = shot.ww;
         ctx.beginPath();
         ctx.moveTo(x, y);
         ctx.lineTo(x - shot.vx * w * 11, y - shot.vy * h * 11);
         ctx.stroke();
 
-        // Head glow
         const hg = ctx.createRadialGradient(x, y, 0, x, y, 10);
         hg.addColorStop(0, `rgba(255,255,255,${0.9 * (1 - p)})`);
         hg.addColorStop(1, "rgba(255,255,255,0)");
@@ -640,8 +626,8 @@ const AnimatedCanvasBg = ({ className = "" }) => {
         Math.max(w, h) * 0.85,
       );
       vig.addColorStop(0, "rgba(0,0,0,0)");
-      vig.addColorStop(0.7, "rgba(0,0,0,0.15)");
-      vig.addColorStop(1, "rgba(0,0,0,0.55)");
+      vig.addColorStop(0.7, "rgba(0,0,0,0.12)");
+      vig.addColorStop(1, "rgba(0,0,0,0.52)");
       ctx.fillStyle = vig;
       ctx.fillRect(0, 0, w, h);
     };
