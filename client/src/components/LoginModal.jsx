@@ -337,7 +337,7 @@ const LoginModal = ({ open, onClose }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="login-modal-title"
-        className="relative z-[10055] flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
+        className="relative z-[10055] flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white text-slate-900 shadow-2xl sm:rounded-3xl"
       >
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4">
           <div>
@@ -396,7 +396,7 @@ const LoginModal = ({ open, onClose }) => {
                       value={forgotEmail}
                       onChange={(e) => setForgotEmail(e.target.value)}
                       placeholder="Enter your email"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
                       required
                     />
                   </div>
@@ -468,7 +468,7 @@ const LoginModal = ({ open, onClose }) => {
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="Enter new password"
-                        className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
+                        className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-gray-50 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
                         required
                         minLength={6}
                       />
@@ -540,7 +540,7 @@ const LoginModal = ({ open, onClose }) => {
                     value={forgot2FAUsername}
                     onChange={(e) => setForgot2FAUsername(e.target.value)}
                     placeholder="Enter your username"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
                     required
                   />
                 </div>
@@ -596,7 +596,7 @@ const LoginModal = ({ open, onClose }) => {
                     setTwoFACode(e.target.value.replace(/\D/g, "").slice(0, 6))
                   }
                   placeholder="000000"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-center text-xl font-semibold tracking-[0.4em] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-center text-xl font-semibold tracking-[0.4em] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
                   autoFocus
                 />
               </div>
@@ -646,7 +646,7 @@ const LoginModal = ({ open, onClose }) => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter username or email"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
                     required
                   />
                 </div>
@@ -661,7 +661,7 @@ const LoginModal = ({ open, onClose }) => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter password"
-                      className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
+                      className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-gray-50 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#424687]/40 focus:border-[#424687]"
                       required
                     />
                     <button
