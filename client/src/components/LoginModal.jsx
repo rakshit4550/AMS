@@ -209,16 +209,9 @@ const LoginModal = ({ open, onClose }) => {
 
     const result = await dispatch(forgot2FA(forgot2FAUsername.trim()));
     if (forgot2FA.fulfilled.match(result)) {
-      const { resetToken, message } = result.payload || {};
-      if (resetToken) {
-        navigate(
-          `/reset-authenticator?token=${encodeURIComponent(resetToken)}`,
-        );
-        return;
-      }
       setForgot2FAMessage(
-        message ||
-          "If this username exists and has 2FA enabled, a reset email has been sent.",
+        result.payload?.message ||
+          "If this username exists and has 2FA enabled, a reset link has been sent to the registered email.",
       );
       return;
     }
@@ -234,7 +227,10 @@ const LoginModal = ({ open, onClose }) => {
     }
     const result = await dispatch(forgotPassword(forgotEmail.trim()));
     if (forgotPassword.fulfilled.match(result)) {
-      alert("OTP sent to your email");
+      alert(
+        result.payload ||
+          "If this email is registered, a password reset OTP has been sent.",
+      );
       setStep(2);
     } else {
       alert(result.payload || "Failed to send OTP");
@@ -280,10 +276,7 @@ const LoginModal = ({ open, onClose }) => {
       setNewPassword("");
     } else {
       alert(result.payload || "Failed to reset password");
-      if (
-        result.payload === "Invalid OTP" ||
-        result.payload === "OTP expired"
-      ) {
+      if (result.payload === "Invalid or expired OTP") {
         setStep(2);
       }
     }
@@ -504,8 +497,8 @@ const LoginModal = ({ open, onClose }) => {
                   Forgot Authenticator
                 </h3>
                 <p className="text-gray-500 mt-2 text-sm">
-                  Username daalo — email mein sirf <strong>QR code</strong>{" "}
-                  jayega. Confirm yahi app par hoga.
+                  Username daalo. QR code aur confirm link sirf registered email
+                  par jayega.
                 </p>
               </div>
 
@@ -514,7 +507,7 @@ const LoginModal = ({ open, onClose }) => {
                 <ol className="mt-1.5 list-decimal space-y-1 pl-4">
                   <li>Send Reset Email dabao</li>
                   <li>Email ka QR phone par scan karo</li>
-                  <li>Confirm page par code daalo → login</li>
+                  <li>Email ki link kholo, code daalo, phir login karo</li>
                 </ol>
               </div>
 

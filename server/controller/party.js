@@ -11,19 +11,9 @@ export const createParty = async (req, res) => {
     await party.save();
     res.status(201).json({ message: 'Party created successfully', party });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
-
-// Get all parties for the authenticated user
-// export const getAllParties = async (req, res) => {
-//   try {
-//     const parties = await Party.find({ createdBy: req.user.id });
-//     res.status(200).json(parties);
-//   } catch (error) {
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
 
 
 // Get parties with pagination and search
@@ -117,7 +107,6 @@ export const getAllParties = async (req, res) => {
 
     return res.status(500).json({
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -132,7 +121,7 @@ export const getPartyById = async (req, res) => {
     }
     res.status(200).json(party);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -150,7 +139,7 @@ export const updateParty = async (req, res) => {
     }
     res.status(200).json({ message: 'Party updated successfully', party });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -163,6 +152,6 @@ export const deleteParty = async (req, res) => {
     }
     res.status(200).json({ message: 'Party deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };

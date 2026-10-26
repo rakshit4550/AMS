@@ -167,7 +167,7 @@ export const disable2FA = createAsyncThunk(
   },
 );
 
-// Forgot Authenticator — email QR only; returns resetToken for confirm page
+// Forgot Authenticator — QR and confirm link go only to the registered email
 export const forgot2FA = createAsyncThunk(
   "user/forgot2FA",
   async (username, { rejectWithValue }) => {
@@ -184,7 +184,7 @@ export const forgot2FA = createAsyncThunk(
   },
 );
 
-// Open reset link — get new QR code
+// Open reset link — check that the email link is still valid
 export const fetchReset2FASetup = createAsyncThunk(
   "user/fetchReset2FASetup",
   async (token, { rejectWithValue }) => {

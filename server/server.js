@@ -5,6 +5,7 @@ import authRoutes from './route/user.js';
 import accountRoutes from './route/account.js';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import helmet from 'helmet';
 import { createDefaultAdmin } from './controller/user.js';
 import cron from 'node-cron';
 import nodemailer from 'nodemailer';
@@ -25,6 +26,9 @@ const PORT = process.env.PORT || 4050;
 
 const allowedOrigins = ['http://localhost:3000', 'https://myacbook.com'];
 
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 app.use(cors({
   origin: allowedOrigins,
 }));

@@ -108,7 +108,7 @@ export const createSettlementParty = async (req, res) => {
       party: { ...party.toObject(), usernames: [] },
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -168,7 +168,7 @@ export const getAllSettlementParties = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -190,7 +190,7 @@ export const getSettlementPartyById = async (req, res) => {
     const [partyWithUsernames] = await attachUsernames([party], req.user.id);
     res.status(200).json(partyWithUsernames);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -239,7 +239,7 @@ export const updateSettlementParty = async (req, res) => {
       party: partyWithUsernames,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -286,7 +286,7 @@ export const createSettlementUsername = async (req, res) => {
     if (isDuplicateKey(error)) {
       return res.status(409).json({ message: 'Username already exists for this party' });
     }
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -311,7 +311,7 @@ export const getSettlementUsernames = async (req, res) => {
 
     res.status(200).json({ partyId: party._id, usernames });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -379,6 +379,6 @@ export const updateSettlementUsername = async (req, res) => {
     if (isDuplicateKey(error)) {
       return res.status(409).json({ message: 'Username already exists for this party' });
     }
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };

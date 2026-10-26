@@ -16,7 +16,6 @@ const ResetAuthenticator = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [username, setUsername] = useState("");
-  const [qrCode, setQrCode] = useState("");
   const [code, setCode] = useState("");
   const [formError, setFormError] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -38,7 +37,6 @@ const ResetAuthenticator = () => {
 
       if (fetchReset2FASetup.fulfilled.match(result)) {
         setUsername(result.payload.username || "");
-        setQrCode(result.payload.qrCode || "");
         setLoading(false);
         return;
       }
@@ -88,7 +86,7 @@ const ResetAuthenticator = () => {
           Confirm Authenticator Reset
         </h1>
         <p className="text-gray-500 text-center mt-2 text-sm">
-          Pehle email ka QR scan karo, phir yahan code daalo
+          Email mein QR scan karo, phir yahan code daalo
         </p>
 
         {loading && (
@@ -109,7 +107,7 @@ const ResetAuthenticator = () => {
           </div>
         )}
 
-        {!loading && !loadError && qrCode && (
+        {!loading && !loadError && (
           <form onSubmit={handleConfirm} className="mt-6 space-y-4">
             {username && (
               <p className="text-center text-sm text-slate-600">
@@ -124,13 +122,6 @@ const ResetAuthenticator = () => {
                 <li>App ka 6-digit code neeche daalo</li>
                 <li>Confirm dabao → login page par redirect</li>
               </ol>
-            </div>
-
-            <div className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
-              <p className="text-xs font-medium text-slate-500">
-                Email wala same QR (dubara scan kar sakte ho)
-              </p>
-              <img src={qrCode} alt="Authenticator QR code" className="h-44 w-44" />
             </div>
 
             <div>

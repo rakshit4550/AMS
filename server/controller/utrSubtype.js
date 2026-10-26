@@ -47,7 +47,7 @@ export const createUtrSubtype = async (req, res) => {
       return res.status(400).json({ message: 'Subtype already exists' });
     }
 
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -66,7 +66,7 @@ export const getUtrSubtypes = async (req, res) => {
     res.status(200).json(subtypes);
   } catch (error) {
     console.error('Get UTR subtypes error:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -103,6 +103,6 @@ export const deleteUtrSubtype = async (req, res) => {
     res.status(200).json({ message: 'Subtype deleted successfully' });
   } catch (error) {
     console.error('Delete UTR subtype error:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };

@@ -202,7 +202,7 @@ export const createSettlementEntry = async (req, res) => {
       summary,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -273,6 +273,6 @@ export const getSettlementEntries = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };

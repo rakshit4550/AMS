@@ -101,7 +101,6 @@ export const sendStatementEmail = async (req, res) => {
     console.error("Error sending email:", error);
     return res.status(500).json({
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -193,7 +192,6 @@ export const createAccount = async (req, res) => {
         await Account.findByIdAndDelete(account._id);
         return res.status(500).json({
           message: "Failed to save transfer account, transaction rolled back",
-          error: error.message,
         });
       }
     }
@@ -215,7 +213,6 @@ export const createAccount = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -492,7 +489,6 @@ export const getAllAccounts = async (req, res) => {
 
     return res.status(500).json({
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -520,7 +516,6 @@ export const getAccountById = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -576,7 +571,6 @@ export const updateAccount = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -609,7 +603,6 @@ export const deleteAccount = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -644,7 +637,6 @@ export const verifyAccount = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -711,7 +703,6 @@ export const downloadStatement = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -756,7 +747,6 @@ export const importAccounts = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Server error",
-      error: error.message,
     });
   }
 };

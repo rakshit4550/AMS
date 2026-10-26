@@ -97,7 +97,7 @@ export const createUtr = async (req, res) => {
     });
   } catch (error) {
     console.error('Create UTR error:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -118,7 +118,7 @@ export const createUtr = async (req, res) => {
 //     res.status(200).json(utrs);
 //   } catch (error) {
 //     console.error('Get UTR error:', error.message);
-//     res.status(500).json({ message: 'Server error', error: error.message });
+//     res.status(500).json({ message: 'Server error' });
 //   }
 // };
 
@@ -320,7 +320,6 @@ export const getAllUtrs = async (req, res) => {
 
     return res.status(500).json({
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -352,7 +351,7 @@ export const getUtrById = async (req, res) => {
     res.status(200).json(utr);
   } catch (error) {
     console.error('Get UTR by ID error:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -380,6 +379,6 @@ export const deleteUtr = async (req, res) => {
     res.status(200).json({ message: 'UTR deleted successfully' });
   } catch (error) {
     console.error('Delete UTR error:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };

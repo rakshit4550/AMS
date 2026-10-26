@@ -107,19 +107,38 @@ const TWO_FA_LOGIN_PURPOSE = '2fa-login';
 const TWO_FA_RESET_PURPOSE = '2fa-reset';
 const FORGOT_2FA_GENERIC_MESSAGE =
   'If this username exists and has 2FA enabled, a reset link has been sent to the registered email.';
+const FORGOT_PASSWORD_GENERIC_MESSAGE =
+  'If this email is registered, a password reset OTP has been sent.';
+const OTP_FAILURE_MESSAGE = 'Invalid or expired OTP';
+const MIN_PASSWORD_LENGTH = 6;
+const WEAK_PASSWORD_MESSAGE = 'Password must be at least 6 characters';
 
-const signAuthToken = (user) =>
-  jwt.sign(
-    {
-      id: user._id,
-      email: user.email,
-      role: user.role,
-      autoJobEnabled: user.autoJobEnabled || false,
-      subscriptionExpiresAt: user.subscriptionExpiresAt || null,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: '1h' }
-  );
+const weakPasswordMessage = (password) => (
+  String(password || '').trim().length < MIN_PASSWORD_LENGTH ? WEAK_PASSWORD_MESSAGE : ''
+);
+
+const signJwt = (payload, expiresIn) => jwt.sign(
+  payload,
+  process.env.JWT_SECRET,
+  { algorithm: 'HS256', expiresIn },
+);
+
+const verifyJwt = (token) => jwt.verify(
+  token,
+  process.env.JWT_SECRET,
+  { algorithms: ['HS256'] },
+);
+
+const signAuthToken = (user) => signJwt(
+  {
+    id: user._id,
+    email: user.email,
+    role: user.role,
+    autoJobEnabled: user.autoJobEnabled || false,
+    subscriptionExpiresAt: user.subscriptionExpiresAt || null,
+  },
+  '1h',
+);
 
 const buildLoginSuccessPayload = (user) => ({
   message: 'Login successful',
@@ -132,16 +151,14 @@ const buildLoginSuccessPayload = (user) => ({
   ...getSubscriptionInfo(user),
 });
 
-const createTempLoginToken = (userId) =>
-  jwt.sign(
-    { id: userId, purpose: TWO_FA_LOGIN_PURPOSE },
-    process.env.JWT_SECRET,
-    { expiresIn: '10m' }
-  );
+const createTempLoginToken = (userId) => signJwt(
+  { id: userId, purpose: TWO_FA_LOGIN_PURPOSE },
+  '10m',
+);
 
 const getUserIdFromTempLoginToken = (token) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifyJwt(token);
     if (decoded.purpose !== TWO_FA_LOGIN_PURPOSE || !decoded.id) {
       return null;
     }
@@ -151,16 +168,14 @@ const getUserIdFromTempLoginToken = (token) => {
   }
 };
 
-const create2FAResetToken = (userId) =>
-  jwt.sign(
-    { id: userId, purpose: TWO_FA_RESET_PURPOSE },
-    process.env.JWT_SECRET,
-    { expiresIn: '30m' }
-  );
+const create2FAResetToken = (userId) => signJwt(
+  { id: userId, purpose: TWO_FA_RESET_PURPOSE },
+  '30m',
+);
 
 const getUserIdFrom2FAResetToken = (token) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifyJwt(token);
     if (decoded.purpose !== TWO_FA_RESET_PURPOSE || !decoded.id) {
       return null;
     }
@@ -176,36 +191,7 @@ const getFrontendBaseUrl = () =>
 const build2FAResetLink = (resetToken) =>
   `${getFrontendBaseUrl()}/reset-authenticator?token=${encodeURIComponent(resetToken)}`;
 
-const generateOtpAuthUrl = (secretBase32, email) =>
-  speakeasy.otpauthURL({
-    secret: secretBase32,
-    label: `${TOTP_APP_NAME} (${email})`,
-    issuer: TOTP_APP_NAME,
-    encoding: 'base32',
-  });
-
-const generateAndSave2FAResetSecret = async (user) => {
-  const secret = speakeasy.generateSecret({
-    name: `${TOTP_APP_NAME} (${user.email})`,
-    length: 20,
-  });
-
-  user.twoFactorSecret = secret.base32;
-  user.twoFactorEnabled = false;
-  await user.save();
-
-  const qrCode = await QRCode.toDataURL(secret.otpauth_url);
-  return qrCode;
-};
-
-const getExisting2FAResetQrCode = async (user) => {
-  const qrCode = await QRCode.toDataURL(
-    generateOtpAuthUrl(user.twoFactorSecret, user.email)
-  );
-  return qrCode;
-};
-
-const build2FAResetEmail = ({ username, qrCode }) => {
+const build2FAResetEmail = ({ username, qrCode, resetLink }) => {
   const qrBase64 = String(qrCode).replace(/^data:image\/png;base64,/, '');
 
   const text = `Hello ${username},
@@ -214,7 +200,8 @@ You requested to reset your Google Authenticator for AMS.
 
 1. Open this email on your phone.
 2. Scan the QR code image in Google Authenticator.
-3. Return to the login page on your browser and enter the 6-digit code to confirm.
+3. Open the confirm link below and enter the 6-digit code:
+${resetLink}
 
 If you did not request this, you can ignore this email.`;
 
@@ -225,7 +212,7 @@ If you did not request this, you can ignore this email.`;
       <ol>
         <li>Open this email on your phone.</li>
         <li>Scan the QR code below in Google Authenticator.</li>
-        <li>Return to the login page in your browser and confirm with the 6-digit code.</li>
+        <li>Open <a href="${resetLink}">this confirm link</a> and enter the 6-digit code.</li>
       </ol>
       <p style="margin: 24px 0;">
         <img src="cid:authenticator-qr" alt="Authenticator QR Code" width="220" height="220" />
@@ -382,8 +369,8 @@ export const forgotPassword = async (req, res) => {
 
     const user = await User.findOne({ email: emailId });
     if (!user) {
-      console.log('User not found for forgot password:', email);
-      return res.status(404).json({ message: 'User not found' });
+      console.log('Forgot password request did not match a user');
+      return res.status(200).json({ message: FORGOT_PASSWORD_GENERIC_MESSAGE });
     }
 
     const otp = generateOTP();
@@ -405,15 +392,14 @@ export const forgotPassword = async (req, res) => {
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
         console.error('Error sending email:', error);
-        return res.status(500).json({ message: 'Failed to send OTP email' });
       } else {
         console.log('Email sent:', info.response);
-        res.status(200).json({ message: 'OTP sent to your email' });
       }
+      return res.status(200).json({ message: FORGOT_PASSWORD_GENERIC_MESSAGE });
     });
   } catch (error) {
     console.error('Forgot password error:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -436,9 +422,9 @@ export const verifyOTP = async (req, res) => {
 
     const user = await User.findOne({ email: emailId });
     if (!user) {
-      console.log('User not found for OTP verification:', email);
+      console.log('OTP verification did not match a user');
       recordAttempt('otp', otpIds);
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(400).json({ message: OTP_FAILURE_MESSAGE });
     }
 
     const otpAttemptIds = attemptIds(emailId, user.email);
@@ -450,13 +436,13 @@ export const verifyOTP = async (req, res) => {
     if (user.otp !== otp) {
       console.log('Invalid OTP for user:', user.email);
       recordAttempt('otp', otpAttemptIds);
-      return res.status(400).json({ message: 'Invalid OTP' });
+      return res.status(400).json({ message: OTP_FAILURE_MESSAGE });
     }
 
     if (user.otpExpiry < Date.now()) {
       console.log('OTP expired for user:', user.email);
       recordAttempt('otp', otpAttemptIds);
-      return res.status(400).json({ message: 'OTP expired' });
+      return res.status(400).json({ message: OTP_FAILURE_MESSAGE });
     }
 
     clearAttempts('otp', otpAttemptIds);
@@ -464,7 +450,7 @@ export const verifyOTP = async (req, res) => {
     res.status(200).json({ message: 'OTP verified successfully' });
   } catch (error) {
     console.error('Verify OTP error:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -478,6 +464,11 @@ export const resetPassword = async (req, res) => {
       return res.status(400).json({ message: 'Email, OTP, and new password are required' });
     }
 
+    const trimmedPassword = String(newPassword).trim();
+    if (weakPasswordMessage(trimmedPassword)) {
+      return res.status(400).json({ message: WEAK_PASSWORD_MESSAGE });
+    }
+
     const emailId = email.trim();
     const otpIds = attemptIds(emailId);
     const otpLimit = checkAttemptLimit('otp', otpIds);
@@ -487,9 +478,9 @@ export const resetPassword = async (req, res) => {
 
     const user = await User.findOne({ email: emailId });
     if (!user) {
-      console.log('User not found for password reset:', email);
+      console.log('Password reset did not match a user');
       recordAttempt('otp', otpIds);
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(400).json({ message: OTP_FAILURE_MESSAGE });
     }
 
     const otpAttemptIds = attemptIds(emailId, user.email);
@@ -501,17 +492,17 @@ export const resetPassword = async (req, res) => {
     if (user.otp !== otp) {
       console.log('Invalid OTP for password reset:', user.email);
       recordAttempt('otp', otpAttemptIds);
-      return res.status(400).json({ message: 'Invalid OTP' });
+      return res.status(400).json({ message: OTP_FAILURE_MESSAGE });
     }
 
     if (user.otpExpiry < Date.now()) {
       console.log('OTP expired for password reset:', user.email);
       recordAttempt('otp', otpAttemptIds);
-      return res.status(400).json({ message: 'OTP expired' });
+      return res.status(400).json({ message: OTP_FAILURE_MESSAGE });
     }
 
     clearAttempts('otp', otpAttemptIds);
-    user.password = newPassword;
+    user.password = trimmedPassword;
     user.otp = undefined;
     user.otpExpiry = undefined;
     await user.save();
@@ -520,11 +511,11 @@ export const resetPassword = async (req, res) => {
     res.status(200).json({ message: 'Password reset successfully' });
   } catch (error) {
     console.error('Reset password error:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Forgot Authenticator - send QR code only; return resetToken for in-app confirm page
+// Forgot Authenticator - email the QR and confirm link. Never return them to the caller.
 export const forgot2FA = async (req, res) => {
   try {
     const { username } = req.body;
@@ -548,35 +539,54 @@ export const forgot2FA = async (req, res) => {
       return res.status(200).json({ message: FORGOT_2FA_GENERIC_MESSAGE });
     }
 
+    const previousSecret = user.twoFactorSecret;
     const resetToken = create2FAResetToken(user._id);
-    const qrCode = await generateAndSave2FAResetSecret(user);
+    const secret = speakeasy.generateSecret({
+      name: `${TOTP_APP_NAME} (${user.email})`,
+      length: 20,
+    });
+    const qrCode = await QRCode.toDataURL(secret.otpauth_url);
     const emailContent = build2FAResetEmail({
       username: user.username,
       qrCode,
+      resetLink: build2FAResetLink(resetToken),
     });
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
-      to: user.email,
-      subject: 'Reset Your Authenticator - AMS',
-      text: emailContent.text,
-      html: emailContent.html,
-      attachments: emailContent.attachments,
-    });
+    user.twoFactorSecret = secret.base32;
+    user.twoFactorEnabled = false;
+    await user.save();
+
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM,
+        to: user.email,
+        subject: 'Reset Your Authenticator - AMS',
+        text: emailContent.text,
+        html: emailContent.html,
+        attachments: emailContent.attachments,
+      });
+    } catch (mailError) {
+      user.twoFactorSecret = previousSecret;
+      user.twoFactorEnabled = true;
+      try {
+        await user.save();
+      } catch (rollbackError) {
+        console.error('forgot2FA rollback failed:', rollbackError.message);
+      }
+      console.error('forgot2FA email failed:', mailError.message);
+      return res.status(200).json({ message: FORGOT_2FA_GENERIC_MESSAGE });
+    }
 
     console.log('2FA reset email with QR sent for user:', user.username);
 
-    return res.status(200).json({
-      message: 'QR code sent to your registered email. Confirm on the next screen.',
-      resetToken,
-    });
+    return res.status(200).json({ message: FORGOT_2FA_GENERIC_MESSAGE });
   } catch (error) {
     console.error('forgot2FA error:', error.message);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Open reset link: return existing QR from email flow, or generate if missing
+// Confirm page checks the email link. The QR stays in the email and is not returned here.
 export const getReset2FASetup = async (req, res) => {
   try {
     const token = String(req.query.token || '').trim();
@@ -597,26 +607,19 @@ export const getReset2FASetup = async (req, res) => {
     }
 
     const user = await User.findById(userId).select('+twoFactorSecret');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    let qrCode;
-    if (user.twoFactorSecret && !user.twoFactorEnabled) {
-      qrCode = await getExisting2FAResetQrCode(user);
-    } else {
-      qrCode = await generateAndSave2FAResetSecret(user);
+    if (!user || !user.twoFactorSecret || user.twoFactorEnabled) {
+      return res.status(401).json({
+        message: 'Reset link is invalid or expired. Please request a new one.',
+      });
     }
 
     return res.status(200).json({
-      message: 'Scan the QR code in Google Authenticator, then confirm with a code',
+      message: 'Scan the QR code from your email, then enter the 6-digit code',
       username: user.username,
-      qrCode,
-      resetToken: token,
     });
   } catch (error) {
     console.error('getReset2FASetup error:', error.message);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -652,7 +655,7 @@ export const confirmReset2FA = async (req, res) => {
 
     if (!user.twoFactorSecret) {
       return res.status(400).json({
-        message: 'Please open the reset link again to generate a new QR code',
+        message: 'Please request a new authenticator reset from the login page',
       });
     }
 
@@ -670,7 +673,7 @@ export const confirmReset2FA = async (req, res) => {
     });
   } catch (error) {
     console.error('confirmReset2FA error:', error.message);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -678,7 +681,7 @@ export const confirmReset2FA = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log('Login attempt with payload:', { email: email?.trim(), password: '****' });
+    console.log('Login attempt for:', email?.trim());
 
     if (!email || !password) {
       console.log('Missing email/username or password');
@@ -722,7 +725,6 @@ export const login = async (req, res) => {
     }
 
     const isMatch = await user.comparePassword(password);
-    console.log('Password match for user', user.username, ':', isMatch, 'Input password:', '****', 'Stored hash:', user.password);
 
     if (!isMatch) {
       console.log('Password mismatch for user:', user.username);
@@ -765,7 +767,7 @@ export const login = async (req, res) => {
     return res.status(200).json(buildLoginSuccessPayload(user));
   } catch (error) {
     console.error('Login error:', error.message, error.stack);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -817,7 +819,7 @@ export const verify2FA = async (req, res) => {
     return res.status(200).json(buildLoginSuccessPayload(user));
   } catch (error) {
     console.error('verify2FA error:', error.message);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -851,7 +853,7 @@ export const setup2FA = async (req, res) => {
     });
   } catch (error) {
     console.error('setup2FA error:', error.message);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -892,7 +894,7 @@ export const enable2FA = async (req, res) => {
     });
   } catch (error) {
     console.error('enable2FA error:', error.message);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -939,7 +941,7 @@ export const disable2FA = async (req, res) => {
     });
   } catch (error) {
     console.error('disable2FA error:', error.message);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -958,7 +960,7 @@ export const logout = async (req, res) => {
   }
 
   try {
-    jwt.verify(token, process.env.JWT_SECRET);
+    verifyJwt(token);
   } catch {
     return res.status(200).json({ message: 'Logout successful' });
   }
@@ -981,7 +983,7 @@ export const verifyToken = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifyJwt(token);
     if (await isAccessTokenRevoked(token)) {
       return res.status(401).json({ message: 'Invalid or expired token' });
     }
@@ -1001,7 +1003,7 @@ export const verifyToken = async (req, res, next) => {
     req.user = { id: decoded.id, role: user.role };
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Invalid or expired token', error: error.message });
+    return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
 
@@ -1026,6 +1028,11 @@ export const createUser = async (req, res) => {
       return res.status(400).json({ message: 'Username, email, and password are required' });
     }
 
+    const trimmedPassword = String(password).trim();
+    if (weakPasswordMessage(trimmedPassword)) {
+      return res.status(400).json({ message: WEAK_PASSWORD_MESSAGE });
+    }
+
     const userExists = await User.findOne({ $or: [{ email }, { username }] });
     if (userExists) {
       console.log('User already exists:', { username, email });
@@ -1040,7 +1047,7 @@ export const createUser = async (req, res) => {
     const user = new User({
       username,
       email,
-      password,
+      password: trimmedPassword,
       role: safeRole,
       subscriptionExpiresAt: expiryValidation.expiresAt,
     });
@@ -1053,7 +1060,7 @@ export const createUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating user:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -1067,7 +1074,7 @@ export const getAllUsers = async (req, res) => {
     res.status(200).json(safeUsers);
   } catch (error) {
     console.error('Error fetching users:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -1088,7 +1095,7 @@ export const getUserById = async (req, res) => {
     res.status(200).json(toSafeUser(user));
   } catch (error) {
     console.error('Error fetching user by ID:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -1105,7 +1112,7 @@ export const getOwnUser = async (req, res) => {
     res.status(200).json(toSafeUser(user));
   } catch (error) {
     console.error('Error fetching own user:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -1140,8 +1147,12 @@ export const updateUser = async (req, res) => {
       }
     }
     if (password && password.trim()) {
+      const trimmedPassword = password.trim();
+      if (weakPasswordMessage(trimmedPassword)) {
+        return res.status(400).json({ message: WEAK_PASSWORD_MESSAGE });
+      }
       console.log('Updating password for user:', user._id);
-      user.password = password;
+      user.password = trimmedPassword;
     } else {
       console.log('No password update requested for user:', user._id);
     }
@@ -1159,15 +1170,14 @@ export const updateUser = async (req, res) => {
 
     let newToken = null;
     if (req.user.id === req.params.id) {
-      newToken = jwt.sign(
+      newToken = signJwt(
         {
           id: user._id,
           email: user.email,
           role: user.role,
           subscriptionExpiresAt: user.subscriptionExpiresAt || null,
         },
-        process.env.JWT_SECRET,
-        { expiresIn: '1h' }
+        '1h',
       );
       await revokeAccessToken(bearerToken(req));
       console.log('Generated new token for updated user:', user.username);
@@ -1183,7 +1193,7 @@ export const updateUser = async (req, res) => {
     if (error.code === 11000) {
       return res.status(400).json({ message: 'Email or username already exists' });
     }
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -1200,22 +1210,20 @@ export const deleteUser = async (req, res) => {
     res.status(200).json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('Error deleting user:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
 const PASSWORD_CHANGE_PURPOSE = 'password-change';
 
-const createPasswordChangeToken = (userId) =>
-  jwt.sign(
-    { id: userId, purpose: PASSWORD_CHANGE_PURPOSE },
-    process.env.JWT_SECRET,
-    { expiresIn: '10m' }
-  );
+const createPasswordChangeToken = (userId) => signJwt(
+  { id: userId, purpose: PASSWORD_CHANGE_PURPOSE },
+  '10m',
+);
 
 const isValidPasswordChangeToken = (token, userId) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifyJwt(token);
     return (
       decoded.purpose === PASSWORD_CHANGE_PURPOSE &&
       String(decoded.id) === String(userId)
@@ -1257,7 +1265,7 @@ export const verifyOldPassword = async (req, res) => {
     });
   } catch (error) {
     console.error('Error verifying old password:', error.message);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -1287,8 +1295,8 @@ export const changePassword = async (req, res) => {
       return res.status(400).json({ message: 'Password and confirm password do not match' });
     }
 
-    if (trimmedPassword.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    if (trimmedPassword.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ message: WEAK_PASSWORD_MESSAGE });
     }
 
     if (!isValidPasswordChangeToken(passwordChangeToken, req.user.id)) {
@@ -1305,7 +1313,7 @@ export const changePassword = async (req, res) => {
     user.password = trimmedPassword;
     await user.save();
 
-    const newToken = jwt.sign(
+    const newToken = signJwt(
       {
         id: user._id,
         email: user.email,
@@ -1313,8 +1321,7 @@ export const changePassword = async (req, res) => {
         autoJobEnabled: user.autoJobEnabled,
         subscriptionExpiresAt: user.subscriptionExpiresAt || null,
       },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      '1h',
     );
     await revokeAccessToken(bearerToken(req));
 
@@ -1325,7 +1332,7 @@ export const changePassword = async (req, res) => {
     });
   } catch (error) {
     console.error('Error changing password:', error.message);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -1343,7 +1350,7 @@ export const toggleAutoJob = async (req, res) => {
     await user.save();
     console.log('Auto-job toggled for user:', user._id, 'New state:', user.autoJobEnabled);
 
-    const newToken = jwt.sign(
+    const newToken = signJwt(
       {
         id: user._id,
         email: user.email,
@@ -1351,8 +1358,7 @@ export const toggleAutoJob = async (req, res) => {
         autoJobEnabled: user.autoJobEnabled,
         subscriptionExpiresAt: user.subscriptionExpiresAt || null,
       },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      '1h',
     );
     await revokeAccessToken(bearerToken(req));
 
@@ -1363,6 +1369,6 @@ export const toggleAutoJob = async (req, res) => {
     });
   } catch (error) {
     console.error('Error toggling auto-job:', error.message);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
