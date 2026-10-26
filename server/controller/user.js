@@ -1,8 +1,16 @@
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import User from '../model/User.js';
 import nodemailer from 'nodemailer'; // Add this import for email sending
+import {
+  attemptIds,
+  checkAttemptLimit,
+  clearAttempts,
+  recordAttempt,
+  sendAttemptLimited,
+} from '../middleware/authAttemptLimit.js';
 
 // Configure nodemailer transporter
 const transporter = nodemailer.createTransport({
@@ -14,9 +22,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Function to generate OTP
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
-};
+const generateOTP = () => crypto.randomInt(100000, 1000000).toString();
 
 const cleanRole = (role) => {
   return ['admin', 'user', 'trader'].includes(role) ? role : 'user';
@@ -366,7 +372,14 @@ export const forgotPassword = async (req, res) => {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    const user = await User.findOne({ email: email.trim() });
+    const emailId = email.trim();
+    const forgotLimit = checkAttemptLimit('forgot-password', emailId);
+    if (forgotLimit.blocked) {
+      return sendAttemptLimited(res, forgotLimit.retryAfterMs);
+    }
+    recordAttempt('forgot-password', emailId);
+
+    const user = await User.findOne({ email: emailId });
     if (!user) {
       console.log('User not found for forgot password:', email);
       return res.status(404).json({ message: 'User not found' });
@@ -413,22 +426,39 @@ export const verifyOTP = async (req, res) => {
       return res.status(400).json({ message: 'Email and OTP are required' });
     }
 
-    const user = await User.findOne({ email: email.trim() });
+    const emailId = email.trim();
+    const otpIds = attemptIds(emailId);
+    const otpLimit = checkAttemptLimit('otp', otpIds);
+    if (otpLimit.blocked) {
+      return sendAttemptLimited(res, otpLimit.retryAfterMs);
+    }
+
+    const user = await User.findOne({ email: emailId });
     if (!user) {
       console.log('User not found for OTP verification:', email);
+      recordAttempt('otp', otpIds);
       return res.status(404).json({ message: 'User not found' });
+    }
+
+    const otpAttemptIds = attemptIds(emailId, user.email);
+    const userOtpLimit = checkAttemptLimit('otp', otpAttemptIds);
+    if (userOtpLimit.blocked) {
+      return sendAttemptLimited(res, userOtpLimit.retryAfterMs);
     }
 
     if (user.otp !== otp) {
       console.log('Invalid OTP for user:', user.email);
+      recordAttempt('otp', otpAttemptIds);
       return res.status(400).json({ message: 'Invalid OTP' });
     }
 
     if (user.otpExpiry < Date.now()) {
       console.log('OTP expired for user:', user.email);
+      recordAttempt('otp', otpAttemptIds);
       return res.status(400).json({ message: 'OTP expired' });
     }
 
+    clearAttempts('otp', otpAttemptIds);
     console.log('OTP verified successfully for user:', user.email);
     res.status(200).json({ message: 'OTP verified successfully' });
   } catch (error) {
@@ -447,22 +477,39 @@ export const resetPassword = async (req, res) => {
       return res.status(400).json({ message: 'Email, OTP, and new password are required' });
     }
 
-    const user = await User.findOne({ email: email.trim() });
+    const emailId = email.trim();
+    const otpIds = attemptIds(emailId);
+    const otpLimit = checkAttemptLimit('otp', otpIds);
+    if (otpLimit.blocked) {
+      return sendAttemptLimited(res, otpLimit.retryAfterMs);
+    }
+
+    const user = await User.findOne({ email: emailId });
     if (!user) {
       console.log('User not found for password reset:', email);
+      recordAttempt('otp', otpIds);
       return res.status(404).json({ message: 'User not found' });
+    }
+
+    const otpAttemptIds = attemptIds(emailId, user.email);
+    const userOtpLimit = checkAttemptLimit('otp', otpAttemptIds);
+    if (userOtpLimit.blocked) {
+      return sendAttemptLimited(res, userOtpLimit.retryAfterMs);
     }
 
     if (user.otp !== otp) {
       console.log('Invalid OTP for password reset:', user.email);
+      recordAttempt('otp', otpAttemptIds);
       return res.status(400).json({ message: 'Invalid OTP' });
     }
 
     if (user.otpExpiry < Date.now()) {
       console.log('OTP expired for password reset:', user.email);
+      recordAttempt('otp', otpAttemptIds);
       return res.status(400).json({ message: 'OTP expired' });
     }
 
+    clearAttempts('otp', otpAttemptIds);
     user.password = newPassword;
     user.otp = undefined;
     user.otpExpiry = undefined;
@@ -637,11 +684,17 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: 'Username or email and password are required' });
     }
 
+    const loginId = email.trim();
+    const loginLimit = checkAttemptLimit('login', loginId);
+    if (loginLimit.blocked) {
+      return sendAttemptLimited(res, loginLimit.retryAfterMs);
+    }
+
     const user = await User.findOne(
       {
         $or: [
-          { email: email.trim() },
-          { username: email.trim() },
+          { email: loginId },
+          { username: loginId },
         ],
       },
       null,
@@ -656,8 +709,15 @@ export const login = async (req, res) => {
     } : 'No user found');
 
     if (!user) {
-      console.log('User not found for input:', email.trim());
+      console.log('User not found for input:', loginId);
+      recordAttempt('login', loginId);
       return res.status(401).json({ message: 'Invalid username/email or password' });
+    }
+
+    const loginAttemptIds = attemptIds(loginId, user.email, user.username);
+    const userLoginLimit = checkAttemptLimit('login', loginAttemptIds);
+    if (userLoginLimit.blocked) {
+      return sendAttemptLimited(res, userLoginLimit.retryAfterMs);
     }
 
     const isMatch = await user.comparePassword(password);
@@ -665,8 +725,11 @@ export const login = async (req, res) => {
 
     if (!isMatch) {
       console.log('Password mismatch for user:', user.username);
+      recordAttempt('login', loginAttemptIds);
       return res.status(401).json({ message: 'Invalid username/email or password' });
     }
+
+    clearAttempts('login', loginAttemptIds);
 
     if (isSubscriptionExpired(user)) {
       console.log('Subscription expired for user:', user.username);

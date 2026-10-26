@@ -23,7 +23,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4050;
 
-app.use(cors());
+const allowedOrigins = ['http://localhost:3000', 'https://myacbook.com'];
+
+app.use(cors({
+  origin: allowedOrigins,
+}));
 app.use(express.json());
 
 app.use('/api/parties', partyRoutes);
