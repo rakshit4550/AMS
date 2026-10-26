@@ -14,6 +14,7 @@ import Account from './model/Account.js';
 import utrRoutes from './route/utr.js';
 import utrSubtypeRoutes from './route/utrSubtype.js';
 import dashboardRoutes from './route/dashboard.js';
+import settlementPartyRoutes from './route/settlementParty.js';
 
 
 
@@ -31,6 +32,7 @@ app.use('/api/accounts', accountRoutes);
 app.use('/api/utrs', utrRoutes);
 app.use('/api/utr-subtypes', utrSubtypeRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/settlement-parties', settlementPartyRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
