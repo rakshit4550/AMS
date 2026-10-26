@@ -1,12 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { FaArrowLeft, FaEdit, FaReceipt, FaTimes, FaTrash, FaUsers } from "react-icons/fa";
+import { FaArrowLeft, FaEdit, FaReceipt, FaTimes, FaUsers } from "react-icons/fa";
 import {
   clearSettlementError,
   createSettlementParty,
   createSettlementUsername,
-  deleteSettlementParty,
-  deleteSettlementUsername,
   createSettlementEntry,
   fetchSettlementEntries,
   fetchSettlementParties,
@@ -129,196 +127,172 @@ const EntryBook = ({
   const share =
     percent && typed > 0 ? roundMoney((typed * Number(percent.partnershipPercentage)) / 100) : null;
   const total = share === null ? null : roundMoney(typed + share);
-  const isDeposit = form.transactionType === "deposit";
   const closing = Number(summary?.closingBalance);
   const ledgerStart = pagination ? (pagination.currentPage - 1) * pagination.limit : 0;
-
-  const summaryCards = [
-    {
-      key: "deposit",
-      label: "Deposit (Dena)",
-      value: summary?.deposit?.totalAmount,
-      hint: summary
-        ? `${rupee(summary.deposit?.amount)} + share ${rupee(summary.deposit?.percentageAmount)}`
-        : "—",
-      tone: "emerald",
-    },
-    {
-      key: "withdrawal",
-      label: "Withdrawal (Lena)",
-      value: summary?.withdrawal?.totalAmount,
-      hint: summary
-        ? `${rupee(summary.withdrawal?.amount)} + share ${rupee(summary.withdrawal?.percentageAmount)}`
-        : "—",
-      tone: "red",
-    },
-    {
-      key: "closing",
-      label: "Closing",
-      value: summary?.closingBalance,
-      hint: "Deposit total − Withdrawal total",
-      tone: closing < 0 ? "red" : closing > 0 ? "emerald" : "slate",
-    },
-  ];
-
-  const toneClass = {
-    emerald: "border-emerald-200 bg-emerald-50/70 text-emerald-700",
-    red: "border-red-200 bg-red-50/70 text-red-700",
-    slate: "border-slate-200 bg-slate-50 text-slate-800",
-  };
+  const isDeposit = form.transactionType === "deposit";
 
   return (
-    <div className="mx-auto flex w-full max-w-none flex-col gap-2">
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200/90 bg-white px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-4">
-        <div className="flex min-w-0 items-center gap-3">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <form
+        onSubmit={onSubmit}
+        className="shrink-0 border-b border-slate-100 bg-gradient-to-r from-[#424687]/[0.06] via-white to-white px-3 py-2"
+      >
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50"
           >
-            <FaArrowLeft size={12} />
+            <FaArrowLeft size={11} />
             Parties
           </button>
-          <div className="min-w-0">
-            <p className="truncate text-xs text-slate-500">{party.partyname}</p>
-            <h2 className="truncate text-base font-semibold text-slate-900">{username.username}</h2>
+
+          <div className="flex min-w-0 items-center gap-2 border-l border-slate-200 pl-2.5">
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                {party.partyname}
+              </p>
+              <p className="truncate text-sm font-semibold leading-tight text-slate-900">
+                {username.username}
+              </p>
+            </div>
+            <span
+              className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                percent ? "bg-[#424687]/10 text-[#424687]" : "bg-red-50 text-red-600"
+              }`}
+              title={
+                percent
+                  ? percent.percentageSource === "username"
+                    ? "From this username"
+                    : "From the party"
+                  : "Partnership % is missing"
+              }
+            >
+              {percent ? `${percent.partnershipPercentage}%` : "No %"}
+            </span>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+
           {usernames.length > 1 && (
-            <label className="block">
-              <span className="mb-0.5 block text-[11px] font-medium text-slate-500">Username</span>
-              <select
-                value={username._id}
-                onChange={(event) => onSwitchUser(event.target.value)}
-                className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-800"
-              >
-                {usernames.map((item) => (
-                  <option key={item._id} value={item._id}>
-                    {item.username}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <select
+              aria-label="Username"
+              value={username._id}
+              onChange={(event) => onSwitchUser(event.target.value)}
+              className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#424687]/30"
+            >
+              {usernames.map((item) => (
+                <option key={item._id} value={item._id}>
+                  {item.username}
+                </option>
+              ))}
+            </select>
           )}
-          <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-1.5">
-            <p className="text-[11px] font-medium text-slate-500">Partnership</p>
-            <p className="text-sm font-semibold text-[#424687]">
-              {percent
-                ? `${percent.partnershipPercentage}% from ${
-                    percent.percentageSource === "username" ? "this username" : "the party"
-                  }`
-                : "Not set"}
-            </p>
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <div className="inline-flex h-8 rounded-lg bg-slate-100 p-0.5">
+              <button
+                type="button"
+                onClick={() => onType("deposit")}
+                className={`rounded-md px-3 text-xs font-semibold transition ${
+                  isDeposit ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Deposit
+              </button>
+              <button
+                type="button"
+                onClick={() => onType("withdrawal")}
+                className={`rounded-md px-3 text-xs font-semibold transition ${
+                  !isDeposit ? "bg-red-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Withdraw
+              </button>
+            </div>
+
+            <div className="flex h-8 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-[#424687]/30">
+              <span className="flex items-center pl-2.5 text-xs font-medium text-slate-400">₹</span>
+              <input
+                ref={amountRef}
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={form.amount}
+                onChange={(event) => onAmount(event.target.value)}
+                placeholder="Amount"
+                aria-label="Amount"
+                className="w-28 border-0 bg-transparent px-2 text-sm text-slate-900 outline-none [appearance:textfield] placeholder:text-slate-400 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <button
+                type="submit"
+                disabled={!percent}
+                className="bg-[#424687] px-3.5 text-xs font-semibold text-white hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-
-      <form
-        onSubmit={onSubmit}
-        className="rounded-xl border border-slate-200/90 bg-white px-3 py-3 shadow-sm sm:px-4"
-      >
-        <div className="grid grid-cols-2 gap-2 sm:max-w-lg">
-          <button
-            type="button"
-            onClick={() => onType("deposit")}
-            className={`h-11 rounded-lg border text-sm font-semibold transition ${
-              isDeposit
-                ? "border-emerald-600 bg-emerald-600 text-white"
-                : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300"
-            }`}
-          >
-            Deposit (Dena)
-          </button>
-          <button
-            type="button"
-            onClick={() => onType("withdrawal")}
-            className={`h-11 rounded-lg border text-sm font-semibold transition ${
-              !isDeposit
-                ? "border-red-600 bg-red-600 text-white"
-                : "border-slate-200 bg-white text-slate-700 hover:border-red-300"
-            }`}
-          >
-            Withdrawal (Lena)
-          </button>
-        </div>
-
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-          <label className="block min-w-0 flex-1">
-            <span className="mb-0.5 block text-xs font-medium text-slate-600">Amount*</span>
-            <input
-              ref={amountRef}
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={form.amount}
-              onChange={(event) => onAmount(event.target.value)}
-              placeholder="Enter amount"
-              className="h-12 w-full rounded-lg border border-slate-300 px-3 text-lg font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#424687]/40"
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={!percent}
-            className="h-12 rounded-lg bg-[#424687] px-6 text-sm font-semibold text-white hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:bg-slate-300"
-          >
-            Save entry
-          </button>
-        </div>
-
-        <p className="mt-2 text-sm text-slate-600">
-          {total !== null ? (
-            <>
-              {rupee(typed)} + {percent.partnershipPercentage}% share {rupee(share)} ={" "}
-              <span className="font-semibold text-slate-900">{rupee(total)}</span>
-            </>
-          ) : percent ? (
-            "Type an amount to see share and total before you save."
-          ) : (
-            "Partnership % is missing, so a new entry cannot be saved."
-          )}
-        </p>
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        {total !== null && (
+          <p className="mt-1.5 text-right text-[11px] text-slate-500">
+            Share {rupee(share)} · Total{" "}
+            <span className="font-semibold text-slate-800">{rupee(total)}</span>
+          </p>
+        )}
+        {(error || !percent) && (
+          <p className="mt-1 text-xs text-red-600">
+            {error || "Partnership % is missing, so a new entry cannot be saved."}
+          </p>
+        )}
       </form>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {summaryCards.map((card) => (
-          <div
-            key={card.key}
-            className={`rounded-xl border px-4 py-3 ${toneClass[card.tone]}`}
+      <div className="grid shrink-0 grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
+        <div className="border-t-2 border-emerald-500 px-3 py-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">Deposit</p>
+          <p className="text-sm font-semibold tabular-nums text-slate-900">
+            {rupee(summary?.deposit?.totalAmount)}
+          </p>
+        </div>
+        <div className="border-t-2 border-red-400 px-3 py-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-red-500">Withdrawal</p>
+          <p className="text-sm font-semibold tabular-nums text-slate-900">
+            {rupee(summary?.withdrawal?.totalAmount)}
+          </p>
+        </div>
+        <div className="border-t-2 border-[#424687] px-3 py-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[#424687]">Closing</p>
+          <p
+            className={`text-sm font-semibold tabular-nums ${
+              closing < 0 ? "text-red-600" : "text-slate-900"
+            }`}
           >
-            <p className="text-xs font-semibold uppercase tracking-wide">{card.label}</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
-              {rupee(card.value)}
-            </p>
-            <p className="mt-0.5 text-xs text-slate-600">{card.hint}</p>
-          </div>
-        ))}
+            {rupee(summary?.closingBalance)}
+          </p>
+        </div>
       </div>
 
-      <section className="flex min-h-[min(62vh,calc(100vh-22rem))] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md">
+      <div className="flex min-h-0 flex-1 flex-col">
         {loading && (
-          <p className="border-b border-slate-100 bg-slate-50 py-2 text-center text-sm text-[#424687]">
+          <p className="border-b border-slate-100 bg-slate-50 py-1 text-center text-xs text-[#424687]">
             Loading…
           </p>
         )}
         <div className="min-h-0 flex-1 overflow-auto">
-          <table className="w-full min-w-[760px] border-collapse text-sm">
+          <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead className="sticky top-0 z-10">
               <tr className="bg-[#424687] text-white">
-                <th className="w-14 px-3 py-2.5 text-left text-xs font-semibold">Sr</th>
-                <th className="px-3 py-2.5 text-left text-xs font-semibold">Date</th>
-                <th className="px-3 py-2.5 text-left text-xs font-semibold">Type</th>
-                <th className="px-3 py-2.5 text-right text-xs font-semibold">Amount</th>
-                <th className="px-3 py-2.5 text-right text-xs font-semibold">Share</th>
-                <th className="px-3 py-2.5 text-right text-xs font-semibold">Total</th>
+                <th className="w-12 px-3 py-2 text-left text-xs font-semibold">Sr</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold">Date</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold">Type</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold">Amount</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold">Share</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold">Total</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-16 text-center text-sm text-slate-500">
-                    No entries yet. Choose Deposit or Withdrawal, type the amount, and save.
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
+                    No entries yet.
                   </td>
                 </tr>
               ) : (
@@ -327,33 +301,37 @@ const EntryBook = ({
                   return (
                     <tr
                       key={row._id}
-                      className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-slate-50/70"}`}
+                      className={`border-b border-slate-100 transition-colors hover:bg-indigo-50/50 ${
+                        index % 2 === 0 ? "bg-white" : "bg-slate-50/70"
+                      }`}
                     >
-                      <td className="px-3 py-2.5 tabular-nums text-slate-500">
+                      <td className="px-3 py-2 tabular-nums text-slate-500">
                         {ledgerStart + index + 1}
                       </td>
-                      <td className="px-3 py-2.5 text-slate-700">{formatEntryDate(row.createdAt)}</td>
-                      <td className="px-3 py-2.5">
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-700">
+                        {formatEntryDate(row.createdAt)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2">
                         <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            deposit ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                          className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            deposit ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"
                           }`}
                         >
-                          {deposit ? "Deposit (Dena)" : "Withdrawal (Lena)"}
+                          {deposit ? "Deposit" : "Withdraw"}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">
+                      <td className="px-3 py-2 text-right tabular-nums text-slate-800">
                         {rupee(row.amount)}
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">
-                        <span className="block">{rupee(row.percentageAmount)}</span>
-                        <span className="text-[11px] text-slate-400">
+                      <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-slate-600">
+                        {rupee(row.percentageAmount)}
+                        <span className="ml-1 text-[11px] text-slate-400">
                           {formatPercent(row.partnershipPercentage)}
                         </span>
                       </td>
                       <td
-                        className={`px-3 py-2.5 text-right font-semibold tabular-nums ${
-                          deposit ? "text-emerald-700" : "text-red-700"
+                        className={`px-3 py-2 text-right font-semibold tabular-nums ${
+                          deposit ? "text-emerald-700" : "text-red-600"
                         }`}
                       >
                         {rupee(row.totalAmount)}
@@ -367,18 +345,18 @@ const EntryBook = ({
         </div>
 
         {pagination && pagination.totalRecords > 0 && (
-          <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-3 py-1.5">
             <p className="text-xs text-slate-600">
               {ledgerStart + 1}–{Math.min(ledgerStart + rows.length, pagination.totalRecords)} of{" "}
               {pagination.totalRecords}
             </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-xs text-slate-600">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-1.5 text-xs text-slate-600">
                 Show
                 <select
                   value={pagination.limit}
                   onChange={(event) => onLimit(Number(event.target.value))}
-                  className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs"
+                  className="h-7 rounded-md border border-slate-300 bg-white px-1.5 text-xs"
                 >
                   {[10, 20, 50].map((value) => (
                     <option key={value} value={value}>
@@ -387,32 +365,30 @@ const EntryBook = ({
                   ))}
                 </select>
               </label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={!pagination.hasPreviousPage}
-                  onClick={() => onPage(Math.max(1, pagination.currentPage - 1))}
-                  className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium disabled:opacity-40"
-                >
-                  Previous
-                </button>
-                <span className="text-xs text-slate-600">
-                  {pagination.currentPage} / {pagination.totalPages || 1}
-                </span>
-                <button
-                  type="button"
-                  disabled={!pagination.hasNextPage}
-                  onClick={() => onPage(pagination.currentPage + 1)}
-                  className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
+              <button
+                type="button"
+                disabled={!pagination.hasPreviousPage}
+                onClick={() => onPage(Math.max(1, pagination.currentPage - 1))}
+                className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span className="text-xs text-slate-600">
+                {pagination.currentPage} / {pagination.totalPages || 1}
+              </span>
+              <button
+                type="button"
+                disabled={!pagination.hasNextPage}
+                onClick={() => onPage(pagination.currentPage + 1)}
+                className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+              >
+                Next
+              </button>
             </div>
           </div>
         )}
-      </section>
-    </div>
+      </div>
+    </section>
   );
 };
 
@@ -712,18 +688,6 @@ const Settlement = () => {
     }
   };
 
-  const handleDeleteParty = async (party) => {
-    if (!window.confirm(`Delete ${party.partyname}? Its usernames will also be removed.`)) return;
-    dispatch(clearSettlementError());
-    const result = await dispatch(deleteSettlementParty(party._id));
-    if (!deleteSettlementParty.fulfilled.match(result)) return;
-    if (editingPartyId === party._id) setEditingPartyId(null);
-    if (selectedPartyId === party._id) closeUsernameModal();
-    const nextPage = parties.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
-    if (nextPage !== currentPage) setCurrentPage(nextPage);
-    else dispatch(fetchSettlementParties({ page: currentPage, limit: entriesPerPage, search }));
-  };
-
   const handleUsernameChange = (event) => {
     const { name, value } = event.target;
     setUsernameForm((prev) => ({ ...prev, [name]: value }));
@@ -810,18 +774,6 @@ const Settlement = () => {
     }
   };
 
-  const handleDeleteUsername = async (entry) => {
-    if (!selectedPartyId) return;
-    if (!window.confirm(`Delete username ${entry.username}?`)) return;
-    dispatch(clearSettlementError());
-    const result = await dispatch(
-      deleteSettlementUsername({ partyId: selectedPartyId, usernameId: entry._id }),
-    );
-    if (!deleteSettlementUsername.fulfilled.match(result)) return;
-    if (editingUsernameId === entry._id) setEditingUsernameId(null);
-    if (ledgerUser?._id === entry._id) closeLedger();
-  };
-
   const handleLedgerSubmit = async (event) => {
     event.preventDefault();
     if (!ledgerParty || !ledgerUser) return;
@@ -857,7 +809,7 @@ const Settlement = () => {
 
   if (ledgerUser && ledgerParty) {
     return (
-      <div className="z-[99] min-h-[calc(100vh-5rem)] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-2 sm:py-3">
+      <div className="z-[99] box-border flex h-[calc(100dvh-var(--app-mobile-header-height)-var(--app-bottom-nav-height)-1.25rem)] flex-col py-1.5 sm:h-[calc(100dvh-var(--app-desktop-header-height)-2.25rem)]">
         <EntryBook
           party={ledgerParty}
           username={ledgerUser}
@@ -1034,14 +986,6 @@ const Settlement = () => {
                                 title="Edit party"
                               >
                                 <FaEdit size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteParty(party)}
-                                className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50"
-                                title="Delete party"
-                              >
-                                <FaTrash size={14} />
                               </button>
                             </div>
                           </td>
@@ -1277,14 +1221,6 @@ const Settlement = () => {
                                 title="Edit username"
                               >
                                 <FaEdit size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteUsername(entry)}
-                                className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50"
-                                title="Delete username"
-                              >
-                                <FaTrash size={14} />
                               </button>
                             </div>
                           </td>
