@@ -73,6 +73,65 @@ export const createSettlementUsername = createAsyncThunk(
   },
 );
 
+export const deleteSettlementParty = createAsyncThunk(
+  'settlement/deleteParty',
+  async (id, { getState, rejectWithValue }) => {
+    try {
+      const { user: { token } } = getState();
+      await axios.delete(`${API_URL}/${id}`, authConfig(token));
+      return id;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
+
+export const deleteSettlementUsername = createAsyncThunk(
+  'settlement/deleteUsername',
+  async ({ partyId, usernameId }, { getState, rejectWithValue }) => {
+    try {
+      const { user: { token } } = getState();
+      await axios.delete(`${API_URL}/${partyId}/usernames/${usernameId}`, authConfig(token));
+      return { partyId, usernameId };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
+
+export const fetchSettlementEntries = createAsyncThunk(
+  'settlement/fetchEntries',
+  async ({ partyId, usernameId, page = 1, limit = 20 }, { getState, rejectWithValue }) => {
+    try {
+      const { user: { token } } = getState();
+      const response = await axios.get(
+        `${API_URL}/${partyId}/usernames/${usernameId}/entries`,
+        authConfig(token, { page, limit }),
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
+
+export const createSettlementEntry = createAsyncThunk(
+  'settlement/createEntry',
+  async ({ partyId, usernameId, amount, transactionType }, { getState, rejectWithValue }) => {
+    try {
+      const { user: { token } } = getState();
+      const response = await axios.post(
+        `${API_URL}/${partyId}/usernames/${usernameId}/entries`,
+        { amount, transactionType },
+        authConfig(token),
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
+
 export const updateSettlementUsername = createAsyncThunk(
   'settlement/updateUsername',
   async ({ partyId, usernameId, ...body }, { getState, rejectWithValue }) => {
@@ -156,6 +215,23 @@ const settlementSlice = createSlice({
         upsertUsername(state.parties, action.payload);
       })
       .addCase(updateSettlementUsername.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      .addCase(deleteSettlementParty.fulfilled, (state, action) => {
+        state.parties = state.parties.filter((party) => party._id !== action.payload);
+        if (state.pagination) {
+          state.pagination.totalRecords = Math.max(0, (state.pagination.totalRecords || 0) - 1);
+        }
+      })
+      .addCase(deleteSettlementParty.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      .addCase(deleteSettlementUsername.fulfilled, (state, action) => {
+        const party = state.parties.find((item) => item._id === action.payload.partyId);
+        if (!party?.usernames) return;
+        party.usernames = party.usernames.filter((entry) => entry._id !== action.payload.usernameId);
+      })
+      .addCase(deleteSettlementUsername.rejected, (state, action) => {
         state.error = action.payload;
       });
   },

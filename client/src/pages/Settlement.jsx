@@ -1,10 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { FaTimes } from "react-icons/fa";
+import { FaArrowLeft, FaEdit, FaReceipt, FaTimes, FaTrash, FaUsers } from "react-icons/fa";
 import {
   clearSettlementError,
   createSettlementParty,
   createSettlementUsername,
+  deleteSettlementParty,
+  deleteSettlementUsername,
+  createSettlementEntry,
+  fetchSettlementEntries,
   fetchSettlementParties,
   updateSettlementParty,
   updateSettlementUsername,
@@ -26,24 +30,54 @@ const formatPercent = (value) => {
   return `${value}%`;
 };
 
-const Modal = ({ title, subtitle, onClose, children, wide = false }) => {
+const formatMoney = (value) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "0.00";
+  return number.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+const rupee = (value) => `₹${formatMoney(value)}`;
+
+const roundMoney = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+const formatEntryDate = (value) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const Modal = ({ title, subtitle, onClose, children, wide = false, layer = 10050 }) => {
   useEffect(() => {
+    const capture = layer > 10050;
     const onKey = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key !== "Escape") return;
+      if (capture) event.stopImmediatePropagation();
+      onClose();
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    window.addEventListener("keydown", onKey, capture);
+    return () => window.removeEventListener("keydown", onKey, capture);
+  }, [onClose, layer]);
 
   return (
     <div
-      className="fixed inset-0 z-[10050] flex items-center justify-center bg-slate-900/50 px-4 py-6"
+      className="fixed inset-0 flex items-center justify-center bg-slate-900/50 px-4 py-6"
+      style={{ zIndex: layer }}
       onMouseDown={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="settlement-modal-title"
+        aria-labelledby={`settlement-modal-title-${layer}`}
         className={`flex max-h-[min(88vh,760px)] w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl ${
           wide ? "max-w-2xl" : "max-w-md"
         }`}
@@ -51,7 +85,7 @@ const Modal = ({ title, subtitle, onClose, children, wide = false }) => {
       >
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <div className="min-w-0">
-            <h2 id="settlement-modal-title" className="text-lg font-bold text-slate-800">
+            <h2 id={`settlement-modal-title-${layer}`} className="text-lg font-bold text-slate-800">
               {title}
             </h2>
             {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
@@ -71,6 +105,317 @@ const Modal = ({ title, subtitle, onClose, children, wide = false }) => {
   );
 };
 
+const EntryBook = ({
+  party,
+  username,
+  usernames,
+  form,
+  onAmount,
+  onType,
+  onSubmit,
+  onBack,
+  onSwitchUser,
+  amountRef,
+  error,
+  loading,
+  percent,
+  summary,
+  rows,
+  pagination,
+  onPage,
+  onLimit,
+}) => {
+  const typed = roundMoney(String(form.amount).trim());
+  const share =
+    percent && typed > 0 ? roundMoney((typed * Number(percent.partnershipPercentage)) / 100) : null;
+  const total = share === null ? null : roundMoney(typed + share);
+  const isDeposit = form.transactionType === "deposit";
+  const closing = Number(summary?.closingBalance);
+  const ledgerStart = pagination ? (pagination.currentPage - 1) * pagination.limit : 0;
+
+  const summaryCards = [
+    {
+      key: "deposit",
+      label: "Deposit (Dena)",
+      value: summary?.deposit?.totalAmount,
+      hint: summary
+        ? `${rupee(summary.deposit?.amount)} + share ${rupee(summary.deposit?.percentageAmount)}`
+        : "—",
+      tone: "emerald",
+    },
+    {
+      key: "withdrawal",
+      label: "Withdrawal (Lena)",
+      value: summary?.withdrawal?.totalAmount,
+      hint: summary
+        ? `${rupee(summary.withdrawal?.amount)} + share ${rupee(summary.withdrawal?.percentageAmount)}`
+        : "—",
+      tone: "red",
+    },
+    {
+      key: "closing",
+      label: "Closing",
+      value: summary?.closingBalance,
+      hint: "Deposit total − Withdrawal total",
+      tone: closing < 0 ? "red" : closing > 0 ? "emerald" : "slate",
+    },
+  ];
+
+  const toneClass = {
+    emerald: "border-emerald-200 bg-emerald-50/70 text-emerald-700",
+    red: "border-red-200 bg-red-50/70 text-red-700",
+    slate: "border-slate-200 bg-slate-50 text-slate-800",
+  };
+
+  return (
+    <div className="mx-auto flex w-full max-w-none flex-col gap-2">
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200/90 bg-white px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <FaArrowLeft size={12} />
+            Parties
+          </button>
+          <div className="min-w-0">
+            <p className="truncate text-xs text-slate-500">{party.partyname}</p>
+            <h2 className="truncate text-base font-semibold text-slate-900">{username.username}</h2>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {usernames.length > 1 && (
+            <label className="block">
+              <span className="mb-0.5 block text-[11px] font-medium text-slate-500">Username</span>
+              <select
+                value={username._id}
+                onChange={(event) => onSwitchUser(event.target.value)}
+                className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-800"
+              >
+                {usernames.map((item) => (
+                  <option key={item._id} value={item._id}>
+                    {item.username}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-1.5">
+            <p className="text-[11px] font-medium text-slate-500">Partnership</p>
+            <p className="text-sm font-semibold text-[#424687]">
+              {percent
+                ? `${percent.partnershipPercentage}% from ${
+                    percent.percentageSource === "username" ? "this username" : "the party"
+                  }`
+                : "Not set"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <form
+        onSubmit={onSubmit}
+        className="rounded-xl border border-slate-200/90 bg-white px-3 py-3 shadow-sm sm:px-4"
+      >
+        <div className="grid grid-cols-2 gap-2 sm:max-w-lg">
+          <button
+            type="button"
+            onClick={() => onType("deposit")}
+            className={`h-11 rounded-lg border text-sm font-semibold transition ${
+              isDeposit
+                ? "border-emerald-600 bg-emerald-600 text-white"
+                : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300"
+            }`}
+          >
+            Deposit (Dena)
+          </button>
+          <button
+            type="button"
+            onClick={() => onType("withdrawal")}
+            className={`h-11 rounded-lg border text-sm font-semibold transition ${
+              !isDeposit
+                ? "border-red-600 bg-red-600 text-white"
+                : "border-slate-200 bg-white text-slate-700 hover:border-red-300"
+            }`}
+          >
+            Withdrawal (Lena)
+          </button>
+        </div>
+
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+          <label className="block min-w-0 flex-1">
+            <span className="mb-0.5 block text-xs font-medium text-slate-600">Amount*</span>
+            <input
+              ref={amountRef}
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={form.amount}
+              onChange={(event) => onAmount(event.target.value)}
+              placeholder="Enter amount"
+              className="h-12 w-full rounded-lg border border-slate-300 px-3 text-lg font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#424687]/40"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={!percent}
+            className="h-12 rounded-lg bg-[#424687] px-6 text-sm font-semibold text-white hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            Save entry
+          </button>
+        </div>
+
+        <p className="mt-2 text-sm text-slate-600">
+          {total !== null ? (
+            <>
+              {rupee(typed)} + {percent.partnershipPercentage}% share {rupee(share)} ={" "}
+              <span className="font-semibold text-slate-900">{rupee(total)}</span>
+            </>
+          ) : percent ? (
+            "Type an amount to see share and total before you save."
+          ) : (
+            "Partnership % is missing, so a new entry cannot be saved."
+          )}
+        </p>
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      </form>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        {summaryCards.map((card) => (
+          <div
+            key={card.key}
+            className={`rounded-xl border px-4 py-3 ${toneClass[card.tone]}`}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide">{card.label}</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+              {rupee(card.value)}
+            </p>
+            <p className="mt-0.5 text-xs text-slate-600">{card.hint}</p>
+          </div>
+        ))}
+      </div>
+
+      <section className="flex min-h-[min(62vh,calc(100vh-22rem))] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md">
+        {loading && (
+          <p className="border-b border-slate-100 bg-slate-50 py-2 text-center text-sm text-[#424687]">
+            Loading…
+          </p>
+        )}
+        <div className="min-h-0 flex-1 overflow-auto">
+          <table className="w-full min-w-[760px] border-collapse text-sm">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-[#424687] text-white">
+                <th className="w-14 px-3 py-2.5 text-left text-xs font-semibold">Sr</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold">Date</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold">Type</th>
+                <th className="px-3 py-2.5 text-right text-xs font-semibold">Amount</th>
+                <th className="px-3 py-2.5 text-right text-xs font-semibold">Share</th>
+                <th className="px-3 py-2.5 text-right text-xs font-semibold">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-16 text-center text-sm text-slate-500">
+                    No entries yet. Choose Deposit or Withdrawal, type the amount, and save.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row, index) => {
+                  const deposit = row.transactionType === "deposit";
+                  return (
+                    <tr
+                      key={row._id}
+                      className={`border-b border-slate-100 ${index % 2 === 0 ? "bg-white" : "bg-slate-50/70"}`}
+                    >
+                      <td className="px-3 py-2.5 tabular-nums text-slate-500">
+                        {ledgerStart + index + 1}
+                      </td>
+                      <td className="px-3 py-2.5 text-slate-700">{formatEntryDate(row.createdAt)}</td>
+                      <td className="px-3 py-2.5">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            deposit ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {deposit ? "Deposit (Dena)" : "Withdrawal (Lena)"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">
+                        {rupee(row.amount)}
+                      </td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">
+                        <span className="block">{rupee(row.percentageAmount)}</span>
+                        <span className="text-[11px] text-slate-400">
+                          {formatPercent(row.partnershipPercentage)}
+                        </span>
+                      </td>
+                      <td
+                        className={`px-3 py-2.5 text-right font-semibold tabular-nums ${
+                          deposit ? "text-emerald-700" : "text-red-700"
+                        }`}
+                      >
+                        {rupee(row.totalAmount)}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {pagination && pagination.totalRecords > 0 && (
+          <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-slate-600">
+              {ledgerStart + 1}–{Math.min(ledgerStart + rows.length, pagination.totalRecords)} of{" "}
+              {pagination.totalRecords}
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-xs text-slate-600">
+                Show
+                <select
+                  value={pagination.limit}
+                  onChange={(event) => onLimit(Number(event.target.value))}
+                  className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs"
+                >
+                  {[10, 20, 50].map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!pagination.hasPreviousPage}
+                  onClick={() => onPage(Math.max(1, pagination.currentPage - 1))}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium disabled:opacity-40"
+                >
+                  Previous
+                </button>
+                <span className="text-xs text-slate-600">
+                  {pagination.currentPage} / {pagination.totalPages || 1}
+                </span>
+                <button
+                  type="button"
+                  disabled={!pagination.hasNextPage}
+                  onClick={() => onPage(pagination.currentPage + 1)}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+};
+
 const Settlement = () => {
   const dispatch = useDispatch();
   const { parties, loading, error, pagination } = useSelector(
@@ -78,14 +423,33 @@ const Settlement = () => {
   );
 
   const partyNameRef = useRef(null);
+  const editPartyNameRef = useRef(null);
   const usernameRef = useRef(null);
+  const editUsernameRef = useRef(null);
+  const amountRef = useRef(null);
 
   const [partyForm, setPartyForm] = useState(emptyPartyForm);
-  const [partyEditId, setPartyEditId] = useState(null);
   const [partyFormError, setPartyFormError] = useState("");
+  const [editingPartyId, setEditingPartyId] = useState(null);
+  const [editPartyForm, setEditPartyForm] = useState(emptyPartyForm);
+  const [editPartyError, setEditPartyError] = useState("");
   const [usernameForm, setUsernameForm] = useState(emptyUsernameForm);
-  const [usernameEditId, setUsernameEditId] = useState(null);
   const [usernameFormError, setUsernameFormError] = useState("");
+  const [editingUsernameId, setEditingUsernameId] = useState(null);
+  const [editUsernameForm, setEditUsernameForm] = useState(emptyUsernameForm);
+  const [editUsernameError, setEditUsernameError] = useState("");
+  const [ledgerUser, setLedgerUser] = useState(null);
+  const [ledgerParty, setLedgerParty] = useState(null);
+  const [ledgerRows, setLedgerRows] = useState([]);
+  const [ledgerSummary, setLedgerSummary] = useState(null);
+  const [ledgerPercent, setLedgerPercent] = useState(null);
+  const [ledgerPagination, setLedgerPagination] = useState(null);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerLimit, setLedgerLimit] = useState(20);
+  const [ledgerReload, setLedgerReload] = useState(0);
+  const [ledgerForm, setLedgerForm] = useState({ amount: "", transactionType: "deposit" });
+  const [ledgerError, setLedgerError] = useState("");
+  const [ledgerLoading, setLedgerLoading] = useState(false);
   const [selectedPartyId, setSelectedPartyId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -112,6 +476,57 @@ const Settlement = () => {
     return () => clearTimeout(timer);
   }, [selectedPartyId]);
 
+  useEffect(() => {
+    if (!editingPartyId) return undefined;
+    const timer = setTimeout(() => editPartyNameRef.current?.focus(), 40);
+    return () => clearTimeout(timer);
+  }, [editingPartyId]);
+
+  useEffect(() => {
+    if (!editingUsernameId) return undefined;
+    const timer = setTimeout(() => editUsernameRef.current?.focus(), 40);
+    return () => clearTimeout(timer);
+  }, [editingUsernameId]);
+
+  useEffect(() => {
+    if (!ledgerUser) return undefined;
+    const timer = setTimeout(() => amountRef.current?.focus(), 40);
+    return () => clearTimeout(timer);
+  }, [ledgerUser]);
+
+  useEffect(() => {
+    if (!ledgerUser || !ledgerParty) return undefined;
+    let cancelled = false;
+
+    const load = async () => {
+      setLedgerLoading(true);
+      const result = await dispatch(
+        fetchSettlementEntries({
+          partyId: ledgerParty._id,
+          usernameId: ledgerUser._id,
+          page: ledgerPage,
+          limit: ledgerLimit,
+        }),
+      );
+      if (cancelled) return;
+      setLedgerLoading(false);
+      if (fetchSettlementEntries.fulfilled.match(result)) {
+        setLedgerRows(result.payload.entries || []);
+        setLedgerSummary(result.payload.summary || null);
+        setLedgerPercent(result.payload.appliedPercentage || null);
+        setLedgerPagination(result.payload.pagination || null);
+        setLedgerError("");
+      } else {
+        setLedgerError(result.payload || "Failed to load entries");
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch, ledgerUser, ledgerParty, ledgerPage, ledgerLimit, ledgerReload]);
+
   const selectedParty = parties.find((party) => party._id === selectedPartyId) || null;
   const selectedUsernames = selectedParty?.usernames || [];
 
@@ -129,39 +544,89 @@ const Settlement = () => {
     return { value: number };
   };
 
+  const partyToForm = (party) => ({
+    partyname: party.partyname || "",
+    contactNo: party.contactNo || "",
+    partnershipPercentage:
+      party.partnershipPercentage === null || party.partnershipPercentage === undefined
+        ? ""
+        : String(party.partnershipPercentage),
+  });
+
+  const usernameToForm = (entry) => ({
+    username: entry.username || "",
+    partnershipPercentage:
+      entry.partnershipPercentage === null || entry.partnershipPercentage === undefined
+        ? ""
+        : String(entry.partnershipPercentage),
+  });
+
   const resetPartyForm = () => {
     setPartyForm(emptyPartyForm);
-    setPartyEditId(null);
     setPartyFormError("");
     partyNameRef.current?.focus();
+  };
+
+  const closeLedger = () => {
+    setLedgerUser(null);
+    setLedgerParty(null);
+    setLedgerRows([]);
+    setLedgerSummary(null);
+    setLedgerPercent(null);
+    setLedgerPagination(null);
+    setLedgerForm({ amount: "", transactionType: "deposit" });
+    setLedgerError("");
+    setLedgerPage(1);
   };
 
   const closeUsernameModal = () => {
+    closeLedger();
     setSelectedPartyId(null);
     setUsernameForm(emptyUsernameForm);
-    setUsernameEditId(null);
     setUsernameFormError("");
+    setEditingUsernameId(null);
+    setEditUsernameForm(emptyUsernameForm);
+    setEditUsernameError("");
+  };
+
+  const openLedger = (username) => {
+    if (!selectedParty) return;
+    setLedgerParty({ _id: selectedParty._id, partyname: selectedParty.partyname });
+    setLedgerForm({ amount: "", transactionType: "deposit" });
+    setLedgerError("");
+    setLedgerPage(1);
+    setLedgerUser({ _id: username._id, username: username.username });
+    setLedgerReload((value) => value + 1);
+  };
+
+  const switchLedgerUser = (usernameId) => {
+    const next = selectedUsernames.find((item) => item._id === usernameId);
+    if (!next || next._id === ledgerUser?._id) return;
+    setLedgerForm((prev) => ({ amount: "", transactionType: prev.transactionType }));
+    setLedgerError("");
+    setLedgerPage(1);
+    setLedgerUser({ _id: next._id, username: next.username });
+    setLedgerReload((value) => value + 1);
   };
 
   const openEditParty = (party) => {
-    setPartyForm({
-      partyname: party.partyname || "",
-      contactNo: party.contactNo || "",
-      partnershipPercentage:
-        party.partnershipPercentage === null || party.partnershipPercentage === undefined
-          ? ""
-          : String(party.partnershipPercentage),
-    });
-    setPartyEditId(party._id);
-    setPartyFormError("");
+    if (editingPartyId === party._id) {
+      setEditingPartyId(null);
+      setEditPartyError("");
+      return;
+    }
+    setEditPartyForm(partyToForm(party));
+    setEditingPartyId(party._id);
+    setEditPartyError("");
     dispatch(clearSettlementError());
-    partyNameRef.current?.focus();
   };
 
   const openUsernames = (party) => {
     setUsernameForm(emptyUsernameForm);
-    setUsernameEditId(null);
     setUsernameFormError("");
+    setEditingUsernameId(null);
+    setEditUsernameForm(emptyUsernameForm);
+    setEditUsernameError("");
     dispatch(clearSettlementError());
     setSelectedPartyId(party._id);
   };
@@ -192,30 +657,71 @@ const Settlement = () => {
       return;
     }
 
-    const payload = {
-      partyname,
-      contactNo: partyForm.contactNo,
-      partnershipPercentage: partnership.value,
-    };
-    const editingId = partyEditId;
-    const action = editingId
-      ? updateSettlementParty({ id: editingId, ...payload })
-      : createSettlementParty(payload);
-    const result = await dispatch(action);
-    const succeeded = editingId
-      ? updateSettlementParty.fulfilled.match(result)
-      : createSettlementParty.fulfilled.match(result);
-    if (!succeeded) return;
-
-    resetPartyForm();
-    if (!editingId) setCurrentPage(1);
-    dispatch(
-      fetchSettlementParties({
-        page: editingId ? currentPage : 1,
-        limit: entriesPerPage,
-        search,
+    const result = await dispatch(
+      createSettlementParty({
+        partyname,
+        contactNo: partyForm.contactNo,
+        partnershipPercentage: partnership.value,
       }),
     );
+    if (!createSettlementParty.fulfilled.match(result)) return;
+
+    resetPartyForm();
+    setCurrentPage(1);
+    dispatch(fetchSettlementParties({ page: 1, limit: entriesPerPage, search }));
+  };
+
+  const handleEditPartyChange = (event) => {
+    const { name, value } = event.target;
+    const next = name === "contactNo" ? value.replace(/\D/g, "").slice(0, 10) : value;
+    setEditPartyForm((prev) => ({ ...prev, [name]: next }));
+  };
+
+  const handleEditPartySubmit = async (event) => {
+    event.preventDefault();
+    if (!editingPartyId) return;
+    setEditPartyError("");
+    dispatch(clearSettlementError());
+
+    const partyname = editPartyForm.partyname.trim();
+    if (!partyname) {
+      setEditPartyError("Party name is required");
+      return;
+    }
+    if (editPartyForm.contactNo && !/^\d{10}$/.test(editPartyForm.contactNo)) {
+      setEditPartyError("Mobile must be exactly 10 digits");
+      return;
+    }
+    const partnership = parsePercent(editPartyForm.partnershipPercentage, true);
+    if (partnership.error) {
+      setEditPartyError(partnership.error);
+      return;
+    }
+
+    const result = await dispatch(
+      updateSettlementParty({
+        id: editingPartyId,
+        partyname,
+        contactNo: editPartyForm.contactNo,
+        partnershipPercentage: partnership.value,
+      }),
+    );
+    if (updateSettlementParty.fulfilled.match(result)) {
+      setEditingPartyId(null);
+      setEditPartyError("");
+    }
+  };
+
+  const handleDeleteParty = async (party) => {
+    if (!window.confirm(`Delete ${party.partyname}? Its usernames will also be removed.`)) return;
+    dispatch(clearSettlementError());
+    const result = await dispatch(deleteSettlementParty(party._id));
+    if (!deleteSettlementParty.fulfilled.match(result)) return;
+    if (editingPartyId === party._id) setEditingPartyId(null);
+    if (selectedPartyId === party._id) closeUsernameModal();
+    const nextPage = parties.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+    if (nextPage !== currentPage) setCurrentPage(nextPage);
+    else dispatch(fetchSettlementParties({ page: currentPage, limit: entriesPerPage, search }));
   };
 
   const handleUsernameChange = (event) => {
@@ -225,7 +731,6 @@ const Settlement = () => {
 
   const clearUsernameForm = () => {
     setUsernameForm(emptyUsernameForm);
-    setUsernameEditId(null);
     setUsernameFormError("");
     usernameRef.current?.focus();
   };
@@ -247,43 +752,144 @@ const Settlement = () => {
       return;
     }
 
-    const body = {
-      partyId: selectedPartyId,
-      username,
-      partnershipPercentage: partnership.value,
-    };
-    const action = usernameEditId
-      ? updateSettlementUsername({ usernameId: usernameEditId, ...body })
-      : createSettlementUsername(body);
-    const result = await dispatch(action);
-    const succeeded = usernameEditId
-      ? updateSettlementUsername.fulfilled.match(result)
-      : createSettlementUsername.fulfilled.match(result);
-    if (succeeded) clearUsernameForm();
+    const result = await dispatch(
+      createSettlementUsername({
+        partyId: selectedPartyId,
+        username,
+        partnershipPercentage: partnership.value,
+      }),
+    );
+    if (createSettlementUsername.fulfilled.match(result)) clearUsernameForm();
   };
 
-  const handleUsernameEdit = (entry) => {
-    setUsernameForm({
-      username: entry.username || "",
-      partnershipPercentage:
-        entry.partnershipPercentage === null || entry.partnershipPercentage === undefined
-          ? ""
-          : String(entry.partnershipPercentage),
-    });
-    setUsernameEditId(entry._id);
-    setUsernameFormError("");
-    usernameRef.current?.focus();
+  const openEditUsername = (entry) => {
+    if (editingUsernameId === entry._id) {
+      setEditingUsernameId(null);
+      setEditUsernameError("");
+      return;
+    }
+    setEditUsernameForm(usernameToForm(entry));
+    setEditingUsernameId(entry._id);
+    setEditUsernameError("");
+    dispatch(clearSettlementError());
+  };
+
+  const handleEditUsernameChange = (event) => {
+    const { name, value } = event.target;
+    setEditUsernameForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditUsernameSubmit = async (event) => {
+    event.preventDefault();
+    if (!selectedPartyId || !editingUsernameId) return;
+    setEditUsernameError("");
+    dispatch(clearSettlementError());
+
+    const username = editUsernameForm.username.trim();
+    if (!username) {
+      setEditUsernameError("Username is required");
+      return;
+    }
+    const partnership = parsePercent(editUsernameForm.partnershipPercentage, false);
+    if (partnership.error) {
+      setEditUsernameError(partnership.error);
+      return;
+    }
+
+    const result = await dispatch(
+      updateSettlementUsername({
+        partyId: selectedPartyId,
+        usernameId: editingUsernameId,
+        username,
+        partnershipPercentage: partnership.value,
+      }),
+    );
+    if (updateSettlementUsername.fulfilled.match(result)) {
+      setEditingUsernameId(null);
+      setEditUsernameError("");
+    }
+  };
+
+  const handleDeleteUsername = async (entry) => {
+    if (!selectedPartyId) return;
+    if (!window.confirm(`Delete username ${entry.username}?`)) return;
+    dispatch(clearSettlementError());
+    const result = await dispatch(
+      deleteSettlementUsername({ partyId: selectedPartyId, usernameId: entry._id }),
+    );
+    if (!deleteSettlementUsername.fulfilled.match(result)) return;
+    if (editingUsernameId === entry._id) setEditingUsernameId(null);
+    if (ledgerUser?._id === entry._id) closeLedger();
+  };
+
+  const handleLedgerSubmit = async (event) => {
+    event.preventDefault();
+    if (!ledgerParty || !ledgerUser) return;
+    setLedgerError("");
+
+    const amount = Number(String(ledgerForm.amount).trim());
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setLedgerError("Amount must be greater than 0");
+      return;
+    }
+
+    const result = await dispatch(
+      createSettlementEntry({
+        partyId: ledgerParty._id,
+        usernameId: ledgerUser._id,
+        amount,
+        transactionType: ledgerForm.transactionType,
+      }),
+    );
+    if (!createSettlementEntry.fulfilled.match(result)) {
+      setLedgerError(result.payload || "Failed to add entry");
+      return;
+    }
+
+    setLedgerForm({ amount: "", transactionType: ledgerForm.transactionType });
+    setLedgerSummary(result.payload.summary || null);
+    if (ledgerPage !== 1) setLedgerPage(1);
+    setLedgerReload((value) => value + 1);
+    amountRef.current?.focus();
   };
 
   const startIndex = pagination ? (pagination.currentPage - 1) * pagination.limit : 0;
+
+  if (ledgerUser && ledgerParty) {
+    return (
+      <div className="z-[99] min-h-[calc(100vh-5rem)] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-2 sm:py-3">
+        <EntryBook
+          party={ledgerParty}
+          username={ledgerUser}
+          usernames={selectedUsernames}
+          form={ledgerForm}
+          onAmount={(amount) => setLedgerForm((prev) => ({ ...prev, amount }))}
+          onType={(transactionType) => setLedgerForm((prev) => ({ ...prev, transactionType }))}
+          onSubmit={handleLedgerSubmit}
+          onBack={closeUsernameModal}
+          onSwitchUser={switchLedgerUser}
+          amountRef={amountRef}
+          error={ledgerError}
+          loading={ledgerLoading}
+          percent={ledgerPercent}
+          summary={ledgerSummary}
+          rows={ledgerRows}
+          pagination={ledgerPagination}
+          onPage={setLedgerPage}
+          onLimit={(limit) => {
+            setLedgerLimit(limit);
+            setLedgerPage(1);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="z-[99] min-h-[calc(100vh-5rem)] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-2 sm:py-3">
       <div className="mx-auto flex w-full max-w-none flex-col gap-2">
         <section className="rounded-xl border border-slate-200/90 bg-white px-3 py-3 shadow-sm sm:px-4">
-          <h2 className="text-sm font-semibold text-slate-800">
-            {partyEditId ? "Edit party" : "Add party"}
-          </h2>
+          <h2 className="text-sm font-semibold text-slate-800">Add party</h2>
           <form onSubmit={handlePartySubmit} className="mt-2 flex flex-col gap-2">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.7fr_auto] lg:items-end">
               <label className="block min-w-0">
@@ -331,7 +937,7 @@ const Settlement = () => {
                   type="submit"
                   className="inline-flex h-9 items-center justify-center rounded-md bg-[#424687] px-4 text-sm font-semibold text-white hover:bg-[#353a6e]"
                 >
-                  {partyEditId ? "Update" : "Save"}
+                  Save
                 </button>
                 <button
                   type="button"
@@ -389,44 +995,130 @@ const Settlement = () => {
                     </td>
                   </tr>
                 ) : (
-                  parties.map((party, index) => (
-                    <tr
-                      key={party._id}
-                      className={`border-b border-slate-100 ${
-                        index % 2 === 0 ? "bg-white" : "bg-slate-50/70"
-                      }`}
-                    >
-                      <td className="px-3 py-2.5 tabular-nums text-slate-500">
-                        {startIndex + index + 1}
-                      </td>
-                      <td className="px-3 py-2.5 font-medium text-slate-900">{party.partyname}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-slate-700">
-                        {party.contactNo || "—"}
-                      </td>
-                      <td className="px-3 py-2.5 tabular-nums text-slate-700">
-                        {formatPercent(party.partnershipPercentage)}
-                      </td>
-                      <td className="px-3 py-2.5 tabular-nums text-slate-700">
-                        {(party.usernames || []).length}
-                      </td>
-                      <td className="px-3 py-2.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => openUsernames(party)}
-                          className="mr-3 text-xs font-semibold text-[#424687] hover:underline"
+                  parties.map((party, index) => {
+                    const editing = editingPartyId === party._id;
+                    return (
+                      <React.Fragment key={party._id}>
+                        <tr
+                          className={`border-b border-slate-100 ${
+                            editing ? "bg-indigo-50/70" : index % 2 === 0 ? "bg-white" : "bg-slate-50/70"
+                          }`}
                         >
-                          Usernames
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEditParty(party)}
-                          className="text-xs font-semibold text-slate-600 hover:underline"
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                          <td className="px-3 py-2.5 tabular-nums text-slate-500">
+                            {startIndex + index + 1}
+                          </td>
+                          <td className="px-3 py-2.5 font-medium text-slate-900">{party.partyname}</td>
+                          <td className="px-3 py-2.5 tabular-nums text-slate-700">
+                            {party.contactNo || "—"}
+                          </td>
+                          <td className="px-3 py-2.5 tabular-nums text-slate-700">
+                            {formatPercent(party.partnershipPercentage)}
+                          </td>
+                          <td className="px-3 py-2.5 tabular-nums text-slate-700">
+                            {(party.usernames || []).length}
+                          </td>
+                          <td className="px-3 py-2.5 text-right">
+                            <div className="inline-flex items-center justify-end gap-0.5">
+                              <button
+                                type="button"
+                                onClick={() => openUsernames(party)}
+                                className="rounded-md p-1.5 text-[#424687] transition hover:bg-[#424687]/10"
+                                title="Usernames"
+                              >
+                                <FaUsers size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openEditParty(party)}
+                                className="rounded-md p-1.5 text-[#424687] transition hover:bg-[#424687]/10"
+                                title="Edit party"
+                              >
+                                <FaEdit size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteParty(party)}
+                                className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50"
+                                title="Delete party"
+                              >
+                                <FaTrash size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {editing && (
+                          <tr className="border-b border-indigo-100 bg-indigo-50/40">
+                            <td colSpan={6} className="px-3 py-3">
+                              <form
+                                onSubmit={handleEditPartySubmit}
+                                className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.7fr_auto] lg:items-end"
+                              >
+                                <label className="block min-w-0">
+                                  <span className="mb-0.5 block text-[11px] font-medium text-slate-600">
+                                    Party name*
+                                  </span>
+                                  <input
+                                    ref={editPartyNameRef}
+                                    type="text"
+                                    name="partyname"
+                                    value={editPartyForm.partyname}
+                                    onChange={handleEditPartyChange}
+                                    className="h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#424687]/40"
+                                  />
+                                </label>
+                                <label className="block min-w-0">
+                                  <span className="mb-0.5 block text-[11px] font-medium text-slate-600">
+                                    Mobile
+                                  </span>
+                                  <input
+                                    type="text"
+                                    name="contactNo"
+                                    value={editPartyForm.contactNo}
+                                    onChange={handleEditPartyChange}
+                                    inputMode="numeric"
+                                    maxLength={10}
+                                    className="h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#424687]/40"
+                                  />
+                                </label>
+                                <label className="block min-w-0">
+                                  <span className="mb-0.5 block text-[11px] font-medium text-slate-600">
+                                    Partnership %*
+                                  </span>
+                                  <input
+                                    type="number"
+                                    name="partnershipPercentage"
+                                    value={editPartyForm.partnershipPercentage}
+                                    onChange={handleEditPartyChange}
+                                    min="0"
+                                    step="any"
+                                    className="h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#424687]/40"
+                                  />
+                                </label>
+                                <div className="flex gap-2">
+                                  <button
+                                    type="submit"
+                                    className="h-8 rounded-md bg-[#424687] px-3 text-xs font-semibold text-white hover:bg-[#353a6e]"
+                                  >
+                                    Update
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingPartyId(null)}
+                                    className="h-8 rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </form>
+                              {editPartyError && (
+                                <p className="mt-2 text-xs text-red-600">{editPartyError}</p>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -522,17 +1214,15 @@ const Settlement = () => {
                 type="submit"
                 className="h-10 rounded-md bg-[#424687] px-4 text-sm font-semibold text-white hover:bg-[#353a6e]"
               >
-                {usernameEditId ? "Update" : "Add"}
+                Add
               </button>
-              {usernameEditId && (
-                <button
-                  type="button"
-                  onClick={clearUsernameForm}
-                  className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700"
-                >
-                  Cancel
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={clearUsernameForm}
+                className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700"
+              >
+                Clear
+              </button>
             </div>
           </form>
           {(usernameFormError || error) && (
@@ -548,7 +1238,7 @@ const Settlement = () => {
                   <th className="w-12 px-3 py-2 text-left text-xs font-semibold">Sr</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold">Username</th>
                   <th className="w-24 px-3 py-2 text-left text-xs font-semibold">Share %</th>
-                  <th className="w-16 px-3 py-2 text-right text-xs font-semibold">Edit</th>
+                  <th className="w-40 px-3 py-2 text-right text-xs font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -559,35 +1249,112 @@ const Settlement = () => {
                     </td>
                   </tr>
                 ) : (
-                  selectedUsernames.map((entry, index) => (
-                    <tr
-                      key={entry._id}
-                      className={`border-t border-slate-100 ${
-                        usernameEditId === entry._id ? "bg-amber-50" : "bg-white"
-                      }`}
-                    >
-                      <td className="px-3 py-2 tabular-nums text-slate-500">{index + 1}</td>
-                      <td className="px-3 py-2 font-medium text-slate-900">{entry.username}</td>
-                      <td className="px-3 py-2 tabular-nums text-slate-700">
-                        {formatPercent(entry.partnershipPercentage)}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleUsernameEdit(entry)}
-                          className="text-xs font-semibold text-[#424687] hover:underline"
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  selectedUsernames.map((entry, index) => {
+                    const editing = editingUsernameId === entry._id;
+                    return (
+                      <React.Fragment key={entry._id}>
+                        <tr className={`border-t border-slate-100 ${editing ? "bg-indigo-50" : "bg-white"}`}>
+                          <td className="px-3 py-2 tabular-nums text-slate-500">{index + 1}</td>
+                          <td className="px-3 py-2 font-medium text-slate-900">{entry.username}</td>
+                          <td className="px-3 py-2 tabular-nums text-slate-700">
+                            {formatPercent(entry.partnershipPercentage)}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex items-center justify-end gap-0.5">
+                              <button
+                                type="button"
+                                onClick={() => openLedger(entry)}
+                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-[#424687] transition hover:bg-[#424687]/10"
+                                title="Open entries"
+                              >
+                                <FaReceipt size={12} />
+                                Entries
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openEditUsername(entry)}
+                                className="rounded-md p-1.5 text-[#424687] transition hover:bg-[#424687]/10"
+                                title="Edit username"
+                              >
+                                <FaEdit size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUsername(entry)}
+                                className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50"
+                                title="Delete username"
+                              >
+                                <FaTrash size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {editing && (
+                          <tr className="border-t border-indigo-100 bg-indigo-50/50">
+                            <td colSpan={4} className="px-3 py-3">
+                              <form
+                                onSubmit={handleEditUsernameSubmit}
+                                className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8rem_auto] sm:items-end"
+                              >
+                                <label className="block min-w-0">
+                                  <span className="mb-0.5 block text-[11px] font-medium text-slate-600">
+                                    Username*
+                                  </span>
+                                  <input
+                                    ref={editUsernameRef}
+                                    type="text"
+                                    name="username"
+                                    value={editUsernameForm.username}
+                                    onChange={handleEditUsernameChange}
+                                    className="h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#424687]/40"
+                                  />
+                                </label>
+                                <label className="block min-w-0">
+                                  <span className="mb-0.5 block text-[11px] font-medium text-slate-600">
+                                    Share %
+                                  </span>
+                                  <input
+                                    type="number"
+                                    name="partnershipPercentage"
+                                    value={editUsernameForm.partnershipPercentage}
+                                    onChange={handleEditUsernameChange}
+                                    min="0"
+                                    step="any"
+                                    className="h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#424687]/40"
+                                  />
+                                </label>
+                                <div className="flex gap-2">
+                                  <button
+                                    type="submit"
+                                    className="h-8 rounded-md bg-[#424687] px-3 text-xs font-semibold text-white"
+                                  >
+                                    Update
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingUsernameId(null)}
+                                    className="h-8 rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </form>
+                              {editUsernameError && (
+                                <p className="mt-2 text-xs text-red-600">{editUsernameError}</p>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         </Modal>
       )}
+
     </div>
   );
 };
