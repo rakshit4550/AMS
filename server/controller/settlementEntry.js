@@ -276,3 +276,175 @@ export const getSettlementEntries = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const todayInIst = () =>
+  new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
+const isRealDate = (value) => {
+  if (!DATE_PATTERN.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  return utc.getUTCFullYear() === year
+    && utc.getUTCMonth() === month - 1
+    && utc.getUTCDate() === day;
+};
+
+const istStart = (value) => new Date(`${value}T00:00:00.000+05:30`);
+const istEnd = (value) => new Date(`${value}T23:59:59.999+05:30`);
+
+const parseSettlementDateRange = (query) => {
+  const rawFrom = String(query.fromDate || '').trim();
+  const rawTo = String(query.toDate || '').trim();
+  const fromDate = rawFrom || (rawTo ? '' : todayInIst());
+  const toDate = rawTo || (rawFrom ? '' : todayInIst());
+
+  if (fromDate && !isRealDate(fromDate)) {
+    return { error: 'Invalid fromDate. Use YYYY-MM-DD format' };
+  }
+  if (toDate && !isRealDate(toDate)) {
+    return { error: 'Invalid toDate. Use YYYY-MM-DD format' };
+  }
+  if (fromDate && toDate && fromDate > toDate) {
+    return { error: 'fromDate cannot be after toDate' };
+  }
+
+  const createdAt = {};
+  if (fromDate) createdAt.$gte = istStart(fromDate);
+  if (toDate) createdAt.$lte = istEnd(toDate);
+
+  return { fromDate: fromDate || null, toDate: toDate || null, createdAt };
+};
+
+const summaryFromGroups = (groups) => {
+  const deposit = emptyBucket();
+  const withdrawal = emptyBucket();
+
+  groups.forEach((group) => {
+    const bucket = group.type === 'deposit'
+      ? deposit
+      : group.type === 'withdrawal'
+        ? withdrawal
+        : null;
+    if (!bucket) return;
+    bucket.amount = roundMoney(group.amount);
+    bucket.percentageAmount = roundMoney(group.percentageAmount);
+    bucket.totalAmount = roundMoney(group.totalAmount);
+  });
+
+  return {
+    deposit,
+    withdrawal,
+    closingBalance: roundMoney(deposit.totalAmount - withdrawal.totalAmount),
+  };
+};
+
+const addBuckets = (left, right) => ({
+  amount: roundMoney(left.amount + right.amount),
+  percentageAmount: roundMoney(left.percentageAmount + right.percentageAmount),
+  totalAmount: roundMoney(left.totalAmount + right.totalAmount),
+});
+
+export const getPartySettlement = async (req, res) => {
+  try {
+    if (!isValidId(req.params.partyId)) {
+      return res.status(400).json({ message: 'Invalid settlement party id' });
+    }
+
+    const range = parseSettlementDateRange(req.query);
+    if (range.error) {
+      return res.status(400).json({ message: range.error });
+    }
+
+    const party = await SettlementParty.findOne({
+      _id: req.params.partyId,
+      createdBy: req.user.id,
+    }).lean();
+
+    if (!party) {
+      return res.status(404).json({ message: 'Settlement party not found or you do not have access' });
+    }
+
+    const usernames = await SettlementUsername.find({
+      settlementParty: party._id,
+      createdBy: req.user.id,
+    })
+      .sort({ username: 1, _id: 1 })
+      .select('username partnershipPercentage')
+      .lean();
+
+    const grouped = await SettlementEntry.aggregate([
+      {
+        $match: {
+          createdBy: new mongoose.Types.ObjectId(req.user.id),
+          settlementParty: party._id,
+          createdAt: range.createdAt,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            usernameId: '$settlementUsername',
+            type: '$transactionType',
+          },
+          amount: { $sum: '$amount' },
+          percentageAmount: { $sum: '$percentageAmount' },
+          totalAmount: { $sum: '$totalAmount' },
+        },
+      },
+    ]);
+
+    const byUsername = new Map();
+    grouped.forEach((group) => {
+      const key = group._id.usernameId.toString();
+      const list = byUsername.get(key) || [];
+      list.push({
+        type: group._id.type,
+        amount: group.amount,
+        percentageAmount: group.percentageAmount,
+        totalAmount: group.totalAmount,
+      });
+      byUsername.set(key, list);
+    });
+
+    const rows = usernames.map((username) => ({
+      _id: username._id,
+      username: username.username,
+      partnershipPercentage: username.partnershipPercentage ?? null,
+      summary: summaryFromGroups(byUsername.get(username._id.toString()) || []),
+    }));
+
+    const partySummary = rows.reduce((total, row) => {
+      const deposit = addBuckets(total.deposit, row.summary.deposit);
+      const withdrawal = addBuckets(total.withdrawal, row.summary.withdrawal);
+      return {
+        deposit,
+        withdrawal,
+        closingBalance: roundMoney(deposit.totalAmount - withdrawal.totalAmount),
+      };
+    }, {
+      deposit: emptyBucket(),
+      withdrawal: emptyBucket(),
+      closingBalance: 0,
+    });
+
+    res.status(200).json({
+      success: true,
+      party: {
+        _id: party._id,
+        partyname: party.partyname,
+        contactNo: party.contactNo || '',
+        partnershipPercentage: party.partnershipPercentage,
+      },
+      filters: {
+        fromDate: range.fromDate,
+        toDate: range.toDate,
+      },
+      usernames: rows,
+      summary: partySummary,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
