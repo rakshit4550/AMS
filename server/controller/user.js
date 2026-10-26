@@ -11,6 +11,7 @@ import {
   recordAttempt,
   sendAttemptLimited,
 } from '../middleware/authAttemptLimit.js';
+import { isAccessTokenRevoked, revokeAccessToken } from '../middleware/tokenBlacklist.js';
 
 // Configure nodemailer transporter
 const transporter = nodemailer.createTransport({
@@ -942,14 +943,37 @@ export const disable2FA = async (req, res) => {
   }
 };
 
+const bearerToken = (req) => req.headers['authorization']?.split(' ')[1];
+
 // Logout
-export const logout = (req, res) => {
-  console.log('Logout request received');
-  res.status(200).json({ message: 'Logout successful' });
+export const logout = async (req, res) => {
+  const token = bearerToken(req);
+
+  if (!token) {
+    return res.status(200).json({ message: 'Logout successful' });
+  }
+
+  if (!process.env.JWT_SECRET) {
+    return res.status(500).json({ message: 'Server configuration error: JWT_SECRET is not defined' });
+  }
+
+  try {
+    jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
+    return res.status(200).json({ message: 'Logout successful' });
+  }
+
+  try {
+    await revokeAccessToken(token);
+    return res.status(200).json({ message: 'Logout successful' });
+  } catch (error) {
+    console.error('Logout error:', error.message);
+    return res.status(500).json({ message: 'Server error' });
+  }
 };
 
 export const verifyToken = async (req, res, next) => {
-  const token = req.headers['authorization']?.split(' ')[1];
+  const token = bearerToken(req);
 
   if (!token) {
     console.log('No token provided in headers');
@@ -958,6 +982,9 @@ export const verifyToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (await isAccessTokenRevoked(token)) {
+      return res.status(401).json({ message: 'Invalid or expired token' });
+    }
     const user = await User.findById(decoded.id);
 
     if (!user) {
@@ -1142,6 +1169,7 @@ export const updateUser = async (req, res) => {
         process.env.JWT_SECRET,
         { expiresIn: '1h' }
       );
+      await revokeAccessToken(bearerToken(req));
       console.log('Generated new token for updated user:', user.username);
     }
 
@@ -1288,6 +1316,7 @@ export const changePassword = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
+    await revokeAccessToken(bearerToken(req));
 
     return res.status(200).json({
       message: 'Password updated successfully',
@@ -1325,6 +1354,7 @@ export const toggleAutoJob = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
+    await revokeAccessToken(bearerToken(req));
 
     res.status(200).json({
       message: 'Auto-job setting toggled successfully',

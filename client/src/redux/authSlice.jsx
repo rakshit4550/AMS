@@ -219,9 +219,22 @@ export const confirmReset2FA = createAsyncThunk(
   },
 );
 
-// Logout user
+// Logout user. Ask the server to revoke the JWT, then always clear this browser.
 export const logout = createAsyncThunk("user/logout", async () => {
-  localStorage.removeItem("token");
+  const token = localStorage.getItem("token");
+  try {
+    if (token) {
+      await axios.post(
+        `${API_URL}/logout`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+    }
+  } catch {
+    // The browser session still ends. If this call fails, the token stays valid until it expires.
+  } finally {
+    localStorage.removeItem("token");
+  }
   return null;
 });
 

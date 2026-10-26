@@ -14,8 +14,9 @@ export function setupAxiosAuthInterceptor(store) {
     (error) => {
       const status = error.response?.status;
       const hadBearer = Boolean(error.config?.headers?.Authorization);
+      const requestUrl = String(error.config?.url || "");
 
-      if (status === 401 && hadBearer && store) {
+      if (status === 401 && hadBearer && store && !requestUrl.includes("/logout")) {
         if (!handlingSession401) {
           handlingSession401 = true;
           store.dispatch(logout());
