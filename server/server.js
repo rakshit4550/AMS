@@ -17,8 +17,6 @@ import utrSubtypeRoutes from './route/utrSubtype.js';
 import dashboardRoutes from './route/dashboard.js';
 import settlementPartyRoutes from './route/settlementParty.js';
 
-
-
 dotenv.config();
 
 const app = express();
