@@ -13,17 +13,35 @@ export const fetchSettlementParties = createAsyncThunk(
   async (params = {}, { getState, rejectWithValue }) => {
     try {
       const { user: { token } } = getState();
-      const response = await axios.get(
-        API_URL,
-        authConfig(token, {
-          page: 1,
-          limit: 20,
-          sortBy: 'partyname',
-          sortOrder: 'asc',
-          ...params,
-        }),
-      );
-      return response.data;
+      const { all, ...query } = params;
+      const base = {
+        sortBy: 'partyname',
+        sortOrder: 'asc',
+        ...query,
+      };
+
+      if (!all) {
+        const response = await axios.get(
+          API_URL,
+          authConfig(token, { page: 1, limit: 20, ...base }),
+        );
+        return response.data;
+      }
+
+      const parties = [];
+      let page = 1;
+      let pagination = null;
+      do {
+        const response = await axios.get(
+          API_URL,
+          authConfig(token, { ...base, page, limit: 50 }),
+        );
+        parties.push(...(response.data?.parties || []));
+        pagination = response.data?.pagination || null;
+        page += 1;
+      } while (pagination?.hasNextPage && page <= 40);
+
+      return { parties, pagination };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);
     }
@@ -168,6 +186,13 @@ const settlementSlice = createSlice({
       .addCase(fetchSettlementParties.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      .addCase(createSettlementParty.fulfilled, (state, action) => {
+        const party = action.payload;
+        if (!party?._id) return;
+        if (state.parties.some((item) => item._id === party._id)) return;
+        state.parties.push({ ...party, usernames: party.usernames || [] });
+        state.parties.sort((a, b) => String(a.partyname).localeCompare(String(b.partyname)));
       })
       .addCase(createSettlementParty.rejected, (state, action) => {
         state.error = action.payload;
