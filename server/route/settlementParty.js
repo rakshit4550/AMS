@@ -7,8 +7,6 @@ import {
   createSettlementUsername,
   getSettlementUsernames,
   updateSettlementUsername,
-  deleteSettlementParty,
-  deleteSettlementUsername,
 } from '../controller/settlementParty.js';
 import {
   createSettlementEntry,
@@ -26,12 +24,10 @@ router.get('/', getAllSettlementParties);
 router.post('/:partyId/usernames', createSettlementUsername);
 router.get('/:partyId/usernames', getSettlementUsernames);
 router.put('/:partyId/usernames/:usernameId', updateSettlementUsername);
-router.delete('/:partyId/usernames/:usernameId', deleteSettlementUsername);
 router.post('/:partyId/usernames/:usernameId/entries', createSettlementEntry);
 router.get('/:partyId/usernames/:usernameId/entries', getSettlementEntries);
 
 router.get('/:id', getSettlementPartyById);
 router.put('/:id', updateSettlementParty);
-router.delete('/:id', deleteSettlementParty);
 
 export default router;
