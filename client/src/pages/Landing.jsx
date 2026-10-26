@@ -14,7 +14,6 @@ import AnimatedCanvasBg from "../components/AnimatedCanvasBg";
 import LoginModal from "../components/LoginModal";
 import { loadUser } from "../redux/authSlice";
 import slideDashboard from "../assets/landing/slide-dashboard.png";
-import slideParties from "../assets/landing/slide-parties.png";
 import slideAccount from "../assets/landing/slide-account.png";
 import slideReport from "../assets/landing/slide-report.png";
 
@@ -24,12 +23,6 @@ const SLIDES = [
     title: "Dashboard",
     caption: "Date range, top debit & credit parties at a glance.",
     image: slideDashboard,
-  },
-  {
-    id: "parties",
-    title: "Parties",
-    caption: "Add parties, search, and manage the full party list.",
-    image: slideParties,
   },
   {
     id: "account",
