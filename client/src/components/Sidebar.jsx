@@ -170,7 +170,7 @@ import { toast } from "react-toastify";
 import { IoLogOutOutline } from "react-icons/io5";
 import { AiFillBank, AiFillDashboard } from "react-icons/ai";
 import { GrTransaction } from "react-icons/gr";
-import { FaUser } from "react-icons/fa";
+import { FaHandshake, FaUser } from "react-icons/fa";
 import { FaMoneyBillTransfer } from "react-icons/fa6";
 import { MdSettingsSuggest, MdPlaylistAddCircle } from "react-icons/md";
 import { TbReportAnalytics } from "react-icons/tb";
@@ -207,6 +207,8 @@ const getIconComponent = (iconName, className = "h-4 w-4") => {
       return <FaPiggyBank className={cn} />;
     case "BsReceiptCutoff":
       return <BsReceiptCutoff className={cn} />;
+    case "FaHandshake":
+      return <FaHandshake className={cn} />;
     default:
       return null;
   }
@@ -243,6 +245,7 @@ const Sidebar = ({ onMenuClick }) => {
   const navItems = [
     { to: "/dashboard", label: "Dashboard", icon: "AiOutlineDashboard" },
     { to: "/parties", label: "Parties", icon: "AiOutlineWallet" },
+    { to: "/settlement", label: "Settlement", icon: "FaHandshake" },
     { to: "/account", label: "Account", icon: "AiOutlineCreditCard" },
     ...(userRole === "trader"
       ? [{ to: "/utr", label: "UTR", icon: "BsReceiptCutoff" }]

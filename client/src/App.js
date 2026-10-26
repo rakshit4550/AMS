@@ -253,6 +253,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import ResetAuthenticator from "./pages/ResetAuthenticator";
 import Party from "./pages/Party";
+import Settlement from "./pages/Settlement";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import MobileBottomNav from "./components/MobileBottomNav";
@@ -448,6 +449,16 @@ function App() {
             <Layout>
               <ProtectedRoute>
                 <Party />
+              </ProtectedRoute>
+            </Layout>
+          }
+        />
+        <Route
+          path="/settlement"
+          element={
+            <Layout>
+              <ProtectedRoute>
+                <Settlement />
               </ProtectedRoute>
             </Layout>
           }

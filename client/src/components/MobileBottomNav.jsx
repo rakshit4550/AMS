@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { AiFillBank, AiFillDashboard } from "react-icons/ai";
 import { GrTransaction } from "react-icons/gr";
-import { FaUser } from "react-icons/fa";
+import { FaHandshake, FaUser } from "react-icons/fa";
 import { TbReportAnalytics } from "react-icons/tb";
 import { BsReceiptCutoff } from "react-icons/bs";
 import { IoLogOutOutline } from "react-icons/io5";
@@ -30,6 +30,7 @@ const MobileBottomNav = () => {
   const items = [
     { to: "/dashboard", label: "Home", icon: AiFillDashboard },
     { to: "/parties", label: "Parties", icon: AiFillBank },
+    { to: "/settlement", label: "Settle", icon: FaHandshake },
     { to: "/account", label: "Account", icon: GrTransaction },
     ...(userRole === "trader"
       ? [{ to: "/utr", label: "UTR", icon: BsReceiptCutoff }]
