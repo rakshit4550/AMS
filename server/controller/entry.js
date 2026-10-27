@@ -87,6 +87,59 @@ const readEntryBody = (body, event, market) => {
   };
 };
 
+const roundMoney = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+const bookmakerPosition = (event, entries) => {
+  let team1Amount = 0;
+  let team2Amount = 0;
+
+  entries.forEach((entry) => {
+    const stack = Number(entry.stack) || 0;
+    const rate = Number(entry.rate) || 0;
+    const onTeam1 = entry.team === 'team1';
+
+    if (entry.selection === 'Back') {
+      if (onTeam1) {
+        team1Amount += rate;
+        team2Amount -= stack;
+      } else {
+        team2Amount += rate;
+        team1Amount -= stack;
+      }
+      return;
+    }
+
+    if (entry.selection === 'Lay') {
+      if (onTeam1) {
+        team1Amount += stack;
+        team2Amount -= rate;
+      } else {
+        team2Amount += stack;
+        team1Amount -= rate;
+      }
+    }
+  });
+
+  return {
+    team1: { name: event.team1, amount: roundMoney(team1Amount) },
+    team2: { name: event.team2, amount: roundMoney(team2Amount) },
+  };
+};
+
+const loadPosition = async (owned, userId) => {
+  if (owned.market.booktype !== 'Bookmaker') return null;
+
+  const rows = await Entry.find({
+    createdBy: userId,
+    event: owned.event._id,
+    market: owned.market._id,
+  })
+    .select('team stack rate selection')
+    .lean();
+
+  return bookmakerPosition(owned.event, rows);
+};
+
 const findOwnedMarket = async (eventId, marketId, userId) => {
   if (!isValidId(eventId)) return { error: 'Invalid event id', status: 400 };
   if (!isValidId(marketId)) return { error: 'Invalid market id', status: 400 };
@@ -127,9 +180,12 @@ export const createEntry = async (req, res) => {
       createdBy: req.user.id,
     });
 
+    const position = await loadPosition(owned, req.user.id);
+
     return res.status(201).json({
       message: 'Entry created successfully',
       entry,
+      position,
     });
   } catch (error) {
     return res.status(500).json({ message: 'Server error' });
@@ -185,10 +241,12 @@ export const getEntriesByMarket = async (req, res) => {
     ]);
 
     const totalPages = Math.ceil(totalRecords / limit);
+    const position = await loadPosition(owned, req.user.id);
 
     return res.status(200).json({
       success: true,
       entries,
+      position,
       pagination: {
         currentPage: page,
         totalPages,
@@ -262,9 +320,12 @@ export const updateEntry = async (req, res) => {
       return res.status(404).json({ message: 'Entry not found or you do not have access' });
     }
 
+    const position = await loadPosition(owned, req.user.id);
+
     return res.status(200).json({
       message: 'Entry updated successfully',
       entry,
+      position,
     });
   } catch (error) {
     return res.status(500).json({ message: 'Server error' });
