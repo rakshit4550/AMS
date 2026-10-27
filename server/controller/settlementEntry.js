@@ -317,28 +317,50 @@ const parseSettlementDateRange = (query) => {
   return { fromDate: fromDate || null, toDate: toDate || null, createdAt };
 };
 
-const summaryFromGroups = (groups) => {
+const summaryFromEntries = (entries) => {
   const deposit = emptyBucket();
   const withdrawal = emptyBucket();
 
-  groups.forEach((group) => {
-    const bucket = group.type === 'deposit'
+  entries.forEach((entry) => {
+    const bucket = entry.transactionType === 'deposit'
       ? deposit
-      : group.type === 'withdrawal'
+      : entry.transactionType === 'withdrawal'
         ? withdrawal
         : null;
     if (!bucket) return;
-    bucket.amount = roundMoney(group.amount);
-    bucket.percentageAmount = roundMoney(group.percentageAmount);
-    bucket.totalAmount = roundMoney(group.totalAmount);
+    bucket.amount += entry.amount;
+    bucket.percentageAmount += entry.percentageAmount;
+    bucket.totalAmount += entry.totalAmount;
   });
 
+  const roundedDeposit = {
+    amount: roundMoney(deposit.amount),
+    percentageAmount: roundMoney(deposit.percentageAmount),
+    totalAmount: roundMoney(deposit.totalAmount),
+  };
+  const roundedWithdrawal = {
+    amount: roundMoney(withdrawal.amount),
+    percentageAmount: roundMoney(withdrawal.percentageAmount),
+    totalAmount: roundMoney(withdrawal.totalAmount),
+  };
+
   return {
-    deposit,
-    withdrawal,
-    closingBalance: roundMoney(deposit.totalAmount - withdrawal.totalAmount),
+    deposit: roundedDeposit,
+    withdrawal: roundedWithdrawal,
+    closingBalance: roundMoney(roundedDeposit.totalAmount - roundedWithdrawal.totalAmount),
   };
 };
+
+const toPartyEntry = (entry) => ({
+  _id: entry._id,
+  transactionType: entry.transactionType,
+  amount: entry.amount,
+  partnershipPercentage: entry.partnershipPercentage,
+  percentageSource: entry.percentageSource,
+  percentageAmount: entry.percentageAmount,
+  totalAmount: entry.totalAmount,
+  createdAt: entry.createdAt,
+});
 
 const addBuckets = (left, right) => ({
   amount: roundMoney(left.amount + right.amount),
@@ -374,46 +396,34 @@ export const getPartySettlement = async (req, res) => {
       .select('username partnershipPercentage')
       .lean();
 
-    const grouped = await SettlementEntry.aggregate([
-      {
-        $match: {
-          createdBy: new mongoose.Types.ObjectId(req.user.id),
-          settlementParty: party._id,
-          createdAt: range.createdAt,
-        },
-      },
-      {
-        $group: {
-          _id: {
-            usernameId: '$settlementUsername',
-            type: '$transactionType',
-          },
-          amount: { $sum: '$amount' },
-          percentageAmount: { $sum: '$percentageAmount' },
-          totalAmount: { $sum: '$totalAmount' },
-        },
-      },
-    ]);
+    const entries = await SettlementEntry.find({
+      createdBy: req.user.id,
+      settlementParty: party._id,
+      createdAt: range.createdAt,
+    })
+      .sort({ createdAt: 1, _id: 1 })
+      .select('amount transactionType partnershipPercentage percentageSource percentageAmount totalAmount settlementUsername createdAt')
+      .lean();
 
-    const byUsername = new Map();
-    grouped.forEach((group) => {
-      const key = group._id.usernameId.toString();
-      const list = byUsername.get(key) || [];
-      list.push({
-        type: group._id.type,
-        amount: group.amount,
-        percentageAmount: group.percentageAmount,
-        totalAmount: group.totalAmount,
-      });
-      byUsername.set(key, list);
+    const entriesByUsername = new Map();
+    entries.forEach((entry) => {
+      const key = entry.settlementUsername.toString();
+      const list = entriesByUsername.get(key) || [];
+      list.push(toPartyEntry(entry));
+      entriesByUsername.set(key, list);
     });
 
-    const rows = usernames.map((username) => ({
-      _id: username._id,
-      username: username.username,
-      partnershipPercentage: username.partnershipPercentage ?? null,
-      summary: summaryFromGroups(byUsername.get(username._id.toString()) || []),
-    }));
+    const rows = usernames.flatMap((username) => {
+      const usernameEntries = entriesByUsername.get(username._id.toString()) || [];
+      if (!usernameEntries.length) return [];
+      return [{
+        _id: username._id,
+        username: username.username,
+        partnershipPercentage: username.partnershipPercentage ?? null,
+        entries: usernameEntries,
+        summary: summaryFromEntries(usernameEntries),
+      }];
+    });
 
     const partySummary = rows.reduce((total, row) => {
       const deposit = addBuckets(total.deposit, row.summary.deposit);
