@@ -37,6 +37,13 @@ const entrySchema = new mongoose.Schema({
       message: 'Rate must be greater than 0',
     },
   },
+  run: {
+    type: Number,
+    validate: {
+      validator: (value) => value == null || (Number.isFinite(value) && value > 0),
+      message: 'Run must be greater than 0',
+    },
+  },
   selection: {
     type: String,
     required: true,

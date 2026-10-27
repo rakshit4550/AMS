@@ -76,15 +76,21 @@ const readEntryBody = (body, event, market) => {
   if (rate.error) return { error: rate.error };
   if (selection.error) return { error: selection.error };
 
-  return {
-    value: {
-      team: team.team,
-      teamname: team.teamname,
-      stack: stack.value,
-      rate: rate.value,
-      selection: selection.value,
-    },
+  const value = {
+    team: team.team,
+    teamname: team.teamname,
+    stack: stack.value,
+    rate: rate.value,
+    selection: selection.value,
   };
+
+  if (market.booktype === 'Fancy') {
+    const run = parsePositiveNumber(body.run, 'Run');
+    if (run.error) return { error: run.error };
+    value.run = run.value;
+  }
+
+  return { value };
 };
 
 const formatCreatedAt = (value) => {
@@ -238,7 +244,7 @@ export const getEntriesByMarket = async (req, res) => {
     const limit = Math.min(Math.max(Number.isFinite(parsedLimit) ? parsedLimit : 10, 1), 50);
     const skip = (page - 1) * limit;
 
-    const sortByAllowedFields = ['teamname', 'stack', 'rate', 'selection', 'createdAt', 'updatedAt'];
+    const sortByAllowedFields = ['teamname', 'stack', 'rate', 'run', 'selection', 'createdAt', 'updatedAt'];
     const requestedSortBy = normalizeText(req.query.sortBy || 'createdAt');
     const sortBy = sortByAllowedFields.includes(requestedSortBy) ? requestedSortBy : 'createdAt';
     const sortOrder = String(req.query.sortOrder || 'desc').toLowerCase() === 'asc' ? 1 : -1;
@@ -258,7 +264,7 @@ export const getEntriesByMarket = async (req, res) => {
       ];
       const numericSearch = Number(search.replace(/,/g, ''));
       if (search.replace(/,/g, '').trim() !== '' && Number.isFinite(numericSearch)) {
-        or.push({ stack: numericSearch }, { rate: numericSearch });
+        or.push({ stack: numericSearch }, { rate: numericSearch }, { run: numericSearch });
       }
       query.$or = or;
     }
@@ -337,6 +343,9 @@ export const updateEntry = async (req, res) => {
       return res.status(400).json({ message: parsed.error });
     }
 
+    const update = { $set: parsed.value };
+    if (owned.market.booktype !== 'Fancy') update.$unset = { run: 1 };
+
     const entry = await Entry.findOneAndUpdate(
       {
         _id: req.params.id,
@@ -344,7 +353,7 @@ export const updateEntry = async (req, res) => {
         market: owned.market._id,
         createdBy: req.user.id,
       },
-      { $set: parsed.value },
+      update,
       { new: true, runValidators: true }
     ).lean();
 
