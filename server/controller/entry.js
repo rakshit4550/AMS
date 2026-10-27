@@ -143,11 +143,11 @@ const bookmakerPosition = (event, entries) => {
 
     if (entry.selection === 'Lay') {
       if (onTeam1) {
-        team1Amount += stack;
-        team2Amount -= rate;
-      } else {
-        team2Amount += stack;
         team1Amount -= rate;
+        team2Amount += stack;
+      } else {
+        team2Amount -= rate;
+        team1Amount += stack;
       }
     }
   });
