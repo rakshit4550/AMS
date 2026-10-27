@@ -31,14 +31,24 @@ const formatPercent = (value) => {
 
 const formatMoney = (value) => {
   const number = Number(value);
-  if (!Number.isFinite(number)) return "0.00";
+  if (!Number.isFinite(number)) return "0";
   return number.toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   });
 };
 
 const rupee = (value) => `₹${formatMoney(value)}`;
+
+const SettlementFigure = ({ type, value }) => {
+  const deposit = type === "deposit";
+  return (
+    <span className={`font-medium tabular-nums ${deposit ? "text-emerald-700" : "text-red-600"}`}>
+      {deposit ? "" : "−"}
+      {rupee(value)}
+    </span>
+  );
+};
 
 const roundMoney = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 
@@ -250,6 +260,23 @@ const Settlement = () => {
       : null;
   const total = share === null ? null : roundMoney(typed + share);
   const closing = Number(ledgerSummary?.closingBalance);
+  const partyLines = (partySettlement?.usernames || [])
+    .flatMap((item) =>
+      (item.entries || []).map((entry) => ({
+        ...entry,
+        username: item.username,
+        usernameId: item._id,
+      })),
+    )
+    .sort((a, b) => {
+      const byDate = new Date(a.createdAt) - new Date(b.createdAt);
+      if (byDate !== 0) return byDate;
+      return String(a._id).localeCompare(String(b._id));
+    });
+  const partyShareTotal = partyLines.reduce((sum, entry) => {
+    const shareAmount = Number(entry.percentageAmount || 0);
+    return sum + (entry.transactionType === "withdrawal" ? -shareAmount : shareAmount);
+  }, 0);
   const ledgerStart = ledgerPagination ? (ledgerPagination.currentPage - 1) * ledgerPagination.limit : 0;
   const isDeposit = ledgerForm.transactionType === "deposit";
 
@@ -489,12 +516,12 @@ const Settlement = () => {
   };
 
   return (
-    <div className="z-[99] box-border flex h-[calc(100dvh-var(--app-mobile-header-height)-var(--app-bottom-nav-height)-1.25rem)] flex-col py-1.5 sm:h-[calc(100dvh-var(--app-desktop-header-height)-2.25rem)]">
-      <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="z-[99] box-border flex flex-col py-1.5 sm:h-[calc(100dvh-var(--app-desktop-header-height)-2.25rem)]">
+      <section className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:h-full sm:min-h-0">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-[#424687] to-[#353a6e] px-4 py-2.5">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-white">Settlement entry</h2>
-            <p className="text-[11px] text-indigo-100">Party, username, type, amount</p>
+            <p className="text-[11px] text-indigo-100">Party, username, type, settlement</p>
           </div>
           <button
             type="button"
@@ -574,7 +601,7 @@ const Settlement = () => {
                   type="button"
                   onClick={openAddUser}
                   disabled={!selectedParty}
-                  className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold shadow-sm disabled:cursor-not-allowed disabled:opacity-40 ${
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold shadow-sm disabled:cursor-not-allowed disabled:opacity-40 lg:h-8 ${
                     selectedParty && usernames.length === 0
                       ? "bg-[#424687] text-white hover:bg-[#353a6e]"
                       : "border border-slate-200 bg-white text-slate-700 hover:border-[#424687]/40 hover:text-[#424687]"
@@ -589,11 +616,11 @@ const Settlement = () => {
 
             <div>
               <span className="mb-1 block text-[11px] font-medium text-slate-500">3 · Type</span>
-              <div className="inline-flex h-8 rounded-lg bg-slate-100 p-0.5">
+              <div className="grid h-11 w-full grid-cols-2 gap-0.5 overflow-hidden rounded-lg bg-slate-100 p-0.5 lg:inline-flex lg:h-8 lg:w-auto">
                 <button
                   type="button"
                   onClick={() => setLedgerForm((prev) => ({ ...prev, transactionType: "deposit" }))}
-                  className={`rounded-md px-3 text-xs font-semibold transition ${
+                  className={`flex h-full items-center justify-center rounded-md px-3 text-xs font-semibold leading-none transition ${
                     isDeposit ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600"
                   }`}
                 >
@@ -602,7 +629,7 @@ const Settlement = () => {
                 <button
                   type="button"
                   onClick={() => setLedgerForm((prev) => ({ ...prev, transactionType: "withdrawal" }))}
-                  className={`rounded-md px-3 text-xs font-semibold transition ${
+                  className={`flex h-full items-center justify-center rounded-md px-3 text-xs font-semibold leading-none transition ${
                     !isDeposit ? "bg-red-600 text-white shadow-sm" : "text-slate-600"
                   }`}
                 >
@@ -613,7 +640,7 @@ const Settlement = () => {
 
             <div>
               <span className="mb-1 flex items-center justify-between gap-3 text-[11px] font-medium text-slate-500">
-                <span>4 · Amount</span>
+                <span>4 · Settlement</span>
                 {appliedPercent && (
                   <span className="font-semibold text-[#424687]">
                     {appliedPercent.partnershipPercentage}%{" "}
@@ -621,7 +648,7 @@ const Settlement = () => {
                   </span>
                 )}
               </span>
-              <div className="flex h-8 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-[#424687]/30">
+              <div className="flex w-full items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-[#424687]/30 lg:h-8 lg:w-auto">
                 <span className="flex items-center pl-2.5 text-xs font-medium text-slate-400">₹</span>
                 <input
                   ref={amountRef}
@@ -632,15 +659,15 @@ const Settlement = () => {
                   onChange={(event) =>
                     setLedgerForm((prev) => ({ ...prev, amount: event.target.value }))
                   }
-                  placeholder="Amount"
-                  aria-label="Amount"
+                  placeholder="Settlement"
+                  aria-label="Settlement"
                   disabled={!selectedUser}
-                  className="w-28 border-0 bg-transparent px-2 text-sm text-slate-900 outline-none [appearance:textfield] placeholder:text-slate-400 disabled:cursor-not-allowed [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  className="min-w-0 flex-1 border-0 bg-transparent px-2 text-sm text-slate-900 outline-none [appearance:textfield] placeholder:text-slate-400 disabled:cursor-not-allowed lg:w-28 lg:flex-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
                 <button
                   type="submit"
                   disabled={!selectedUser || !appliedPercent}
-                  className="bg-[#424687] px-3.5 text-xs font-semibold text-white hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:bg-slate-300"
+                  className="shrink-0 bg-[#424687] px-3.5 text-xs font-semibold text-white hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
                   Save
                 </button>
@@ -696,20 +723,20 @@ const Settlement = () => {
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex flex-col sm:min-h-0 sm:flex-1">
               {ledgerLoading && (
                 <p className="border-b border-slate-100 bg-slate-50 py-1 text-center text-xs text-[#424687]">
                   Loading…
                 </p>
               )}
-              <div className="min-h-0 flex-1 overflow-auto">
+              <div className="min-h-[22rem] overflow-auto sm:min-h-0 sm:flex-1">
                 <table className="w-full min-w-[720px] border-collapse text-sm">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-[#424687] text-white">
                       <th className="w-12 px-3 py-2 text-left text-xs font-semibold">Sr</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold">Date</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold">Type</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold">Amount</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold">Settlement</th>
                       <th className="px-3 py-2 text-right text-xs font-semibold">Share</th>
                       <th className="px-3 py-2 text-right text-xs font-semibold">Total</th>
                     </tr>
@@ -748,8 +775,8 @@ const Settlement = () => {
                                 {deposit ? "Deposit" : "Withdraw"}
                               </span>
                             </td>
-                            <td className="px-3 py-2 text-right tabular-nums text-slate-800">
-                              {rupee(row.amount)}
+                            <td className="px-3 py-2 text-right">
+                              <SettlementFigure type={row.transactionType} value={row.amount} />
                             </td>
                             <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-slate-600">
                               {rupee(row.percentageAmount)}
@@ -822,7 +849,7 @@ const Settlement = () => {
             </div>
           </>
         ) : selectedParty ? (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex flex-col sm:min-h-0 sm:flex-1">
             <div className="flex shrink-0 flex-wrap items-end justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-900">{selectedParty.partyname}</p>
@@ -832,51 +859,25 @@ const Settlement = () => {
                   {formatPercent(selectedParty.partnershipPercentage)} partnership
                 </p>
               </div>
-              <div className="flex flex-wrap items-end gap-2">
-                <label className="block">
+              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+                <label className="block min-w-0">
                   <span className="mb-0.5 block text-[11px] font-medium text-slate-500">From</span>
                   <input
                     type="date"
                     value={fromDate}
                     onChange={(event) => setFromDate(event.target.value)}
-                    className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800"
+                    className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800 sm:w-auto"
                   />
                 </label>
-                <label className="block">
+                <label className="block min-w-0">
                   <span className="mb-0.5 block text-[11px] font-medium text-slate-500">To</span>
                   <input
                     type="date"
                     value={toDate}
                     onChange={(event) => setToDate(event.target.value)}
-                    className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800"
+                    className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800 sm:w-auto"
                   />
                 </label>
-              </div>
-            </div>
-            <div className="grid shrink-0 grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
-              <div className="border-t-2 border-emerald-500 px-3 py-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">Deposit</p>
-                <p className="text-sm font-semibold tabular-nums text-slate-900">
-                  {rupee(partySettlement?.summary?.deposit?.totalAmount)}
-                </p>
-              </div>
-              <div className="border-t-2 border-red-400 px-3 py-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-red-500">Withdrawal</p>
-                <p className="text-sm font-semibold tabular-nums text-slate-900">
-                  {rupee(partySettlement?.summary?.withdrawal?.totalAmount)}
-                </p>
-              </div>
-              <div className="border-t-2 border-[#424687] px-3 py-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#424687]">Closing</p>
-                <p
-                  className={`text-sm font-semibold tabular-nums ${
-                    Number(partySettlement?.summary?.closingBalance) < 0
-                      ? "text-red-600"
-                      : "text-slate-900"
-                  }`}
-                >
-                  {rupee(partySettlement?.summary?.closingBalance)}
-                </p>
               </div>
             </div>
             {partySettlementLoading && (
@@ -889,19 +890,19 @@ const Settlement = () => {
                 {partySettlementError}
               </p>
             )}
-            <div className="min-h-0 flex-1 overflow-auto">
+            <div className="min-h-[22rem] overflow-auto sm:min-h-0 sm:flex-1">
               <table className="w-full min-w-[760px] border-collapse text-sm">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-[#424687] text-white">
                     <th className="px-3 py-2 text-left text-xs font-semibold">Date</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold">Type</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold">Amount</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold">Share</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold">Total</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold">Username</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold">Settlement</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold">Share %</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold">Share amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(partySettlement?.usernames || []).length === 0 ? (
+                  {partyLines.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500">
                         {partySettlementLoading
@@ -910,93 +911,55 @@ const Settlement = () => {
                       </td>
                     </tr>
                   ) : (
-                    partySettlement.usernames.map((item) => (
-                      <React.Fragment key={item._id}>
-                        <tr
-                          onClick={() => onUserChange(item._id)}
-                          className="cursor-pointer border-b border-indigo-100 bg-indigo-50/70 hover:bg-indigo-50"
-                        >
-                          <td colSpan={5} className="px-3 py-2">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="font-semibold text-slate-900">
-                                {item.username}
-                                <span className="ml-2 text-xs font-medium text-slate-500">
-                                  {formatPercent(item.partnershipPercentage)}
-                                </span>
-                              </p>
-                              <p className="text-xs tabular-nums text-slate-600">
-                                Deposit{" "}
-                                <span className="font-semibold text-emerald-700">
-                                  {rupee(item.summary?.deposit?.totalAmount)}
-                                </span>
-                                <span className="mx-2 text-slate-300">|</span>
-                                Withdrawal{" "}
-                                <span className="font-semibold text-red-600">
-                                  {rupee(item.summary?.withdrawal?.totalAmount)}
-                                </span>
-                                <span className="mx-2 text-slate-300">|</span>
-                                Closing{" "}
-                                <span
-                                  className={`font-semibold ${
-                                    Number(item.summary?.closingBalance) < 0
-                                      ? "text-red-600"
-                                      : "text-slate-900"
-                                  }`}
-                                >
-                                  {rupee(item.summary?.closingBalance)}
-                                </span>
-                              </p>
-                            </div>
-                          </td>
-                        </tr>
-                        {(item.entries || []).map((entry) => {
-                          const deposit = entry.transactionType === "deposit";
-                          return (
-                            <tr key={entry._id} className="border-b border-slate-100">
-                              <td className="whitespace-nowrap px-3 py-2 text-slate-700">
-                                {formatEntryDate(entry.createdAt)}
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-2">
-                                <span
-                                  className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                    deposit
-                                      ? "bg-emerald-50 text-emerald-700"
-                                      : "bg-red-50 text-red-600"
-                                  }`}
-                                >
-                                  {deposit ? "Deposit" : "Withdraw"}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2 text-right tabular-nums text-slate-800">
-                                {rupee(entry.amount)}
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-slate-600">
-                                {rupee(entry.percentageAmount)}
-                                <span className="ml-1 text-[11px] text-slate-400">
-                                  {formatPercent(entry.partnershipPercentage)}
-                                </span>
-                              </td>
-                              <td
-                                className={`px-3 py-2 text-right font-semibold tabular-nums ${
-                                  deposit ? "text-emerald-700" : "text-red-600"
-                                }`}
-                              >
-                                {rupee(entry.totalAmount)}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </React.Fragment>
+                    partyLines.map((entry, index) => (
+                      <tr
+                        key={entry._id}
+                        className={`border-b border-slate-100 ${
+                          index % 2 === 0 ? "bg-white" : "bg-slate-50/70"
+                        }`}
+                      >
+                        <td className="whitespace-nowrap px-3 py-2 text-slate-700">
+                          {formatEntryDate(entry.createdAt)}
+                        </td>
+                        <td className="px-3 py-2">
+                          <button
+                            type="button"
+                            onClick={() => onUserChange(entry.usernameId)}
+                            className="font-medium text-[#424687] hover:underline"
+                          >
+                            {entry.username}
+                          </button>
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <SettlementFigure type={entry.transactionType} value={entry.amount} />
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-slate-700">
+                          {formatPercent(entry.partnershipPercentage)}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <SettlementFigure type={entry.transactionType} value={entry.percentageAmount} />
+                        </td>
+                      </tr>
                     ))
                   )}
                 </tbody>
+                <tfoot className="sticky bottom-0 z-10">
+                  <tr className="border-t border-slate-200 bg-slate-50">
+                    <td colSpan={4} className="px-3 py-2 text-xs font-medium text-slate-500">
+                      Total share amount
+                    </td>
+                    <td
+                      className={`px-3 py-2 text-right text-sm font-semibold tabular-nums ${
+                        partyShareTotal < 0 ? "text-red-600" : "text-emerald-700"
+                      }`}
+                    >
+                      {partyShareTotal < 0 ? "−" : ""}
+                      {rupee(Math.abs(partyShareTotal))}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
-            {(partySettlement?.usernames || []).length > 0 && (
-              <p className="shrink-0 border-t border-slate-100 bg-slate-50 px-3 py-1.5 text-xs text-slate-500">
-                Click a username to open that user’s full entry list.
-              </p>
-            )}
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center px-6 text-center">
