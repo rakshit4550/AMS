@@ -1,11 +1,6 @@
 import mongoose from 'mongoose';
 
 const eventSchema = new mongoose.Schema({
-  eventname: {
-    type: String,
-    required: true,
-    trim: true,
-  },
   date: {
     type: Date,
     required: true,
@@ -30,7 +25,7 @@ const eventSchema = new mongoose.Schema({
 });
 
 eventSchema.index({ createdBy: 1, date: -1 });
-eventSchema.index({ createdBy: 1, eventname: 1 });
+eventSchema.index({ createdBy: 1, team1: 1, team2: 1 });
 
 const Event = mongoose.model('Event', eventSchema);
 

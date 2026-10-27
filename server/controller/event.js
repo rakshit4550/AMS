@@ -45,25 +45,26 @@ const formatDate = (value) => {
   return `${day}/${month}/${year}`;
 };
 
-const presentEvent = (event) => ({
-  ...event,
-  date: formatDate(event.date),
-});
+const presentEvent = (event) => {
+  const rest = { ...event };
+  delete rest.eventname;
+  return {
+    ...rest,
+    date: formatDate(event.date),
+  };
+};
 
 const readEventBody = (body) => {
-  const eventname = normalizeText(body.eventname);
   const team1 = normalizeText(body.team1);
   const team2 = normalizeText(body.team2);
   const date = parseDate(body.date);
 
-  if (!eventname) return { error: 'Event name is required' };
   if (date.error) return { error: date.error };
   if (!team1) return { error: 'Team 1 is required' };
   if (!team2) return { error: 'Team 2 is required' };
 
   return {
     value: {
-      eventname,
       date: date.value,
       team1,
       team2,
@@ -102,7 +103,7 @@ export const getAllEvents = async (req, res) => {
     const limit = Math.min(Math.max(Number.isFinite(parsedLimit) ? parsedLimit : 10, 1), 50);
     const skip = (page - 1) * limit;
 
-    const sortByAllowedFields = ['eventname', 'date', 'team1', 'team2', 'createdAt', 'updatedAt'];
+    const sortByAllowedFields = ['date', 'team1', 'team2', 'createdAt', 'updatedAt'];
     const requestedSortBy = normalizeText(req.query.sortBy || 'date');
     const sortBy = sortByAllowedFields.includes(requestedSortBy) ? requestedSortBy : 'date';
     const sortOrder = String(req.query.sortOrder || 'desc').toLowerCase() === 'asc' ? 1 : -1;
@@ -113,7 +114,6 @@ export const getAllEvents = async (req, res) => {
       const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const searchRegex = { $regex: escapedSearch, $options: 'i' };
       query.$or = [
-        { eventname: searchRegex },
         { team1: searchRegex },
         { team2: searchRegex },
       ];
@@ -186,7 +186,7 @@ export const updateEvent = async (req, res) => {
 
     const event = await Event.findOneAndUpdate(
       { _id: req.params.id, createdBy: req.user.id },
-      parsed.value,
+      { $set: parsed.value, $unset: { eventname: 1 } },
       { new: true, runValidators: true }
     ).lean();
 
