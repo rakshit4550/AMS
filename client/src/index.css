@@ -333,4 +333,10 @@
     padding-top: 0.65rem !important;
     padding-bottom: 0.65rem !important;
   }
+
+  main .events-page th,
+  main .events-page td {
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.4rem !important;
+  }
 }

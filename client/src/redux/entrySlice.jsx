@@ -68,6 +68,7 @@ const entrySlice = createSlice({
   initialState: {
     marketId: null,
     entries: [],
+    position: null,
     loading: false,
     error: null,
   },
@@ -79,6 +80,7 @@ const entrySlice = createSlice({
         state.error = null;
         if (state.marketId !== action.meta.arg.marketId) {
           state.entries = [];
+          state.position = null;
         }
         state.marketId = action.meta.arg.marketId;
       })
@@ -86,6 +88,7 @@ const entrySlice = createSlice({
         if (state.marketId !== action.meta.arg.marketId) return;
         state.loading = false;
         state.entries = action.payload?.entries ?? [];
+        state.position = action.payload?.position ?? null;
       })
       .addCase(fetchEntries.rejected, (state, action) => {
         if (state.marketId !== action.meta.arg?.marketId) return;

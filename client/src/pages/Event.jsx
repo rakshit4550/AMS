@@ -37,6 +37,16 @@ const blankMarket = () => ({
   marketname: "",
 });
 
+const formatPosition = (value) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "0";
+  const formatted = Math.abs(number).toLocaleString("en-IN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+  return number < 0 ? `−${formatted}` : formatted;
+};
+
 const toApiDate = (value) => {
   const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return "";
@@ -59,6 +69,7 @@ const Event = () => {
   } = useSelector((state) => state.market);
   const {
     entries,
+    position,
     loading: entryLoading,
     error: entryError,
   } = useSelector((state) => state.entry);
@@ -87,7 +98,7 @@ const Event = () => {
   const [entriesPerPage, setEntriesPerPage] = useState(20);
 
   const fieldClass =
-    "h-10 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2.5 text-sm transition placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#424687]/40 lg:h-8";
+    "!h-8 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 transition placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#424687]/40";
 
   useEffect(() => {
     dispatch(fetchEvents({ page: currentPage, limit: entriesPerPage, search }));
@@ -385,7 +396,7 @@ const Event = () => {
   return (
     <div className="z-[99] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-2 sm:min-h-[calc(100vh-5rem)] sm:py-3">
       <div className="mx-auto flex w-full max-w-none flex-col gap-2">
-        <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md sm:min-h-[min(70vh,calc(100vh-12rem))]">
+        <div className="events-page flex flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md sm:min-h-[min(70vh,calc(100vh-12rem))]">
           <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 sm:px-4">
             <h2 className="text-base font-bold text-slate-900">Events</h2>
             <div className="flex items-center gap-2">
@@ -399,7 +410,7 @@ const Event = () => {
               <button
                 type="button"
                 onClick={openAddForm}
-                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-[#424687] px-3 text-xs font-semibold text-white shadow-sm hover:bg-[#353a6e]"
+                className="inline-flex !h-8 !min-h-0 shrink-0 items-center gap-1.5 rounded-md bg-[#424687] px-3 text-xs font-semibold text-white shadow-sm hover:bg-[#353a6e]"
               >
                 <FaPlus size={12} />
                 Add event
@@ -407,79 +418,81 @@ const Event = () => {
             </div>
           </div>
           {formOpen && (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-2 border-b border-slate-100 px-3 py-3 sm:px-4">
-            <p className="text-[11px] text-slate-500">
+          <form onSubmit={handleSubmit} className="border-b border-slate-100 px-3 py-2 sm:px-4">
+            <p className="mb-1.5 text-[11px] text-slate-500">
               {editId
                 ? "Update event"
                 : formData.team1.trim() && formData.team2.trim()
                   ? `${formData.team1.trim()} vs ${formData.team2.trim()}`
-                  : "Team 1, team 2, date"}
+                  : ""}
             </p>
-            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 lg:gap-3">
-              <div className="min-w-0">
-                <label className="mb-0.5 block text-[11px] font-medium text-slate-600 sm:text-xs">
-                  Team 1*
-                </label>
-                <input
-                  type="text"
-                  name="team1"
-                  value={formData.team1}
-                  onChange={handleInputChange}
-                  placeholder="Team 1"
-                  className={fieldClass}
-                />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="grid grid-cols-2 gap-2 sm:flex">
+                <div className="min-w-0 sm:w-36">
+                  <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
+                    Team 1*
+                  </label>
+                  <input
+                    type="text"
+                    name="team1"
+                    value={formData.team1}
+                    onChange={handleInputChange}
+                    placeholder="Team 1"
+                    className={fieldClass}
+                  />
+                </div>
+                <div className="min-w-0 sm:w-36">
+                  <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
+                    Team 2*
+                  </label>
+                  <input
+                    type="text"
+                    name="team2"
+                    value={formData.team2}
+                    onChange={handleInputChange}
+                    placeholder="Team 2"
+                    className={fieldClass}
+                  />
+                </div>
+                <div className="col-span-2 min-w-0 sm:w-36">
+                  <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
+                    Date*
+                  </label>
+                  <input
+                    type="date"
+                    name="date"
+                    value={formData.date}
+                    onChange={handleInputChange}
+                    className={fieldClass}
+                  />
+                </div>
               </div>
-              <div className="min-w-0">
-                <label className="mb-0.5 block text-[11px] font-medium text-slate-600 sm:text-xs">
-                  Team 2*
-                </label>
-                <input
-                  type="text"
-                  name="team2"
-                  value={formData.team2}
-                  onChange={handleInputChange}
-                  placeholder="Team 2"
-                  className={fieldClass}
-                />
-              </div>
-              <div className="min-w-0">
-                <label className="mb-0.5 block text-[11px] font-medium text-slate-600 sm:text-xs">
-                  Date*
-                </label>
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleInputChange}
-                  className={fieldClass}
-                />
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex !h-8 !min-h-0 items-center justify-center rounded-md bg-[#424687] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    {editId ? <FaEdit size={12} /> : <FaPlus size={12} />}
+                    {editId ? "Update" : "Submit"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetForm();
+                    setFormOpen(false);
+                  }}
+                  className="inline-flex !h-8 !min-h-0 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
             {(formError || error) && (
-              <p className="text-xs text-red-600">{formError || error}</p>
+              <p className="mt-1.5 text-xs text-red-600">{formError || error}</p>
             )}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex h-10 items-center justify-center rounded-md bg-[#424687] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:opacity-60 lg:h-8 lg:text-xs"
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  {editId ? <FaEdit size={13} /> : <FaPlus size={13} />}
-                  {editId ? "Update" : "Submit"}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  resetForm();
-                  setFormOpen(false);
-                }}
-                className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 lg:h-8 lg:text-xs"
-              >
-                Cancel
-              </button>
-            </div>
           </form>
           )}
           {loading && (
@@ -540,7 +553,7 @@ const Event = () => {
                               event.stopPropagation();
                               handleEdit(item);
                             }}
-                            className="rounded-md p-1.5 text-[#424687] transition hover:bg-[#424687]/10"
+                            className="rounded-md p-1.5 text-[#424687] transition hover:bg-[#424687]/10 !h-7 !w-7 !min-h-0 inline-flex items-center justify-center"
                             title="Update"
                             aria-label="Update"
                           >
@@ -557,7 +570,7 @@ const Event = () => {
                           </p>
                           <form
                             onSubmit={handleMarketSubmit}
-                            className="flex flex-wrap items-center gap-1.5"
+                            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 sm:flex sm:flex-wrap"
                           >
                             <select
                               name="booktype"
@@ -579,7 +592,7 @@ const Event = () => {
                               onChange={handleMarketChange}
                               placeholder="Market name"
                               aria-label="Market name"
-                              className="!h-8 !min-h-0 w-40 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 placeholder:text-slate-400 sm:w-52"
+                              className="!h-8 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 placeholder:text-slate-400 sm:w-52"
                             />
                             <button
                               type="submit"
@@ -611,15 +624,15 @@ const Event = () => {
                                         openMarket(market);
                                       }
                                     }}
-                                    className={`flex cursor-pointer items-center justify-between gap-2 px-3 py-2 ${
+                                    className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_4.75rem_4.75rem] items-center gap-1 px-2 py-1.5 sm:grid-cols-[minmax(0,1fr)_7.5rem_5.5rem] sm:gap-2 sm:px-3 sm:py-2 ${
                                       marketOpen ? "bg-[#424687]/5" : "hover:bg-slate-50"
                                     }`}
                                   >
                                     <span className="min-w-0 truncate font-medium text-slate-900">
                                       {market.marketname}
                                     </span>
-                                    <span className="shrink-0 text-xs text-slate-500">{market.booktype}</span>
-                                    <div className="flex shrink-0 items-center gap-1">
+                                    <span className="truncate text-xs text-slate-500">{market.booktype}</span>
+                                    <div className="flex items-center justify-end gap-1">
                                       <span className="inline-flex !h-7 !min-h-0 items-center rounded-md px-2 text-xs font-semibold text-[#424687]">
                                         {marketOpen ? "Close" : "Open"}
                                       </span>
@@ -629,7 +642,7 @@ const Event = () => {
                                           event.stopPropagation();
                                           handleMarketEdit(market);
                                         }}
-                                        className="rounded-md p-1.5 text-[#424687] hover:bg-[#424687]/10"
+                                        className="inline-flex !h-7 !w-7 !min-h-0 items-center justify-center rounded-md p-0 text-[#424687] hover:bg-[#424687]/10"
                                         title="Update"
                                         aria-label="Update"
                                       >
@@ -638,14 +651,16 @@ const Event = () => {
                                     </div>
                                   </div>
                                   {marketOpen && (
-                                    <div className="border-t border-slate-100 px-3 py-2">
+                                    <div className="border-t border-slate-100 px-2 py-2 sm:px-3">
                                       <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#424687]">
                                         Entry · {market.marketname}
                                       </p>
+                                      <div className="flex items-center gap-2">
                                       <form
                                         onSubmit={handleEntrySubmit}
-                                        className="flex flex-wrap items-center gap-1.5"
+                                        className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center"
                                       >
+                                        <div className="flex flex-wrap items-center gap-1.5">
                                         <div className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-slate-100">
                                           {[
                                             ["team1", selectedEvent.team1 || "Team 1"],
@@ -693,36 +708,71 @@ const Event = () => {
                                             );
                                           })}
                                         </div>
-                                        <input
-                                          type="number"
-                                          min="0.01"
-                                          step="0.01"
-                                          name="stack"
-                                          value={entryForm.stack}
-                                          onChange={handleEntryChange}
-                                          placeholder="Stack"
-                                          aria-label="Stack"
-                                          className="!h-7 !min-h-0 w-20 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800"
-                                        />
-                                        <input
-                                          type="number"
-                                          min="0.01"
-                                          step="0.01"
-                                          name="rate"
-                                          value={entryForm.rate}
-                                          onChange={handleEntryChange}
-                                          placeholder="Bhav/rate"
-                                          aria-label="Bhav/rate"
-                                          className="!h-7 !min-h-0 w-24 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800"
-                                        />
-                                        <button
-                                          type="submit"
-                                          disabled={entrySaving}
-                                          className="inline-flex !h-7 !min-h-0 items-center rounded-md bg-[#424687] px-2.5 text-xs font-semibold text-white hover:bg-[#353a6e] disabled:opacity-60"
-                                        >
-                                          {entryEditId ? "Save" : "Add"}
-                                        </button>
+                                        </div>
+                                        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_auto] items-center gap-1.5 sm:flex">
+                                          <input
+                                            type="number"
+                                            min="0.01"
+                                            step="0.01"
+                                            name="stack"
+                                            value={entryForm.stack}
+                                            onChange={handleEntryChange}
+                                            placeholder="Stack"
+                                            aria-label="Stack"
+                                            className="!h-7 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 sm:w-20"
+                                          />
+                                          <input
+                                            type="number"
+                                            min="0.01"
+                                            step="0.01"
+                                            name="rate"
+                                            value={entryForm.rate}
+                                            onChange={handleEntryChange}
+                                            placeholder="Bhav/rate"
+                                            aria-label="Bhav/rate"
+                                            className="!h-7 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 sm:w-24"
+                                          />
+                                          <button
+                                            type="submit"
+                                            disabled={entrySaving}
+                                            className="inline-flex !h-7 !min-h-0 items-center rounded-md bg-[#424687] px-2.5 text-xs font-semibold text-white hover:bg-[#353a6e] disabled:opacity-60"
+                                          >
+                                            {entryEditId ? "Save" : "Add"}
+                                          </button>
+                                        </div>
                                       </form>
+                                      {market.booktype === "Bookmaker" && position?.team1 && position?.team2 && (
+                                        <div className="ml-auto inline-flex max-w-full shrink-0 flex-col overflow-hidden rounded-lg border border-[#424687]/15 bg-white shadow-sm">
+                                          {[
+                                            ["team1", position.team1],
+                                            ["team2", position.team2],
+                                          ].map(([key, side], index) => {
+                                            const amount = Number(side.amount);
+                                            const tone =
+                                              amount < 0
+                                                ? "text-rose-600"
+                                                : amount > 0
+                                                  ? "text-emerald-700"
+                                                  : "text-slate-700";
+                                            return (
+                                              <div
+                                                key={key}
+                                                className={`flex items-center justify-between gap-6 px-2.5 py-1 ${
+                                                  index === 0 ? "border-b border-slate-100" : ""
+                                                }`}
+                                              >
+                                                <span className="max-w-[9rem] truncate text-xs font-medium text-slate-600">
+                                                  {side.name}
+                                                </span>
+                                                <span className={`shrink-0 text-xs font-bold tabular-nums ${tone}`}>
+                                                  {formatPosition(amount)}
+                                                </span>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                      </div>
                                       {(entryFormError || entryError) && (
                                         <p className="mt-2 text-xs text-red-600">
                                           {entryFormError || entryError}
@@ -763,7 +813,7 @@ const Event = () => {
                                                     <button
                                                       type="button"
                                                       onClick={() => handleEntryEdit(entry)}
-                                                      className="rounded-md p-1.5 text-[#424687] hover:bg-white/70"
+                                                      className="inline-flex !h-7 !w-7 !min-h-0 items-center justify-center rounded-md p-0 text-[#424687] hover:bg-white/70"
                                                       title="Update"
                                                       aria-label="Update"
                                                     >
@@ -813,7 +863,7 @@ const Event = () => {
                       setEntriesPerPage(Number(event.target.value));
                       setCurrentPage(1);
                     }}
-                    className="h-10 rounded-md border border-slate-300 bg-white px-2 text-xs lg:h-8"
+                    className="!h-8 !min-h-0 rounded-md border border-slate-300 bg-white px-2 text-xs lg:h-8"
                   >
                     {[10, 20, 50].map((value) => (
                       <option key={value} value={value}>
@@ -827,7 +877,7 @@ const Event = () => {
                     type="button"
                     disabled={!pagination.hasPreviousPage}
                     onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                    className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium disabled:opacity-40"
+                    className="inline-flex !h-8 !min-h-0 items-center rounded-md border border-slate-300 bg-white px-3 text-xs font-medium disabled:opacity-40"
                   >
                     Previous
                   </button>
@@ -838,7 +888,7 @@ const Event = () => {
                     type="button"
                     disabled={!pagination.hasNextPage}
                     onClick={() => setCurrentPage((page) => page + 1)}
-                    className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium disabled:opacity-40"
+                    className="inline-flex !h-8 !min-h-0 items-center rounded-md border border-slate-300 bg-white px-3 text-xs font-medium disabled:opacity-40"
                   >
                     Next
                   </button>
