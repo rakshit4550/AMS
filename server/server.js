@@ -18,6 +18,7 @@ import dashboardRoutes from './route/dashboard.js';
 import settlementPartyRoutes from './route/settlementParty.js';
 import eventRoutes from './route/event.js';
 import marketRoutes from './route/market.js';
+import entryRoutes from './route/entry.js';
 
 dotenv.config();
 
@@ -41,6 +42,7 @@ app.use('/api/utrs', utrRoutes);
 app.use('/api/utr-subtypes', utrSubtypeRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settlement-parties', settlementPartyRoutes);
+app.use('/api/events/:eventId/markets/:marketId/entries', entryRoutes);
 app.use('/api/events/:eventId/markets', marketRoutes);
 app.use('/api/events', eventRoutes);
 
