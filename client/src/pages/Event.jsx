@@ -18,8 +18,28 @@ const blankEntry = (booktype) => ({
   team: "team1",
   stack: "",
   rate: "",
+  runRate: "",
   selection: selectionsFor(booktype)[0],
 });
+
+const parseRunRate = (value) => {
+  const text = String(value ?? "").trim();
+  const parts = text.split("/");
+  if (!text || parts.length > 2) return { error: "Use run/rate, for example 50/100" };
+  const runRaw = parts[0].trim();
+  const rateRaw = parts.length === 2 ? parts[1].trim() : "0";
+  if (!/^\d+(\.\d+)?$/.test(runRaw) || Number(runRaw) <= 0) {
+    return { error: "Run must be greater than 0" };
+  }
+  if (rateRaw !== "" && !/^\d+(\.\d+)?$/.test(rateRaw)) {
+    return { error: "Rate must be a number" };
+  }
+  const rate = Number(rateRaw);
+  return {
+    run: Number(runRaw),
+    rate: !Number.isFinite(rate) || rate <= 0 ? 100 : rate,
+  };
+};
 
 const BOOK_TYPES = ["Bookmaker", "Fancy"];
 
@@ -344,7 +364,6 @@ const Event = () => {
     const team = entryForm.team === "team2" ? "team2" : "team1";
     const selection = allowed.includes(entryForm.selection) ? entryForm.selection : "";
     const stack = Number(entryForm.stack);
-    const rate = Number(entryForm.rate);
     if (!selection) {
       setEntryFormError(
         selectedMarket.booktype === "Fancy"
@@ -357,7 +376,18 @@ const Event = () => {
       setEntryFormError("Stack must be greater than 0");
       return;
     }
-    if (!Number.isFinite(rate) || rate <= 0) {
+    const isFancy = selectedMarket.booktype === "Fancy";
+    let rate = Number(entryForm.rate);
+    let run;
+    if (isFancy) {
+      const parsed = parseRunRate(entryForm.runRate);
+      if (parsed.error) {
+        setEntryFormError(parsed.error);
+        return;
+      }
+      run = parsed.run;
+      rate = parsed.rate;
+    } else if (!Number.isFinite(rate) || rate <= 0) {
       setEntryFormError("Bhav/rate must be greater than 0");
       return;
     }
@@ -369,6 +399,7 @@ const Event = () => {
       stack,
       rate,
       selection,
+      ...(isFancy ? { run } : {}),
     };
     setEntrySaving(true);
     const action = entryEditId ? updateEntry({ ...payload, id: entryEditId }) : createEntry(payload);
@@ -387,6 +418,10 @@ const Event = () => {
       team: entry.team === "team2" ? "team2" : "team1",
       stack: entry.stack ?? "",
       rate: entry.rate ?? "",
+      runRate:
+        entry.run != null && entry.run !== ""
+          ? `${entry.run}/${entry.rate ?? 0}`
+          : "",
       selection: entry.selection || selectionsFor(selectedMarket?.booktype)[0],
     });
     setEntryEditId(entry._id);
@@ -658,7 +693,7 @@ const Event = () => {
                                       <div className="flex items-center gap-2">
                                       <form
                                         onSubmit={handleEntrySubmit}
-                                        className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center"
+                                        className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-end"
                                       >
                                         <div className="flex flex-wrap items-center gap-1.5">
                                         <div className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-slate-100">
@@ -709,29 +744,56 @@ const Event = () => {
                                           })}
                                         </div>
                                         </div>
-                                        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_auto] items-center gap-1.5 sm:flex">
-                                          <input
-                                            type="number"
-                                            min="0.01"
-                                            step="0.01"
-                                            name="stack"
-                                            value={entryForm.stack}
-                                            onChange={handleEntryChange}
-                                            placeholder="Stack"
-                                            aria-label="Stack"
-                                            className="!h-7 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 sm:w-20"
-                                          />
-                                          <input
-                                            type="number"
-                                            min="0.01"
-                                            step="0.01"
-                                            name="rate"
-                                            value={entryForm.rate}
-                                            onChange={handleEntryChange}
-                                            placeholder="Bhav/rate"
-                                            aria-label="Bhav/rate"
-                                            className="!h-7 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 sm:w-24"
-                                          />
+                                        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_auto] items-end gap-1.5 sm:flex">
+                                          <label className="min-w-0 sm:w-20">
+                                            <span className="mb-0.5 block text-[10px] font-medium text-slate-500">
+                                              Stack
+                                            </span>
+                                            <input
+                                              type="number"
+                                              min="0.01"
+                                              step="0.01"
+                                              name="stack"
+                                              value={entryForm.stack}
+                                              onChange={handleEntryChange}
+                                              placeholder="Stack"
+                                              aria-label="Stack"
+                                              className="!h-7 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800"
+                                            />
+                                          </label>
+                                          {market.booktype === "Fancy" ? (
+                                            <label className="min-w-0 sm:w-28">
+                                              <span className="mb-0.5 block text-[10px] font-medium text-slate-500">
+                                                Run/rate
+                                              </span>
+                                              <input
+                                                type="text"
+                                                name="runRate"
+                                                value={entryForm.runRate}
+                                                onChange={handleEntryChange}
+                                                placeholder="50/100"
+                                                aria-label="Run/rate"
+                                                className="!h-7 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800"
+                                              />
+                                            </label>
+                                          ) : (
+                                            <label className="min-w-0 sm:w-24">
+                                              <span className="mb-0.5 block text-[10px] font-medium text-slate-500">
+                                                Bhav/rate
+                                              </span>
+                                              <input
+                                                type="number"
+                                                min="0.01"
+                                                step="0.01"
+                                                name="rate"
+                                                value={entryForm.rate}
+                                                onChange={handleEntryChange}
+                                                placeholder="Bhav/rate"
+                                                aria-label="Bhav/rate"
+                                                className="!h-7 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800"
+                                              />
+                                            </label>
+                                          )}
                                           <button
                                             type="submit"
                                             disabled={entrySaving}
@@ -789,6 +851,9 @@ const Event = () => {
                                                 <th className="px-2 py-1.5 font-semibold">Team</th>
                                                 <th className="px-2 py-1.5 font-semibold">Stack</th>
                                                 <th className="px-2 py-1.5 font-semibold">Bhav/rate</th>
+                                                {market.booktype === "Fancy" && (
+                                                  <th className="px-2 py-1.5 font-semibold">Run</th>
+                                                )}
                                                 <th className="px-2 py-1.5 font-semibold">Selection</th>
                                                 <th className="px-2 py-1.5 font-semibold">Date</th>
                                                 <th className="w-10 px-2 py-1.5" />
@@ -809,6 +874,11 @@ const Event = () => {
                                                   <td className="px-2 py-1.5 tabular-nums text-slate-800">
                                                     {entry.rate ?? "—"}
                                                   </td>
+                                                  {market.booktype === "Fancy" && (
+                                                    <td className="px-2 py-1.5 tabular-nums text-slate-800">
+                                                      {entry.run ?? "—"}
+                                                    </td>
+                                                  )}
                                                   <td className="px-2 py-1.5 text-slate-800">{entry.selection}</td>
                                                   <td className="whitespace-nowrap px-2 py-1.5 text-slate-700">
                                                     <div>{entry.createdDate || "—"}</div>
