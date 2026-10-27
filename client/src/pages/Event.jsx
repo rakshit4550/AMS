@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { FaEdit, FaPlus } from "react-icons/fa";
 import { createEvent, fetchEvents, updateEvent } from "../redux/eventSlice";
+import { createMarket, fetchMarkets, updateMarket } from "../redux/marketSlice";
+
+const BOOK_TYPES = ["Bookmaker", "Fancy"];
 
 const todayInputDate = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
@@ -10,6 +13,11 @@ const blankForm = () => ({
   team1: "",
   team2: "",
   date: todayInputDate(),
+});
+
+const blankMarket = () => ({
+  booktype: "Bookmaker",
+  marketname: "",
 });
 
 const toApiDate = (value) => {
@@ -27,7 +35,21 @@ const toInputDate = (value) => {
 const Event = () => {
   const dispatch = useDispatch();
   const { events, loading, error, pagination } = useSelector((state) => state.event);
+  const {
+    markets,
+    loading: marketLoading,
+    error: marketError,
+  } = useSelector((state) => state.market);
   const [formData, setFormData] = useState(blankForm);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [marketForm, setMarketForm] = useState(blankMarket);
+  const [marketFormError, setMarketFormError] = useState("");
+  const [marketEditId, setMarketEditId] = useState(null);
+  const [marketSaving, setMarketSaving] = useState(false);
+  const [marketPage, setMarketPage] = useState(1);
+  const [marketSearch, setMarketSearch] = useState("");
+  const [marketSearchInput, setMarketSearchInput] = useState("");
+  const marketLimit = 20;
   const [formError, setFormError] = useState("");
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -50,6 +72,37 @@ const Event = () => {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
+
+  useEffect(() => {
+    if (!selectedEvent?._id) return;
+    dispatch(
+      fetchMarkets({
+        eventId: selectedEvent._id,
+        page: marketPage,
+        limit: marketLimit,
+        search: marketSearch,
+      })
+    );
+  }, [dispatch, selectedEvent?._id, marketPage, marketLimit, marketSearch]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMarketSearch(marketSearchInput.trim());
+      setMarketPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [marketSearchInput]);
+
+  useEffect(() => {
+    setSelectedEvent((current) => {
+      if (!current) return current;
+      const fresh = events.find((item) => item._id === current._id);
+      if (!fresh || (fresh.eventname === current.eventname && fresh.date === current.date)) {
+        return current;
+      }
+      return fresh;
+    });
+  }, [events]);
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -92,11 +145,12 @@ const Event = () => {
 
     if (result.meta.requestStatus !== "fulfilled") return;
 
+    const wasEdit = Boolean(editId);
     resetForm();
-    if (!editId) setCurrentPage(1);
+    if (!wasEdit) setCurrentPage(1);
     dispatch(
       fetchEvents({
-        page: editId ? currentPage : 1,
+        page: wasEdit ? currentPage : 1,
         limit: entriesPerPage,
         search,
       })
@@ -113,13 +167,82 @@ const Event = () => {
     setFormError("");
   };
 
+  const openEvent = (item) => {
+    setSelectedEvent(item);
+    setMarketForm(blankMarket());
+    setMarketEditId(null);
+    setMarketFormError("");
+    setMarketSearchInput("");
+    setMarketSearch("");
+    setMarketPage(1);
+  };
+
+  const eventLabel = (item) => item?.eventname || `${item?.team1 || ""} vs ${item?.team2 || ""}`;
+
+  const resetMarketForm = () => {
+    setMarketForm(blankMarket());
+    setMarketEditId(null);
+    setMarketFormError("");
+  };
+
+  const handleMarketChange = (event) => {
+    const { name, value } = event.target;
+    setMarketForm((prev) => ({ ...prev, [name]: value }));
+    setMarketFormError("");
+  };
+
+  const handleMarketSubmit = async (event) => {
+    event.preventDefault();
+    if (!selectedEvent?._id) return;
+    const marketname = marketForm.marketname.trim();
+    const booktype = BOOK_TYPES.includes(marketForm.booktype) ? marketForm.booktype : "";
+    if (!booktype) {
+      setMarketFormError("Book type must be Bookmaker or Fancy");
+      return;
+    }
+    if (!marketname) {
+      setMarketFormError("Market name is required");
+      return;
+    }
+
+    const payload = { eventId: selectedEvent._id, booktype, marketname };
+    setMarketSaving(true);
+    const action = marketEditId
+      ? updateMarket({ ...payload, id: marketEditId })
+      : createMarket(payload);
+    const result = await dispatch(action);
+    setMarketSaving(false);
+    if (result.meta.requestStatus !== "fulfilled") return;
+
+    const stayOnPage = Boolean(marketEditId);
+    resetMarketForm();
+    if (!stayOnPage) setMarketPage(1);
+    dispatch(
+      fetchMarkets({
+        eventId: selectedEvent._id,
+        page: stayOnPage ? marketPage : 1,
+        limit: marketLimit,
+        search: marketSearch,
+      })
+    );
+  };
+
+  const handleMarketEdit = (item) => {
+    setMarketForm({
+      booktype: item.booktype || "Bookmaker",
+      marketname: item.marketname || "",
+    });
+    setMarketEditId(item._id);
+    setMarketFormError("");
+  };
+
   return (
     <div className="z-[99] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-2 sm:min-h-[calc(100vh-5rem)] sm:py-3">
       <div className="mx-auto flex w-full max-w-none flex-col gap-2">
         <div className="w-full rounded-xl border bg-white/95 px-2.5 py-2.5 shadow-sm sm:px-4 sm:py-3">
           <div className="mb-2">
             <h2 className="text-base font-bold text-slate-900">
-              {editId ? "Edit event" : "Add event"}
+              {editId ? "Update event" : "Add event"}
             </h2>
             <p className="text-[11px] text-slate-500">
               {formData.team1.trim() && formData.team2.trim()
@@ -177,17 +300,10 @@ const Event = () => {
                 disabled={saving}
                 className="inline-flex h-10 items-center justify-center rounded-md bg-[#424687] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:opacity-60 lg:h-8 lg:text-xs"
               >
-                {editId ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <FaEdit size={13} />
-                    Update
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5">
-                    <FaPlus size={13} />
-                    Submit
-                  </span>
-                )}
+                <span className="inline-flex items-center gap-1.5">
+                  {editId ? <FaEdit size={13} /> : <FaPlus size={13} />}
+                  {editId ? "Update" : "Submit"}
+                </span>
               </button>
               {editId && (
                 <button
@@ -241,29 +357,119 @@ const Event = () => {
                   </tr>
                 ) : (
                   events.map((item, index) => (
+                    <React.Fragment key={item._id}>
                     <tr
-                      key={item._id}
                       className={`border-b border-slate-100/80 transition-colors hover:bg-indigo-50/40 ${
-                        index % 2 === 0 ? "bg-slate-50/50" : "bg-white"
+                        selectedEvent?._id === item._id
+                          ? "bg-indigo-50"
+                          : index % 2 === 0
+                            ? "bg-slate-50/50"
+                            : "bg-white"
                       }`}
                     >
-                      <td className="px-3 py-2.5 font-medium text-slate-900">
-                        {item.eventname || `${item.team1} vs ${item.team2}`}
-                      </td>
+                      <td className="px-3 py-2.5 font-medium text-slate-900">{eventLabel(item)}</td>
                       <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-slate-600">
                         {item.date}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2.5">
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(item)}
-                          className="rounded-md p-1.5 text-[#424687] transition hover:bg-[#424687]/10 hover:text-[#353a6e]"
-                          title="Edit event"
-                        >
-                          <FaEdit size={16} />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openEvent(item)}
+                            className="rounded-md px-2 py-1 text-xs font-semibold text-[#424687] transition hover:bg-[#424687]/10"
+                          >
+                            Open
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(item)}
+                            className="rounded-md px-2 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                          >
+                            Update
+                          </button>
+                        </div>
                       </td>
                     </tr>
+                    {selectedEvent?._id === item._id && (
+                      <tr className="border-b border-slate-100 bg-slate-50">
+                        <td colSpan={3} className="px-3 py-3">
+                          <form
+                            onSubmit={handleMarketSubmit}
+                            className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_auto]"
+                          >
+                            <div className="min-w-0">
+                              <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
+                                Book type*
+                              </label>
+                              <select
+                                name="booktype"
+                                value={marketForm.booktype}
+                                onChange={handleMarketChange}
+                                className={fieldClass}
+                              >
+                                {BOOK_TYPES.map((type) => (
+                                  <option key={type} value={type}>
+                                    {type}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="min-w-0">
+                              <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
+                                Market name*
+                              </label>
+                              <input
+                                type="text"
+                                name="marketname"
+                                value={marketForm.marketname}
+                                onChange={handleMarketChange}
+                                placeholder="Market name"
+                                className={fieldClass}
+                              />
+                            </div>
+                            <button
+                              type="submit"
+                              disabled={marketSaving}
+                              className="inline-flex h-10 items-center justify-center rounded-md bg-[#424687] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:opacity-60 lg:h-8 lg:text-xs"
+                            >
+                              <span className="inline-flex items-center gap-1.5">
+                                {marketEditId ? <FaEdit size={13} /> : <FaPlus size={13} />}
+                                {marketEditId ? "Update" : "Add"}
+                              </span>
+                            </button>
+                          </form>
+                          {(marketFormError || marketError) && (
+                            <p className="mt-2 text-xs text-red-600">{marketFormError || marketError}</p>
+                          )}
+                          {marketLoading && (
+                            <p className="mt-2 text-xs text-[#424687]">Loading…</p>
+                          )}
+                          {markets.length > 0 && (
+                            <ul className="mt-2 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+                              {markets.map((market) => (
+                                <li
+                                  key={market._id}
+                                  className="flex items-center justify-between gap-2 px-3 py-2 text-sm"
+                                >
+                                  <span className="min-w-0 truncate font-medium text-slate-900">
+                                    {market.marketname}
+                                  </span>
+                                  <span className="shrink-0 text-xs text-slate-500">{market.booktype}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMarketEdit(market)}
+                                    className="shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-[#424687] hover:bg-[#424687]/10"
+                                  >
+                                    Update
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   ))
                 )}
               </tbody>
