@@ -70,6 +70,7 @@ const Event = () => {
   const [marketSearchInput, setMarketSearchInput] = useState("");
   const marketLimit = 20;
   const [formError, setFormError] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -171,6 +172,7 @@ const Event = () => {
 
     const wasEdit = Boolean(editId);
     resetForm();
+    setFormOpen(false);
     if (!wasEdit) setCurrentPage(1);
     dispatch(
       fetchEvents({
@@ -181,7 +183,13 @@ const Event = () => {
     );
   };
 
+  const openAddForm = () => {
+    resetForm();
+    setFormOpen(true);
+  };
+
   const handleEdit = (item) => {
+    setFormOpen(true);
     setFormData({
       date: toInputDate(item.date),
       team1: item.team1 || "",
@@ -326,18 +334,36 @@ const Event = () => {
   return (
     <div className="z-[99] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-2 sm:min-h-[calc(100vh-5rem)] sm:py-3">
       <div className="mx-auto flex w-full max-w-none flex-col gap-2">
-        <div className="w-full rounded-xl border bg-white/95 px-2.5 py-2.5 shadow-sm sm:px-4 sm:py-3">
-          <div className="mb-2">
-            <h2 className="text-base font-bold text-slate-900">
-              {editId ? "Update event" : "Add event"}
-            </h2>
-            <p className="text-[11px] text-slate-500">
-              {formData.team1.trim() && formData.team2.trim()
-                ? `${formData.team1.trim()} vs ${formData.team2.trim()}`
-                : "Team 1, team 2, date"}
-            </p>
+        <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md sm:min-h-[min(70vh,calc(100vh-12rem))]">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 sm:px-4">
+            <h2 className="text-base font-bold text-slate-900">Events</h2>
+            <div className="flex items-center gap-2">
+              <input
+                type="search"
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="Search…"
+                className="!h-8 !min-h-0 w-28 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#424687]/40 sm:w-40"
+              />
+              <button
+                type="button"
+                onClick={openAddForm}
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-[#424687] px-3 text-xs font-semibold text-white shadow-sm hover:bg-[#353a6e]"
+              >
+                <FaPlus size={12} />
+                Add event
+              </button>
+            </div>
           </div>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-2 border-t border-slate-100 pt-3">
+          {formOpen && (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-2 border-b border-slate-100 px-3 py-3 sm:px-4">
+            <p className="text-[11px] text-slate-500">
+              {editId
+                ? "Update event"
+                : formData.team1.trim() && formData.team2.trim()
+                  ? `${formData.team1.trim()} vs ${formData.team2.trim()}`
+                  : "Team 1, team 2, date"}
+            </p>
             <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 lg:gap-3">
               <div className="min-w-0">
                 <label className="mb-0.5 block text-[11px] font-medium text-slate-600 sm:text-xs">
@@ -392,29 +418,19 @@ const Event = () => {
                   {editId ? "Update" : "Submit"}
                 </span>
               </button>
-              {editId && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 lg:h-8 lg:text-xs"
-                >
-                  Cancel
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm();
+                  setFormOpen(false);
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 lg:h-8 lg:text-xs"
+              >
+                Cancel
+              </button>
             </div>
           </form>
-        </div>
-
-        <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md sm:min-h-[min(70vh,calc(100vh-12rem))]">
-          <div className="border-b border-slate-100 px-3 py-2 sm:px-4">
-            <input
-              type="search"
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="Search event or team…"
-              className={fieldClass}
-            />
-          </div>
+          )}
           {loading && (
             <p className="border-b border-slate-100 bg-slate-50 py-2 text-center text-sm text-[#424687]">
               Loading…
