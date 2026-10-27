@@ -91,6 +91,25 @@ export const createSettlementUsername = createAsyncThunk(
   },
 );
 
+export const fetchPartySettlement = createAsyncThunk(
+  'settlement/fetchPartySettlement',
+  async ({ partyId, fromDate, toDate }, { getState, rejectWithValue }) => {
+    try {
+      const { user: { token } } = getState();
+      const params = {};
+      if (fromDate) params.fromDate = fromDate;
+      if (toDate) params.toDate = toDate;
+      const response = await axios.get(
+        `${API_URL}/${partyId}/settlement`,
+        authConfig(token, params),
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
+
 export const fetchSettlementEntries = createAsyncThunk(
   'settlement/fetchEntries',
   async ({ partyId, usernameId, page = 1, limit = 20 }, { getState, rejectWithValue }) => {

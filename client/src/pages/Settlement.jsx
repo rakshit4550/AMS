@@ -6,6 +6,7 @@ import {
   createSettlementEntry,
   createSettlementParty,
   createSettlementUsername,
+  fetchPartySettlement,
   fetchSettlementEntries,
   fetchSettlementParties,
   updateSettlementParty,
@@ -40,6 +41,8 @@ const formatMoney = (value) => {
 const rupee = (value) => `₹${formatMoney(value)}`;
 
 const roundMoney = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+const todayInIst = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 
 const formatEntryDate = (value) => {
   if (!value) return "—";
@@ -124,6 +127,11 @@ const Settlement = () => {
   const [ledgerForm, setLedgerForm] = useState({ amount: "", transactionType: "deposit" });
   const [ledgerError, setLedgerError] = useState("");
   const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [fromDate, setFromDate] = useState(todayInIst);
+  const [toDate, setToDate] = useState(todayInIst);
+  const [partySettlement, setPartySettlement] = useState(null);
+  const [partySettlementError, setPartySettlementError] = useState("");
+  const [partySettlementLoading, setPartySettlementLoading] = useState(false);
 
   useEffect(() => {
     dispatch(fetchSettlementParties({ all: true }));
@@ -181,6 +189,37 @@ const Settlement = () => {
 
   const selectedParty = parties.find((party) => party._id === selectedPartyId) || null;
   const usernames = selectedParty?.usernames || [];
+
+  useEffect(() => {
+    if (!selectedPartyId) {
+      setPartySettlement(null);
+      setPartySettlementError("");
+      return undefined;
+    }
+    let cancelled = false;
+    setPartySettlement(null);
+    setPartySettlementLoading(true);
+
+    const load = async () => {
+      const result = await dispatch(
+        fetchPartySettlement({ partyId: selectedPartyId, fromDate, toDate }),
+      );
+      if (cancelled) return;
+      setPartySettlementLoading(false);
+      if (fetchPartySettlement.fulfilled.match(result)) {
+        setPartySettlement(result.payload);
+        setPartySettlementError("");
+      } else {
+        setPartySettlement(null);
+        setPartySettlementError(result.payload || "Failed to load party settlement");
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch, selectedPartyId, fromDate, toDate, ledgerReload, usernames.length]);
   const selectedUser = usernames.find((item) => item._id === selectedUserId) || null;
 
   const appliedPercent = (() => {
@@ -789,44 +828,95 @@ const Settlement = () => {
           </>
         ) : selectedParty ? (
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="grid shrink-0 grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
-              <div className="border-t-2 border-[#424687] px-3 py-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#424687]">Party</p>
+            <div className="flex shrink-0 flex-wrap items-end justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
+              <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-900">{selectedParty.partyname}</p>
-              </div>
-              <div className="border-t-2 border-slate-300 px-3 py-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Mobile</p>
-                <p className="text-sm font-semibold tabular-nums text-slate-900">
-                  {selectedParty.contactNo || "—"}
+                <p className="text-[11px] text-slate-500">
+                  {selectedParty.contactNo || "No mobile"}
+                  {" · "}
+                  {formatPercent(selectedParty.partnershipPercentage)} partnership
                 </p>
               </div>
-              <div className="border-t-2 border-slate-300 px-3 py-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                  Partnership
-                </p>
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="block">
+                  <span className="mb-0.5 block text-[11px] font-medium text-slate-500">From</span>
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(event) => setFromDate(event.target.value)}
+                    className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-0.5 block text-[11px] font-medium text-slate-500">To</span>
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(event) => setToDate(event.target.value)}
+                    className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800"
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="grid shrink-0 grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
+              <div className="border-t-2 border-emerald-500 px-3 py-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">Deposit</p>
                 <p className="text-sm font-semibold tabular-nums text-slate-900">
-                  {formatPercent(selectedParty.partnershipPercentage)}
+                  {rupee(partySettlement?.summary?.deposit?.totalAmount)}
+                </p>
+              </div>
+              <div className="border-t-2 border-red-400 px-3 py-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-red-500">Withdrawal</p>
+                <p className="text-sm font-semibold tabular-nums text-slate-900">
+                  {rupee(partySettlement?.summary?.withdrawal?.totalAmount)}
+                </p>
+              </div>
+              <div className="border-t-2 border-[#424687] px-3 py-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#424687]">Closing</p>
+                <p
+                  className={`text-sm font-semibold tabular-nums ${
+                    Number(partySettlement?.summary?.closingBalance) < 0
+                      ? "text-red-600"
+                      : "text-slate-900"
+                  }`}
+                >
+                  {rupee(partySettlement?.summary?.closingBalance)}
                 </p>
               </div>
             </div>
+            {partySettlementLoading && (
+              <p className="border-b border-slate-100 bg-slate-50 py-1 text-center text-xs text-[#424687]">
+                Loading…
+              </p>
+            )}
+            {partySettlementError && (
+              <p className="border-b border-red-100 bg-red-50 py-1 text-center text-xs text-red-600">
+                {partySettlementError}
+              </p>
+            )}
             <div className="min-h-0 flex-1 overflow-auto">
-              <table className="w-full min-w-[520px] border-collapse text-sm">
+              <table className="w-full min-w-[720px] border-collapse text-sm">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-[#424687] text-white">
                     <th className="w-12 px-3 py-2 text-left text-xs font-semibold">Sr</th>
                     <th className="px-3 py-2 text-left text-xs font-semibold">Username</th>
                     <th className="px-3 py-2 text-right text-xs font-semibold">Share %</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold">Deposit</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold">Withdrawal</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold">Closing</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {usernames.length === 0 ? (
+                  {(partySettlement?.usernames || []).length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="px-4 py-10 text-center text-sm text-slate-500">
-                        No username yet. Use Add next to the username list.
+                      <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
+                        {partySettlementLoading
+                          ? "Loading party settlement…"
+                          : "No username yet. Use Add next to the username list."}
                       </td>
                     </tr>
                   ) : (
-                    usernames.map((item, index) => (
+                    partySettlement.usernames.map((item, index) => (
                       <tr
                         key={item._id}
                         onClick={() => onUserChange(item._id)}
@@ -837,15 +927,30 @@ const Settlement = () => {
                         <td className="px-3 py-2 text-right tabular-nums text-slate-700">
                           {formatPercent(item.partnershipPercentage)}
                         </td>
+                        <td className="px-3 py-2 text-right font-medium tabular-nums text-emerald-700">
+                          {rupee(item.summary?.deposit?.totalAmount)}
+                        </td>
+                        <td className="px-3 py-2 text-right font-medium tabular-nums text-red-600">
+                          {rupee(item.summary?.withdrawal?.totalAmount)}
+                        </td>
+                        <td
+                          className={`px-3 py-2 text-right font-semibold tabular-nums ${
+                            Number(item.summary?.closingBalance) < 0
+                              ? "text-red-600"
+                              : "text-slate-900"
+                          }`}
+                        >
+                          {rupee(item.summary?.closingBalance)}
+                        </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
-            {usernames.length > 0 && (
+            {(partySettlement?.usernames || []).length > 0 && (
               <p className="shrink-0 border-t border-slate-100 bg-slate-50 px-3 py-1.5 text-xs text-slate-500">
-                Select a username to see deposit and withdrawal.
+                Select a username to see each deposit and withdrawal entry.
               </p>
             )}
           </div>
