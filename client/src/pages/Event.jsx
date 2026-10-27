@@ -7,9 +7,17 @@ import { createEntry, fetchEntries, updateEntry } from "../redux/entrySlice";
 
 const selectionsFor = (booktype) => (booktype === "Fancy" ? ["Yes", "No"] : ["Back", "Lay"]);
 
+const entryRowClass = (selection) => {
+  const value = String(selection || "").toLowerCase();
+  if (value === "back" || value === "yes") return "bg-blue-100";
+  if (value === "lay" || value === "no") return "bg-pink-100";
+  return "bg-white";
+};
+
 const blankEntry = (booktype) => ({
   team: "team1",
   stack: "",
+  rate: "",
   selection: selectionsFor(booktype)[0],
 });
 
@@ -111,6 +119,24 @@ const Event = () => {
   }, [dispatch, selectedEvent?._id, selectedMarket?._id]);
 
   useEffect(() => {
+    if (!selectedEvent?._id) return undefined;
+    const eventId = selectedEvent._id;
+    const onPointerDown = (event) => {
+      const row = event.target.closest?.("[data-event-id]");
+      if (row?.getAttribute("data-event-id") === String(eventId)) return;
+      setSelectedEvent(null);
+      setSelectedMarket(null);
+      setMarketForm(blankMarket());
+      setMarketEditId(null);
+      setMarketFormError("");
+      setEntryEditId(null);
+      setEntryFormError("");
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [selectedEvent?._id]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setMarketSearch(marketSearchInput.trim());
       setMarketPage(1);
@@ -200,6 +226,16 @@ const Event = () => {
   };
 
   const openEvent = (item) => {
+    if (selectedEvent?._id === item._id) {
+      setSelectedEvent(null);
+      setSelectedMarket(null);
+      setMarketForm(blankMarket());
+      setMarketEditId(null);
+      setMarketFormError("");
+      setEntryEditId(null);
+      setEntryFormError("");
+      return;
+    }
     setSelectedEvent(item);
     setSelectedMarket(null);
     setMarketForm(blankMarket());
@@ -208,6 +244,8 @@ const Event = () => {
     setMarketSearchInput("");
     setMarketSearch("");
     setMarketPage(1);
+    setEntryEditId(null);
+    setEntryFormError("");
   };
 
   const eventLabel = (item) => item?.eventname || `${item?.team1 || ""} vs ${item?.team2 || ""}`;
@@ -270,6 +308,12 @@ const Event = () => {
   };
 
   const openMarket = (market) => {
+    if (selectedMarket?._id === market._id) {
+      setSelectedMarket(null);
+      setEntryEditId(null);
+      setEntryFormError("");
+      return;
+    }
     setSelectedMarket(market);
     setEntryForm(blankEntry(market.booktype));
     setEntryEditId(null);
@@ -289,6 +333,7 @@ const Event = () => {
     const team = entryForm.team === "team2" ? "team2" : "team1";
     const selection = allowed.includes(entryForm.selection) ? entryForm.selection : "";
     const stack = Number(entryForm.stack);
+    const rate = Number(entryForm.rate);
     if (!selection) {
       setEntryFormError(
         selectedMarket.booktype === "Fancy"
@@ -301,12 +346,17 @@ const Event = () => {
       setEntryFormError("Stack must be greater than 0");
       return;
     }
+    if (!Number.isFinite(rate) || rate <= 0) {
+      setEntryFormError("Bhav/rate must be greater than 0");
+      return;
+    }
 
     const payload = {
       eventId: selectedEvent._id,
       marketId: selectedMarket._id,
       team,
       stack,
+      rate,
       selection,
     };
     setEntrySaving(true);
@@ -325,6 +375,7 @@ const Event = () => {
     setEntryForm({
       team: entry.team === "team2" ? "team2" : "team1",
       stack: entry.stack ?? "",
+      rate: entry.rate ?? "",
       selection: entry.selection || selectionsFor(selectedMarket?.booktype)[0],
     });
     setEntryEditId(entry._id);
@@ -459,11 +510,15 @@ const Event = () => {
                     </td>
                   </tr>
                 ) : (
-                  events.map((item, index) => (
+                  events.map((item, index) => {
+                    const eventOpen = selectedEvent?._id === item._id;
+                    return (
                     <React.Fragment key={item._id}>
                     <tr
-                      className={`border-b border-slate-100/80 transition-colors hover:bg-indigo-50/40 ${
-                        selectedEvent?._id === item._id
+                      data-event-id={item._id}
+                      onClick={() => openEvent(item)}
+                      className={`cursor-pointer border-b border-slate-100/80 transition-colors hover:bg-indigo-50/40 ${
+                        eventOpen
                           ? "bg-indigo-50"
                           : index % 2 === 0
                             ? "bg-slate-50/50"
@@ -476,16 +531,15 @@ const Event = () => {
                       </td>
                       <td className="whitespace-nowrap px-3 py-2.5">
                         <div className="flex items-center gap-1">
+                          <span className="inline-flex !h-7 !min-h-0 items-center rounded-md px-2 text-xs font-semibold text-[#424687]">
+                            {eventOpen ? "Close" : "Open"}
+                          </span>
                           <button
                             type="button"
-                            onClick={() => openEvent(item)}
-                            className="rounded-md px-2 py-1 text-xs font-semibold text-[#424687] transition hover:bg-[#424687]/10"
-                          >
-                            Open
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(item)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleEdit(item);
+                            }}
                             className="rounded-md p-1.5 text-[#424687] transition hover:bg-[#424687]/10"
                             title="Update"
                             aria-label="Update"
@@ -495,52 +549,44 @@ const Event = () => {
                         </div>
                       </td>
                     </tr>
-                    {selectedEvent?._id === item._id && (
-                      <tr className="border-b border-slate-100 bg-slate-50">
-                        <td colSpan={3} className="px-3 py-3">
+                    {eventOpen && (
+                      <tr data-event-id={item._id} className="border-b border-slate-100 bg-slate-50">
+                        <td colSpan={3} className="px-3 py-2">
+                          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#424687]">
+                            Market
+                          </p>
                           <form
                             onSubmit={handleMarketSubmit}
-                            className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_auto]"
+                            className="flex flex-wrap items-center gap-1.5"
                           >
-                            <div className="min-w-0">
-                              <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
-                                Book type*
-                              </label>
-                              <select
-                                name="booktype"
-                                value={marketForm.booktype}
-                                onChange={handleMarketChange}
-                                className={fieldClass}
-                              >
-                                {BOOK_TYPES.map((type) => (
-                                  <option key={type} value={type}>
-                                    {type}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="min-w-0">
-                              <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
-                                Market name*
-                              </label>
-                              <input
-                                type="text"
-                                name="marketname"
-                                value={marketForm.marketname}
-                                onChange={handleMarketChange}
-                                placeholder="Market name"
-                                className={fieldClass}
-                              />
-                            </div>
+                            <select
+                              name="booktype"
+                              aria-label="Book type"
+                              value={marketForm.booktype}
+                              onChange={handleMarketChange}
+                              className="!h-8 !min-h-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800"
+                            >
+                              {BOOK_TYPES.map((type) => (
+                                <option key={type} value={type}>
+                                  {type}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="text"
+                              name="marketname"
+                              value={marketForm.marketname}
+                              onChange={handleMarketChange}
+                              placeholder="Market name"
+                              aria-label="Market name"
+                              className="!h-8 !min-h-0 w-40 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 placeholder:text-slate-400 sm:w-52"
+                            />
                             <button
                               type="submit"
                               disabled={marketSaving}
-                              className="inline-flex h-10 items-center justify-center rounded-md bg-[#424687] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:opacity-60 lg:h-8 lg:text-xs"
+                              className="inline-flex !h-8 !min-h-0 items-center rounded-md bg-[#424687] px-2.5 text-xs font-semibold text-white hover:bg-[#353a6e] disabled:opacity-60"
                             >
-                              <span className="inline-flex items-center gap-1.5">
-                                {marketEditId ? <FaEdit size={13} /> : <FaPlus size={13} />}
-                                {marketEditId ? "Update" : "Add"}
-                              </span>
+                              {marketEditId ? "Save" : "Add"}
                             </button>
                           </form>
                           {(marketFormError || marketError) && (
@@ -551,24 +597,38 @@ const Event = () => {
                           )}
                           {markets.length > 0 && (
                             <ul className="mt-2 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
-                              {markets.map((market) => (
-                                <li key={market._id} className="px-3 py-2 text-sm">
-                                  <div className="flex items-center justify-between gap-2">
+                              {markets.map((market) => {
+                                const marketOpen = selectedMarket?._id === market._id;
+                                return (
+                                <li key={market._id} className="text-sm">
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => openMarket(market)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === "Enter" || event.key === " ") {
+                                        event.preventDefault();
+                                        openMarket(market);
+                                      }
+                                    }}
+                                    className={`flex cursor-pointer items-center justify-between gap-2 px-3 py-2 ${
+                                      marketOpen ? "bg-[#424687]/5" : "hover:bg-slate-50"
+                                    }`}
+                                  >
                                     <span className="min-w-0 truncate font-medium text-slate-900">
                                       {market.marketname}
                                     </span>
                                     <span className="shrink-0 text-xs text-slate-500">{market.booktype}</span>
                                     <div className="flex shrink-0 items-center gap-1">
+                                      <span className="inline-flex !h-7 !min-h-0 items-center rounded-md px-2 text-xs font-semibold text-[#424687]">
+                                        {marketOpen ? "Close" : "Open"}
+                                      </span>
                                       <button
                                         type="button"
-                                        onClick={() => openMarket(market)}
-                                        className="rounded-md px-2 py-1 text-xs font-semibold text-[#424687] hover:bg-[#424687]/10"
-                                      >
-                                        Open
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleMarketEdit(market)}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          handleMarketEdit(market);
+                                        }}
                                         className="rounded-md p-1.5 text-[#424687] hover:bg-[#424687]/10"
                                         title="Update"
                                         aria-label="Update"
@@ -577,71 +637,90 @@ const Event = () => {
                                       </button>
                                     </div>
                                   </div>
-                                  {selectedMarket?._id === market._id && (
-                                    <div className="mt-2 border-t border-slate-100 pt-2">
+                                  {marketOpen && (
+                                    <div className="border-t border-slate-100 px-3 py-2">
+                                      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#424687]">
+                                        Entry · {market.marketname}
+                                      </p>
                                       <form
                                         onSubmit={handleEntrySubmit}
-                                        className="grid grid-cols-1 items-end gap-2 sm:grid-cols-4"
+                                        className="flex flex-wrap items-center gap-1.5"
                                       >
-                                        <div className="min-w-0">
-                                          <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
-                                            Team*
-                                          </label>
-                                          <select
-                                            name="team"
-                                            value={entryForm.team}
-                                            onChange={handleEntryChange}
-                                            className={fieldClass}
-                                          >
-                                            <option value="team1">
-                                              {selectedEvent.team1 || "Team 1"}
-                                            </option>
-                                            <option value="team2">
-                                              {selectedEvent.team2 || "Team 2"}
-                                            </option>
-                                          </select>
+                                        <div className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                                          {[
+                                            ["team1", selectedEvent.team1 || "Team 1"],
+                                            ["team2", selectedEvent.team2 || "Team 2"],
+                                          ].map(([value, label]) => (
+                                            <button
+                                              key={value}
+                                              type="button"
+                                              onClick={() =>
+                                                setEntryForm((prev) => ({ ...prev, team: value }))
+                                              }
+                                              className={`inline-flex !h-7 !min-h-0 items-center px-2.5 text-xs font-semibold ${
+                                                entryForm.team === value
+                                                  ? "bg-[#424687] text-white"
+                                                  : "text-slate-500 hover:text-slate-700"
+                                              }`}
+                                            >
+                                              {label}
+                                            </button>
+                                          ))}
                                         </div>
-                                        <div className="min-w-0">
-                                          <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
-                                            Stack*
-                                          </label>
-                                          <input
-                                            type="number"
-                                            min="0.01"
-                                            step="0.01"
-                                            name="stack"
-                                            value={entryForm.stack}
-                                            onChange={handleEntryChange}
-                                            placeholder="Stack"
-                                            className={fieldClass}
-                                          />
-                                        </div>
-                                        <div className="min-w-0">
-                                          <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
-                                            Selection*
-                                          </label>
-                                          <select
-                                            name="selection"
-                                            value={entryForm.selection}
-                                            onChange={handleEntryChange}
-                                            className={fieldClass}
-                                          >
-                                            {selectionsFor(market.booktype).map((option) => (
-                                              <option key={option} value={option}>
+                                        <div className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                                          {selectionsFor(market.booktype).map((option) => {
+                                            const active = entryForm.selection === option;
+                                            const isBlue = option === "Back" || option === "Yes";
+                                            return (
+                                              <button
+                                                key={option}
+                                                type="button"
+                                                onClick={() =>
+                                                  setEntryForm((prev) => ({ ...prev, selection: option }))
+                                                }
+                                                className={`inline-flex !h-7 !min-h-0 items-center px-2.5 text-xs font-semibold ${
+                                                  active
+                                                    ? isBlue
+                                                      ? "bg-blue-600 text-white"
+                                                      : "bg-pink-500 text-white"
+                                                    : isBlue
+                                                      ? "text-blue-700 hover:text-blue-800"
+                                                      : "text-pink-600 hover:text-pink-700"
+                                                }`}
+                                              >
                                                 {option}
-                                              </option>
-                                            ))}
-                                          </select>
+                                              </button>
+                                            );
+                                          })}
                                         </div>
+                                        <input
+                                          type="number"
+                                          min="0.01"
+                                          step="0.01"
+                                          name="stack"
+                                          value={entryForm.stack}
+                                          onChange={handleEntryChange}
+                                          placeholder="Stack"
+                                          aria-label="Stack"
+                                          className="!h-7 !min-h-0 w-20 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800"
+                                        />
+                                        <input
+                                          type="number"
+                                          min="0.01"
+                                          step="0.01"
+                                          name="rate"
+                                          value={entryForm.rate}
+                                          onChange={handleEntryChange}
+                                          placeholder="Bhav/rate"
+                                          aria-label="Bhav/rate"
+                                          className="!h-7 !min-h-0 w-24 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800"
+                                        />
                                         <button
                                           type="submit"
                                           disabled={entrySaving}
-                                          className="inline-flex h-10 items-center justify-center rounded-md bg-[#424687] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:opacity-60 lg:h-8 lg:text-xs"
+                                          className="inline-flex !h-7 !min-h-0 items-center rounded-md bg-[#424687] px-2.5 text-xs font-semibold text-white hover:bg-[#353a6e] disabled:opacity-60"
                                         >
-                                          <span className="inline-flex items-center gap-1.5">
-                                            {entryEditId ? <FaEdit size={13} /> : <FaPlus size={13} />}
-                                            {entryEditId ? "Update" : "Add"}
-                                          </span>
+                                          {entryEditId ? "Save" : "Add"}
                                         </button>
                                       </form>
                                       {(entryFormError || entryError) && (
@@ -653,43 +732,63 @@ const Event = () => {
                                         <p className="mt-2 text-xs text-[#424687]">Loading…</p>
                                       )}
                                       {entries.length > 0 && (
-                                        <ul className="mt-2 divide-y divide-slate-100 rounded-md border border-slate-200 bg-slate-50">
-                                          {entries.map((entry) => (
-                                            <li
-                                              key={entry._id}
-                                              className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs"
-                                            >
-                                              <span className="min-w-0 truncate font-medium text-slate-800">
-                                                {entry.teamname}
-                                              </span>
-                                              <span className="shrink-0 tabular-nums text-slate-600">
-                                                {entry.stack}
-                                              </span>
-                                              <span className="shrink-0 text-slate-500">{entry.selection}</span>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleEntryEdit(entry)}
-                                                className="shrink-0 rounded-md p-1.5 text-[#424687] hover:bg-[#424687]/10"
-                                                title="Update"
-                                                aria-label="Update"
-                                              >
-                                                <FaEdit size={14} />
-                                              </button>
-                                            </li>
-                                          ))}
-                                        </ul>
+                                        <div className="mt-2 overflow-hidden rounded-md border border-slate-200">
+                                          <table className="w-full border-collapse text-xs">
+                                            <thead>
+                                              <tr className="bg-slate-100 text-left text-[11px] font-semibold text-slate-500">
+                                                <th className="px-2 py-1.5 font-semibold">Team</th>
+                                                <th className="px-2 py-1.5 font-semibold">Stack</th>
+                                                <th className="px-2 py-1.5 font-semibold">Bhav/rate</th>
+                                                <th className="px-2 py-1.5 font-semibold">Selection</th>
+                                                <th className="w-10 px-2 py-1.5" />
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {entries.map((entry) => (
+                                                <tr
+                                                  key={entry._id}
+                                                  className={`border-t border-white/80 ${entryRowClass(entry.selection)}`}
+                                                >
+                                                  <td className="px-2 py-1.5 font-medium text-slate-900">
+                                                    {entry.teamname}
+                                                  </td>
+                                                  <td className="px-2 py-1.5 tabular-nums text-slate-800">
+                                                    {entry.stack}
+                                                  </td>
+                                                  <td className="px-2 py-1.5 tabular-nums text-slate-800">
+                                                    {entry.rate ?? "—"}
+                                                  </td>
+                                                  <td className="px-2 py-1.5 text-slate-800">{entry.selection}</td>
+                                                  <td className="px-2 py-1.5 text-right">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => handleEntryEdit(entry)}
+                                                      className="rounded-md p-1.5 text-[#424687] hover:bg-white/70"
+                                                      title="Update"
+                                                      aria-label="Update"
+                                                    >
+                                                      <FaEdit size={14} />
+                                                    </button>
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
                                       )}
                                     </div>
                                   )}
                                 </li>
-                              ))}
+                                );
+                              })}
                             </ul>
                           )}
                         </td>
                       </tr>
                     )}
                     </React.Fragment>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
