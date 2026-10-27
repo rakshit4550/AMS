@@ -36,17 +36,17 @@ const parseTeam = (value, event) => {
   return { error: 'Select team 1 or team 2' };
 };
 
-const parseStack = (value) => {
+const parsePositiveNumber = (value, label) => {
   if (typeof value === 'boolean' || value === null || value === undefined) {
-    return { error: 'Stack is required' };
+    return { error: `${label} is required` };
   }
   const raw = typeof value === 'number' ? String(value) : normalizeText(value);
-  if (!raw) return { error: 'Stack is required' };
-  if (!/^\d+(\.\d+)?$/.test(raw)) return { error: 'Stack must be a number' };
+  if (!raw) return { error: `${label} is required` };
+  if (!/^\d+(\.\d+)?$/.test(raw)) return { error: `${label} must be a number` };
 
   const number = Number(raw);
   if (!Number.isFinite(number) || number <= 0) {
-    return { error: 'Stack must be greater than 0' };
+    return { error: `${label} must be greater than 0` };
   }
   return { value: number };
 };
@@ -67,11 +67,13 @@ const parseSelection = (value, booktype) => {
 
 const readEntryBody = (body, event, market) => {
   const team = parseTeam(body.team, event);
-  const stack = parseStack(body.stack);
+  const stack = parsePositiveNumber(body.stack, 'Stack');
+  const rate = parsePositiveNumber(body.rate, 'Rate');
   const selection = parseSelection(body.selection, market.booktype);
 
   if (team.error) return { error: team.error };
   if (stack.error) return { error: stack.error };
+  if (rate.error) return { error: rate.error };
   if (selection.error) return { error: selection.error };
 
   return {
@@ -79,6 +81,7 @@ const readEntryBody = (body, event, market) => {
       team: team.team,
       teamname: team.teamname,
       stack: stack.value,
+      rate: rate.value,
       selection: selection.value,
     },
   };
@@ -147,7 +150,7 @@ export const getEntriesByMarket = async (req, res) => {
     const limit = Math.min(Math.max(Number.isFinite(parsedLimit) ? parsedLimit : 10, 1), 50);
     const skip = (page - 1) * limit;
 
-    const sortByAllowedFields = ['teamname', 'stack', 'selection', 'createdAt', 'updatedAt'];
+    const sortByAllowedFields = ['teamname', 'stack', 'rate', 'selection', 'createdAt', 'updatedAt'];
     const requestedSortBy = normalizeText(req.query.sortBy || 'createdAt');
     const sortBy = sortByAllowedFields.includes(requestedSortBy) ? requestedSortBy : 'createdAt';
     const sortOrder = String(req.query.sortOrder || 'desc').toLowerCase() === 'asc' ? 1 : -1;
@@ -167,7 +170,7 @@ export const getEntriesByMarket = async (req, res) => {
       ];
       const numericSearch = Number(search.replace(/,/g, ''));
       if (search.replace(/,/g, '').trim() !== '' && Number.isFinite(numericSearch)) {
-        or.push({ stack: numericSearch });
+        or.push({ stack: numericSearch }, { rate: numericSearch });
       }
       query.$or = or;
     }

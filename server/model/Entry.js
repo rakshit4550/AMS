@@ -29,6 +29,14 @@ const entrySchema = new mongoose.Schema({
       message: 'Stack must be greater than 0',
     },
   },
+  rate: {
+    type: Number,
+    required: true,
+    validate: {
+      validator: (value) => Number.isFinite(value) && value > 0,
+      message: 'Rate must be greater than 0',
+    },
+  },
   selection: {
     type: String,
     required: true,
