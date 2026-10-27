@@ -15,6 +15,11 @@ const eventSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  eventname: {
+    type: String,
+    required: true,
+    trim: true,
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -25,7 +30,7 @@ const eventSchema = new mongoose.Schema({
 });
 
 eventSchema.index({ createdBy: 1, date: -1 });
-eventSchema.index({ createdBy: 1, team1: 1, team2: 1 });
+eventSchema.index({ createdBy: 1, eventname: 1 });
 
 const Event = mongoose.model('Event', eventSchema);
 

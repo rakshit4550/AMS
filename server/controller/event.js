@@ -45,14 +45,13 @@ const formatDate = (value) => {
   return `${day}/${month}/${year}`;
 };
 
-const presentEvent = (event) => {
-  const rest = { ...event };
-  delete rest.eventname;
-  return {
-    ...rest,
-    date: formatDate(event.date),
-  };
-};
+const eventNameFromTeams = (team1, team2) => `${team1} vs ${team2}`;
+
+const presentEvent = (event) => ({
+  ...event,
+  date: formatDate(event.date),
+  eventname: event.eventname || eventNameFromTeams(event.team1, event.team2),
+});
 
 const readEventBody = (body) => {
   const team1 = normalizeText(body.team1);
@@ -68,6 +67,7 @@ const readEventBody = (body) => {
       date: date.value,
       team1,
       team2,
+      eventname: eventNameFromTeams(team1, team2),
     },
   };
 };
@@ -103,7 +103,7 @@ export const getAllEvents = async (req, res) => {
     const limit = Math.min(Math.max(Number.isFinite(parsedLimit) ? parsedLimit : 10, 1), 50);
     const skip = (page - 1) * limit;
 
-    const sortByAllowedFields = ['date', 'team1', 'team2', 'createdAt', 'updatedAt'];
+    const sortByAllowedFields = ['eventname', 'date', 'team1', 'team2', 'createdAt', 'updatedAt'];
     const requestedSortBy = normalizeText(req.query.sortBy || 'date');
     const sortBy = sortByAllowedFields.includes(requestedSortBy) ? requestedSortBy : 'date';
     const sortOrder = String(req.query.sortOrder || 'desc').toLowerCase() === 'asc' ? 1 : -1;
@@ -114,6 +114,7 @@ export const getAllEvents = async (req, res) => {
       const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const searchRegex = { $regex: escapedSearch, $options: 'i' };
       query.$or = [
+        { eventname: searchRegex },
         { team1: searchRegex },
         { team2: searchRegex },
       ];
@@ -186,7 +187,7 @@ export const updateEvent = async (req, res) => {
 
     const event = await Event.findOneAndUpdate(
       { _id: req.params.id, createdBy: req.user.id },
-      { $set: parsed.value, $unset: { eventname: 1 } },
+      { $set: parsed.value },
       { new: true, runValidators: true }
     ).lean();
 
