@@ -87,6 +87,38 @@ const readEntryBody = (body, event, market) => {
   };
 };
 
+const formatCreatedAt = (value) => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return { createdDate: '', createdTime: '' };
+  }
+
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  }).formatToParts(date);
+  const part = (type) => parts.find((item) => item.type === type)?.value || '';
+
+  return {
+    createdDate: `${part('day')}/${part('month')}/${part('year')}`,
+    createdTime: `${part('hour')}:${part('minute')}:${part('second')} ${part('dayPeriod').toLowerCase()}`,
+  };
+};
+
+const presentEntry = (entry) => {
+  const source = typeof entry?.toObject === 'function' ? entry.toObject() : entry;
+  return {
+    ...source,
+    ...formatCreatedAt(source.createdAt),
+  };
+};
+
 const roundMoney = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const bookmakerPosition = (event, entries) => {
@@ -184,7 +216,7 @@ export const createEntry = async (req, res) => {
 
     return res.status(201).json({
       message: 'Entry created successfully',
-      entry,
+      entry: presentEntry(entry),
       position,
     });
   } catch (error) {
@@ -245,7 +277,7 @@ export const getEntriesByMarket = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      entries,
+      entries: entries.map(presentEntry),
       position,
       pagination: {
         currentPage: page,
@@ -283,7 +315,7 @@ export const getEntryById = async (req, res) => {
       return res.status(404).json({ message: 'Entry not found or you do not have access' });
     }
 
-    return res.status(200).json(entry);
+    return res.status(200).json(presentEntry(entry));
   } catch (error) {
     return res.status(500).json({ message: 'Server error' });
   }
@@ -324,7 +356,7 @@ export const updateEntry = async (req, res) => {
 
     return res.status(200).json({
       message: 'Entry updated successfully',
-      entry,
+      entry: presentEntry(entry),
       position,
     });
   } catch (error) {
