@@ -172,12 +172,12 @@ import { AiFillBank, AiFillDashboard } from "react-icons/ai";
 import { GrTransaction } from "react-icons/gr";
 import { FaHandshake, FaUser } from "react-icons/fa";
 import { FaMoneyBillTransfer } from "react-icons/fa6";
-import { MdSettingsSuggest, MdPlaylistAddCircle } from "react-icons/md";
 import { TbReportAnalytics } from "react-icons/tb";
 import { FaDollarSign } from "react-icons/fa";
 import { GiBank } from "react-icons/gi";
 import { FaPiggyBank } from "react-icons/fa6";
 import { BsReceiptCutoff } from "react-icons/bs";
+import { MdEvent, MdPlaylistAddCircle, MdSettingsSuggest } from "react-icons/md";
 import { logout } from "../redux/authSlice";
 
 const getIconComponent = (iconName, className = "h-4 w-4") => {
@@ -209,6 +209,8 @@ const getIconComponent = (iconName, className = "h-4 w-4") => {
       return <BsReceiptCutoff className={cn} />;
     case "FaHandshake":
       return <FaHandshake className={cn} />;
+    case "MdEvent":
+      return <MdEvent className={cn} />;
     default:
       return null;
   }
@@ -246,6 +248,7 @@ const Sidebar = ({ onMenuClick }) => {
     { to: "/dashboard", label: "Dashboard", icon: "AiOutlineDashboard" },
     { to: "/parties", label: "Parties", icon: "AiOutlineWallet" },
     { to: "/settlement", label: "Settlement", icon: "FaHandshake" },
+    { to: "/events", label: "Events", icon: "MdEvent" },
     { to: "/account", label: "Account", icon: "AiOutlineCreditCard" },
     ...(userRole === "trader"
       ? [{ to: "/utr", label: "UTR", icon: "BsReceiptCutoff" }]

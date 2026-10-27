@@ -4,6 +4,7 @@ import userReducer from './authSlice';
 import accountReducer from './accountSlice';
 import utrReducer from './utrSlice';
 import settlementReducer from './settlementSlice';
+import eventReducer from './eventSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,5 +13,6 @@ export const store = configureStore({
     account: accountReducer,
     utr: utrReducer,
     settlement: settlementReducer,
+    event: eventReducer,
   },
 });

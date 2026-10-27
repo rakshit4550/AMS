@@ -8,6 +8,7 @@ import { FaHandshake, FaUser } from "react-icons/fa";
 import { TbReportAnalytics } from "react-icons/tb";
 import { BsReceiptCutoff } from "react-icons/bs";
 import { IoLogOutOutline } from "react-icons/io5";
+import { MdEvent } from "react-icons/md";
 import { logout } from "../redux/authSlice";
 
 const getRoleFromToken = () => {
@@ -31,6 +32,7 @@ const MobileBottomNav = () => {
     { to: "/dashboard", label: "Home", icon: AiFillDashboard },
     { to: "/parties", label: "Parties", icon: AiFillBank },
     { to: "/settlement", label: "Settle", icon: FaHandshake },
+    { to: "/events", label: "Events", icon: MdEvent },
     { to: "/account", label: "Account", icon: GrTransaction },
     ...(userRole === "trader"
       ? [{ to: "/utr", label: "UTR", icon: BsReceiptCutoff }]
