@@ -10,12 +10,6 @@ const settlementPartySchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: '',
-    validate: {
-      validator(value) {
-        return !value || /^\d{10}$/.test(value);
-      },
-      message: 'Contact number must be exactly 10 digits',
-    },
   },
   partnershipPercentage: {
     type: Number,

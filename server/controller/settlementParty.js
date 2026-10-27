@@ -15,13 +15,6 @@ const isValidId = (id) => {
 
 const normalizeText = (value) => String(value ?? '').trim();
 
-const contactNoError = (contactNo) => {
-  if (contactNo && !/^\d{10}$/.test(contactNo)) {
-    return 'Contact number must be exactly 10 digits';
-  }
-  return null;
-};
-
 const parsePartnershipPercentage = (value, { required = true } = {}) => {
   const missing = value === undefined || value === null || String(value).trim() === '';
   if (missing) {
@@ -89,11 +82,6 @@ export const createSettlementParty = async (req, res) => {
     }
     if (partnership.error) {
       return res.status(400).json({ message: partnership.error });
-    }
-
-    const contactError = contactNoError(contactNo);
-    if (contactError) {
-      return res.status(400).json({ message: contactError });
     }
 
     const party = await SettlementParty.create({
@@ -215,12 +203,7 @@ export const updateSettlementParty = async (req, res) => {
     }
 
     if (Object.prototype.hasOwnProperty.call(req.body, 'contactNo')) {
-      const contactNo = normalizeText(req.body.contactNo);
-      const contactError = contactNoError(contactNo);
-      if (contactError) {
-        return res.status(400).json({ message: contactError });
-      }
-      updates.contactNo = contactNo;
+      updates.contactNo = normalizeText(req.body.contactNo);
     }
 
     const party = await SettlementParty.findOneAndUpdate(

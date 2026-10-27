@@ -53,10 +53,6 @@ const Party = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.partyname.trim()) return;
-    if (formData.mobileNumber && !/^\d{10}$/.test(formData.mobileNumber)) {
-      alert("Mobile number must be exactly 10 digits");
-      return;
-    }
     if (editId) {
       dispatch(updateParty({ id: editId, ...formData }));
       setEditId(null);
@@ -116,7 +112,7 @@ const Party = () => {
               </div>
               <div className="min-w-0">
                 <label className="mb-0.5 block text-[11px] font-medium text-slate-600 sm:text-xs">
-                  Mobile (10 digits)
+                  Mobile
                 </label>
                 <input
                   type="text"

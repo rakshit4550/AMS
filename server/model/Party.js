@@ -9,12 +9,6 @@ const partySchema = new mongoose.Schema({
   mobileNumber: {
     type: String,
     trim: true,
-    validate: {
-      validator: function(v) {
-        return !v || /^\d{10}$/.test(v);
-      },
-      message: 'Mobile number must be exactly 10 digits',
-    },
   },
   city: {
     type: String,

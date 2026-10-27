@@ -84,7 +84,7 @@ const toEntryResponse = (entry) => ({
   partnershipPercentage: entry.partnershipPercentage,
   percentageSource: entry.percentageSource,
   percentageAmount: entry.percentageAmount,
-  totalAmount: entry.totalAmount,
+  totalAmount: entry.percentageAmount,
   settlementParty: entry.settlementParty,
   settlementUsername: entry.settlementUsername,
   createdAt: entry.createdAt,
@@ -145,7 +145,7 @@ const buildSummary = async (partyId, usernameId, userId) => {
     if (!bucket) return;
     bucket.amount = roundMoney(group.amount);
     bucket.percentageAmount = roundMoney(group.percentageAmount);
-    bucket.totalAmount = roundMoney(group.totalAmount);
+    bucket.totalAmount = roundMoney(group.percentageAmount);
   });
 
   return {
@@ -330,7 +330,7 @@ const summaryFromEntries = (entries) => {
     if (!bucket) return;
     bucket.amount += entry.amount;
     bucket.percentageAmount += entry.percentageAmount;
-    bucket.totalAmount += entry.totalAmount;
+    bucket.totalAmount += entry.percentageAmount;
   });
 
   const roundedDeposit = {
@@ -358,7 +358,7 @@ const toPartyEntry = (entry) => ({
   partnershipPercentage: entry.partnershipPercentage,
   percentageSource: entry.percentageSource,
   percentageAmount: entry.percentageAmount,
-  totalAmount: entry.totalAmount,
+  totalAmount: entry.percentageAmount,
   createdAt: entry.createdAt,
 });
 

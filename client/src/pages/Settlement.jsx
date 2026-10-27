@@ -346,8 +346,7 @@ const Settlement = () => {
 
   const handlePartyField = (event) => {
     const { name, value } = event.target;
-    const next = name === "contactNo" ? value.replace(/\D/g, "").slice(0, 10) : value;
-    setPartyForm((prev) => ({ ...prev, [name]: next }));
+    setPartyForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handlePartySubmit = async (event) => {
@@ -358,10 +357,6 @@ const Settlement = () => {
     const partyname = partyForm.partyname.trim();
     if (!partyname) {
       setPartyFormError("Party name is required");
-      return;
-    }
-    if (partyForm.contactNo && !/^\d{10}$/.test(partyForm.contactNo)) {
-      setPartyFormError("Mobile must be exactly 10 digits");
       return;
     }
     const partnership = parsePercent(partyForm.partnershipPercentage, true);
@@ -1042,9 +1037,7 @@ const Settlement = () => {
                 name="contactNo"
                 value={partyForm.contactNo}
                 onChange={handlePartyField}
-                placeholder="10 digits, optional"
-                inputMode="numeric"
-                maxLength={10}
+                placeholder="Optional"
                 className={fieldClass}
                 autoComplete="off"
               />
