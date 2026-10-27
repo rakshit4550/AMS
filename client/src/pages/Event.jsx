@@ -782,7 +782,7 @@ const Event = () => {
                                         <p className="mt-2 text-xs text-[#424687]">Loading…</p>
                                       )}
                                       {entries.length > 0 && (
-                                        <div className="mt-2 overflow-hidden rounded-md border border-slate-200">
+                                        <div className="mt-2 overflow-x-auto rounded-md border border-slate-200">
                                           <table className="w-full border-collapse text-xs">
                                             <thead>
                                               <tr className="bg-slate-100 text-left text-[11px] font-semibold text-slate-500">
@@ -790,6 +790,7 @@ const Event = () => {
                                                 <th className="px-2 py-1.5 font-semibold">Stack</th>
                                                 <th className="px-2 py-1.5 font-semibold">Bhav/rate</th>
                                                 <th className="px-2 py-1.5 font-semibold">Selection</th>
+                                                <th className="px-2 py-1.5 font-semibold">Date</th>
                                                 <th className="w-10 px-2 py-1.5" />
                                               </tr>
                                             </thead>
@@ -809,6 +810,12 @@ const Event = () => {
                                                     {entry.rate ?? "—"}
                                                   </td>
                                                   <td className="px-2 py-1.5 text-slate-800">{entry.selection}</td>
+                                                  <td className="whitespace-nowrap px-2 py-1.5 text-slate-700">
+                                                    <div>{entry.createdDate || "—"}</div>
+                                                    {entry.createdTime && (
+                                                      <div className="text-[11px] text-slate-500">{entry.createdTime}</div>
+                                                    )}
+                                                  </td>
                                                   <td className="px-2 py-1.5 text-right">
                                                     <button
                                                       type="button"
