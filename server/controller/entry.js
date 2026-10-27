@@ -117,11 +117,30 @@ const formatCreatedAt = (value) => {
   };
 };
 
+const fancyBook = (entry) => {
+  if (entry.selection !== 'Yes' && entry.selection !== 'No') return null;
+
+  const run = Number(entry.run);
+  const stack = Number(entry.stack);
+  if (!Number.isFinite(run) || !Number.isFinite(stack)) return null;
+
+  const onLine = entry.selection === 'Yes' ? stack : -stack;
+  const belowLine = -onLine;
+
+  return [
+    { run: roundMoney(run - 1), amount: roundMoney(belowLine) },
+    { run: roundMoney(run), amount: roundMoney(onLine) },
+    { run: roundMoney(run + 1), amount: roundMoney(onLine) },
+  ];
+};
+
 const presentEntry = (entry) => {
   const source = typeof entry?.toObject === 'function' ? entry.toObject() : entry;
+  const book = fancyBook(source);
   return {
     ...source,
     ...formatCreatedAt(source.createdAt),
+    ...(book ? { book } : {}),
   };
 };
 
@@ -322,6 +341,39 @@ export const getEntryById = async (req, res) => {
     }
 
     return res.status(200).json(presentEntry(entry));
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const getEntryBook = async (req, res) => {
+  try {
+    if (!isValidId(req.params.eventId) || !isValidId(req.params.marketId) || !isValidId(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid entry id' });
+    }
+
+    const entry = await Entry.findOne({
+      _id: req.params.id,
+      event: req.params.eventId,
+      market: req.params.marketId,
+      createdBy: req.user.id,
+    }).lean();
+
+    if (!entry) {
+      return res.status(404).json({ message: 'Entry not found or you do not have access' });
+    }
+
+    const book = fancyBook(entry);
+    if (!book) {
+      return res.status(400).json({ message: 'Book is only available for a Fancy entry' });
+    }
+
+    return res.status(200).json({
+      entryId: entry._id,
+      selection: entry.selection,
+      stack: entry.stack,
+      book,
+    });
   } catch (error) {
     return res.status(500).json({ message: 'Server error' });
   }
