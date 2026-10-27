@@ -3,6 +3,15 @@ import { useDispatch, useSelector } from "react-redux";
 import { FaEdit, FaPlus } from "react-icons/fa";
 import { createEvent, fetchEvents, updateEvent } from "../redux/eventSlice";
 import { createMarket, fetchMarkets, updateMarket } from "../redux/marketSlice";
+import { createEntry, fetchEntries, updateEntry } from "../redux/entrySlice";
+
+const selectionsFor = (booktype) => (booktype === "Fancy" ? ["Yes", "No"] : ["Back", "Lay"]);
+
+const blankEntry = (booktype) => ({
+  team: "team1",
+  stack: "",
+  selection: selectionsFor(booktype)[0],
+});
 
 const BOOK_TYPES = ["Bookmaker", "Fancy"];
 
@@ -40,12 +49,22 @@ const Event = () => {
     loading: marketLoading,
     error: marketError,
   } = useSelector((state) => state.market);
+  const {
+    entries,
+    loading: entryLoading,
+    error: entryError,
+  } = useSelector((state) => state.entry);
   const [formData, setFormData] = useState(blankForm);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [marketForm, setMarketForm] = useState(blankMarket);
   const [marketFormError, setMarketFormError] = useState("");
   const [marketEditId, setMarketEditId] = useState(null);
   const [marketSaving, setMarketSaving] = useState(false);
+  const [selectedMarket, setSelectedMarket] = useState(null);
+  const [entryForm, setEntryForm] = useState(blankEntry());
+  const [entryFormError, setEntryFormError] = useState("");
+  const [entryEditId, setEntryEditId] = useState(null);
+  const [entrySaving, setEntrySaving] = useState(false);
   const [marketPage, setMarketPage] = useState(1);
   const [marketSearch, setMarketSearch] = useState("");
   const [marketSearchInput, setMarketSearchInput] = useState("");
@@ -84,6 +103,11 @@ const Event = () => {
       })
     );
   }, [dispatch, selectedEvent?._id, marketPage, marketLimit, marketSearch]);
+
+  useEffect(() => {
+    if (!selectedEvent?._id || !selectedMarket?._id) return;
+    dispatch(fetchEntries({ eventId: selectedEvent._id, marketId: selectedMarket._id }));
+  }, [dispatch, selectedEvent?._id, selectedMarket?._id]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -169,6 +193,7 @@ const Event = () => {
 
   const openEvent = (item) => {
     setSelectedEvent(item);
+    setSelectedMarket(null);
     setMarketForm(blankMarket());
     setMarketEditId(null);
     setMarketFormError("");
@@ -234,6 +259,68 @@ const Event = () => {
     });
     setMarketEditId(item._id);
     setMarketFormError("");
+  };
+
+  const openMarket = (market) => {
+    setSelectedMarket(market);
+    setEntryForm(blankEntry(market.booktype));
+    setEntryEditId(null);
+    setEntryFormError("");
+  };
+
+  const handleEntryChange = (event) => {
+    const { name, value } = event.target;
+    setEntryForm((prev) => ({ ...prev, [name]: value }));
+    setEntryFormError("");
+  };
+
+  const handleEntrySubmit = async (event) => {
+    event.preventDefault();
+    if (!selectedEvent?._id || !selectedMarket?._id) return;
+    const allowed = selectionsFor(selectedMarket.booktype);
+    const team = entryForm.team === "team2" ? "team2" : "team1";
+    const selection = allowed.includes(entryForm.selection) ? entryForm.selection : "";
+    const stack = Number(entryForm.stack);
+    if (!selection) {
+      setEntryFormError(
+        selectedMarket.booktype === "Fancy"
+          ? "Fancy market must be Yes or No"
+          : "Bookmaker market must be Back or Lay"
+      );
+      return;
+    }
+    if (!Number.isFinite(stack) || stack <= 0) {
+      setEntryFormError("Stack must be greater than 0");
+      return;
+    }
+
+    const payload = {
+      eventId: selectedEvent._id,
+      marketId: selectedMarket._id,
+      team,
+      stack,
+      selection,
+    };
+    setEntrySaving(true);
+    const action = entryEditId ? updateEntry({ ...payload, id: entryEditId }) : createEntry(payload);
+    const result = await dispatch(action);
+    setEntrySaving(false);
+    if (result.meta.requestStatus !== "fulfilled") return;
+
+    setEntryForm(blankEntry(selectedMarket.booktype));
+    setEntryEditId(null);
+    setEntryFormError("");
+    dispatch(fetchEntries({ eventId: selectedEvent._id, marketId: selectedMarket._id }));
+  };
+
+  const handleEntryEdit = (entry) => {
+    setEntryForm({
+      team: entry.team === "team2" ? "team2" : "team1",
+      stack: entry.stack ?? "",
+      selection: entry.selection || selectionsFor(selectedMarket?.booktype)[0],
+    });
+    setEntryEditId(entry._id);
+    setEntryFormError("");
   };
 
   return (
@@ -383,9 +470,11 @@ const Event = () => {
                           <button
                             type="button"
                             onClick={() => handleEdit(item)}
-                            className="rounded-md px-2 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                            className="rounded-md p-1.5 text-[#424687] transition hover:bg-[#424687]/10"
+                            title="Update"
+                            aria-label="Update"
                           >
-                            Update
+                            <FaEdit size={15} />
                           </button>
                         </div>
                       </td>
@@ -447,21 +536,135 @@ const Event = () => {
                           {markets.length > 0 && (
                             <ul className="mt-2 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
                               {markets.map((market) => (
-                                <li
-                                  key={market._id}
-                                  className="flex items-center justify-between gap-2 px-3 py-2 text-sm"
-                                >
-                                  <span className="min-w-0 truncate font-medium text-slate-900">
-                                    {market.marketname}
-                                  </span>
-                                  <span className="shrink-0 text-xs text-slate-500">{market.booktype}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleMarketEdit(market)}
-                                    className="shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-[#424687] hover:bg-[#424687]/10"
-                                  >
-                                    Update
-                                  </button>
+                                <li key={market._id} className="px-3 py-2 text-sm">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="min-w-0 truncate font-medium text-slate-900">
+                                      {market.marketname}
+                                    </span>
+                                    <span className="shrink-0 text-xs text-slate-500">{market.booktype}</span>
+                                    <div className="flex shrink-0 items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => openMarket(market)}
+                                        className="rounded-md px-2 py-1 text-xs font-semibold text-[#424687] hover:bg-[#424687]/10"
+                                      >
+                                        Open
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleMarketEdit(market)}
+                                        className="rounded-md p-1.5 text-[#424687] hover:bg-[#424687]/10"
+                                        title="Update"
+                                        aria-label="Update"
+                                      >
+                                        <FaEdit size={15} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                  {selectedMarket?._id === market._id && (
+                                    <div className="mt-2 border-t border-slate-100 pt-2">
+                                      <form
+                                        onSubmit={handleEntrySubmit}
+                                        className="grid grid-cols-1 items-end gap-2 sm:grid-cols-4"
+                                      >
+                                        <div className="min-w-0">
+                                          <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
+                                            Team*
+                                          </label>
+                                          <select
+                                            name="team"
+                                            value={entryForm.team}
+                                            onChange={handleEntryChange}
+                                            className={fieldClass}
+                                          >
+                                            <option value="team1">
+                                              {selectedEvent.team1 || "Team 1"}
+                                            </option>
+                                            <option value="team2">
+                                              {selectedEvent.team2 || "Team 2"}
+                                            </option>
+                                          </select>
+                                        </div>
+                                        <div className="min-w-0">
+                                          <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
+                                            Stack*
+                                          </label>
+                                          <input
+                                            type="number"
+                                            min="0.01"
+                                            step="0.01"
+                                            name="stack"
+                                            value={entryForm.stack}
+                                            onChange={handleEntryChange}
+                                            placeholder="Stack"
+                                            className={fieldClass}
+                                          />
+                                        </div>
+                                        <div className="min-w-0">
+                                          <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
+                                            Selection*
+                                          </label>
+                                          <select
+                                            name="selection"
+                                            value={entryForm.selection}
+                                            onChange={handleEntryChange}
+                                            className={fieldClass}
+                                          >
+                                            {selectionsFor(market.booktype).map((option) => (
+                                              <option key={option} value={option}>
+                                                {option}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                        <button
+                                          type="submit"
+                                          disabled={entrySaving}
+                                          className="inline-flex h-10 items-center justify-center rounded-md bg-[#424687] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:opacity-60 lg:h-8 lg:text-xs"
+                                        >
+                                          <span className="inline-flex items-center gap-1.5">
+                                            {entryEditId ? <FaEdit size={13} /> : <FaPlus size={13} />}
+                                            {entryEditId ? "Update" : "Add"}
+                                          </span>
+                                        </button>
+                                      </form>
+                                      {(entryFormError || entryError) && (
+                                        <p className="mt-2 text-xs text-red-600">
+                                          {entryFormError || entryError}
+                                        </p>
+                                      )}
+                                      {entryLoading && (
+                                        <p className="mt-2 text-xs text-[#424687]">Loading…</p>
+                                      )}
+                                      {entries.length > 0 && (
+                                        <ul className="mt-2 divide-y divide-slate-100 rounded-md border border-slate-200 bg-slate-50">
+                                          {entries.map((entry) => (
+                                            <li
+                                              key={entry._id}
+                                              className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs"
+                                            >
+                                              <span className="min-w-0 truncate font-medium text-slate-800">
+                                                {entry.teamname}
+                                              </span>
+                                              <span className="shrink-0 tabular-nums text-slate-600">
+                                                {entry.stack}
+                                              </span>
+                                              <span className="shrink-0 text-slate-500">{entry.selection}</span>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleEntryEdit(entry)}
+                                                className="shrink-0 rounded-md p-1.5 text-[#424687] hover:bg-[#424687]/10"
+                                                title="Update"
+                                                aria-label="Update"
+                                              >
+                                                <FaEdit size={14} />
+                                              </button>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      )}
+                                    </div>
+                                  )}
                                 </li>
                               ))}
                             </ul>
