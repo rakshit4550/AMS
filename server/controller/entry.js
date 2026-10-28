@@ -119,24 +119,20 @@ const formatCreatedAt = (value) => {
   };
 };
 
-const fancyStake = (entry) => {
-  const stack = Number(entry.stack);
-  const rate = Number(entry.rate);
-  if (!Number.isFinite(stack) || stack <= 0) return null;
-  const price = Number.isFinite(rate) && rate > 0 ? rate : 100;
-  return (stack * price) / 100;
-};
-
 const fancyEntryAmount = (entry, run) => {
   if (entry.selection !== 'Yes' && entry.selection !== 'No') return null;
 
   const entryRun = Number(entry.run);
-  const stake = fancyStake(entry);
-  if (!Number.isFinite(entryRun) || stake === null) return null;
+  const stack = Number(entry.stack);
+  const rate = Number(entry.rate);
+  if (!Number.isFinite(entryRun) || !Number.isFinite(stack) || stack <= 0) return null;
 
+  const price = Number.isFinite(rate) && rate > 0 ? rate : 100;
+  const rateAmount = (stack * price) / 100;
   const onOrAbove = run >= entryRun;
-  if (entry.selection === 'Yes') return onOrAbove ? stake : -stake;
-  return onOrAbove ? -stake : stake;
+
+  if (entry.selection === 'Yes') return onOrAbove ? rateAmount : -stack;
+  return onOrAbove ? -rateAmount : stack;
 };
 
 const presentEntry = (entry, market) => {
