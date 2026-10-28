@@ -119,16 +119,24 @@ const formatCreatedAt = (value) => {
   };
 };
 
+const fancyStake = (entry) => {
+  const stack = Number(entry.stack);
+  const rate = Number(entry.rate);
+  if (!Number.isFinite(stack) || stack <= 0) return null;
+  const price = Number.isFinite(rate) && rate > 0 ? rate : 100;
+  return (stack * price) / 100;
+};
+
 const fancyEntryAmount = (entry, run) => {
   if (entry.selection !== 'Yes' && entry.selection !== 'No') return null;
 
   const entryRun = Number(entry.run);
-  const stack = Number(entry.stack);
-  if (!Number.isFinite(entryRun) || !Number.isFinite(stack)) return null;
+  const stake = fancyStake(entry);
+  if (!Number.isFinite(entryRun) || stake === null) return null;
 
   const onOrAbove = run >= entryRun;
-  if (entry.selection === 'Yes') return onOrAbove ? stack : -stack;
-  return onOrAbove ? -stack : stack;
+  if (entry.selection === 'Yes') return onOrAbove ? stake : -stake;
+  return onOrAbove ? -stake : stake;
 };
 
 const presentEntry = (entry, market) => {
@@ -227,7 +235,7 @@ const loadBook = async (owned, userId) => {
     event: owned.event._id,
     market: owned.market._id,
   })
-    .select('selection run stack')
+    .select('selection run stack rate')
     .lean();
 
   return marketBook(owned.market, rows);
