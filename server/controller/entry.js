@@ -136,12 +136,40 @@ const fancyBook = (entry) => {
 
 const presentEntry = (entry) => {
   const source = typeof entry?.toObject === 'function' ? entry.toObject() : entry;
-  const book = fancyBook(source);
+  const rest = { ...source };
+  delete rest.book;
   return {
-    ...source,
+    ...rest,
     ...formatCreatedAt(source.createdAt),
-    ...(book ? { book } : {}),
   };
+};
+
+const marketBook = (event, entries) => {
+  const teams = [
+    { team: 'team1', teamname: event.team1 },
+    { team: 'team2', teamname: event.team2 },
+  ];
+
+  return teams
+    .map((team) => {
+      const totals = new Map();
+      entries
+        .filter((entry) => entry.team === team.team)
+        .forEach((entry) => {
+          const lines = fancyBook(entry);
+          if (!lines) return;
+          lines.forEach((line) => {
+            totals.set(line.run, (totals.get(line.run) || 0) + line.amount);
+          });
+        });
+
+      const lines = [...totals.entries()]
+        .sort((left, right) => left[0] - right[0])
+        .map(([run, amount]) => ({ run, amount: roundMoney(amount) }));
+
+      return { ...team, lines };
+    })
+    .filter((team) => team.lines.length > 0);
 };
 
 const roundMoney = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -181,6 +209,20 @@ const bookmakerPosition = (event, entries) => {
     team1: { name: event.team1, amount: roundMoney(team1Amount) },
     team2: { name: event.team2, amount: roundMoney(team2Amount) },
   };
+};
+
+const loadBook = async (owned, userId) => {
+  if (owned.market.booktype !== 'Fancy') return null;
+
+  const rows = await Entry.find({
+    createdBy: userId,
+    event: owned.event._id,
+    market: owned.market._id,
+  })
+    .select('team selection run stack')
+    .lean();
+
+  return marketBook(owned.event, rows);
 };
 
 const loadPosition = async (owned, userId) => {
@@ -299,11 +341,13 @@ export const getEntriesByMarket = async (req, res) => {
 
     const totalPages = Math.ceil(totalRecords / limit);
     const position = await loadPosition(owned, req.user.id);
+    const book = await loadBook(owned, req.user.id);
 
     return res.status(200).json({
       success: true,
       entries: entries.map(presentEntry),
       position,
+      book,
       pagination: {
         currentPage: page,
         totalPages,
@@ -346,34 +390,20 @@ export const getEntryById = async (req, res) => {
   }
 };
 
-export const getEntryBook = async (req, res) => {
+export const getMarketBook = async (req, res) => {
   try {
-    if (!isValidId(req.params.eventId) || !isValidId(req.params.marketId) || !isValidId(req.params.id)) {
-      return res.status(400).json({ message: 'Invalid entry id' });
+    const marketId = req.params.marketId || req.params.id;
+    const owned = await findOwnedMarket(req.params.eventId, marketId, req.user.id);
+    if (owned.error) {
+      return res.status(owned.status).json({ message: owned.error });
     }
 
-    const entry = await Entry.findOne({
-      _id: req.params.id,
-      event: req.params.eventId,
-      market: req.params.marketId,
-      createdBy: req.user.id,
-    }).lean();
-
-    if (!entry) {
-      return res.status(404).json({ message: 'Entry not found or you do not have access' });
+    if (owned.market.booktype !== 'Fancy') {
+      return res.status(400).json({ message: 'Book is only available for a Fancy market' });
     }
 
-    const book = fancyBook(entry);
-    if (!book) {
-      return res.status(400).json({ message: 'Book is only available for a Fancy entry' });
-    }
-
-    return res.status(200).json({
-      entryId: entry._id,
-      selection: entry.selection,
-      stack: entry.stack,
-      book,
-    });
+    const book = await loadBook(owned, req.user.id);
+    return res.status(200).json({ book });
   } catch (error) {
     return res.status(500).json({ message: 'Server error' });
   }

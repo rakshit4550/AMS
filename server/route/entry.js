@@ -3,7 +3,6 @@ import {
   createEntry,
   getEntriesByMarket,
   getEntryById,
-  getEntryBook,
   updateEntry,
 } from '../controller/entry.js';
 import { verifyToken } from '../controller/user.js';
@@ -14,7 +13,6 @@ router.use(verifyToken);
 
 router.post('/', createEntry);
 router.get('/', getEntriesByMarket);
-router.get('/:id/book', getEntryBook);
 router.get('/:id', getEntryById);
 router.put('/:id', updateEntry);
 
