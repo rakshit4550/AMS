@@ -367,7 +367,8 @@ const Event = () => {
     event.preventDefault();
     if (!selectedEvent?._id || !selectedMarket?._id) return;
     const allowed = selectionsFor(selectedMarket.booktype);
-    const team = entryForm.team === "team2" ? "team2" : "team1";
+    const isFancy = selectedMarket.booktype === "Fancy";
+    const team = isFancy ? "team1" : entryForm.team === "team2" ? "team2" : "team1";
     const selection = allowed.includes(entryForm.selection) ? entryForm.selection : "";
     const stack = Number(entryForm.stack);
     if (!selection) {
@@ -382,7 +383,6 @@ const Event = () => {
       setEntryFormError("Stack must be greater than 0");
       return;
     }
-    const isFancy = selectedMarket.booktype === "Fancy";
     let rate = Number(entryForm.rate);
     let run;
     if (isFancy) {
@@ -702,6 +702,7 @@ const Event = () => {
                                         className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-end"
                                       >
                                         <div className="flex flex-wrap items-center gap-1.5">
+                                        {market.booktype !== "Fancy" && (
                                         <div className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-slate-100">
                                           {[
                                             ["team1", selectedEvent.team1 || "Team 1"],
@@ -723,6 +724,7 @@ const Event = () => {
                                             </button>
                                           ))}
                                         </div>
+                                        )}
                                         <div className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-slate-100">
                                           {selectionsFor(market.booktype).map((option) => {
                                             const active = entryForm.selection === option;
