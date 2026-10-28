@@ -855,6 +855,9 @@ const Event = () => {
                                                   <th className="px-2 py-1.5 font-semibold">Run</th>
                                                 )}
                                                 <th className="px-2 py-1.5 font-semibold">Selection</th>
+                                                {market.booktype === "Fancy" && (
+                                                  <th className="px-2 py-1.5 font-semibold">Book</th>
+                                                )}
                                                 <th className="px-2 py-1.5 font-semibold">Date</th>
                                                 <th className="w-10 px-2 py-1.5" />
                                               </tr>
@@ -880,6 +883,38 @@ const Event = () => {
                                                     </td>
                                                   )}
                                                   <td className="px-2 py-1.5 text-slate-800">{entry.selection}</td>
+                                                  {market.booktype === "Fancy" && (
+                                                    <td className="px-2 py-1.5">
+                                                      {Array.isArray(entry.book) && entry.book.length > 0 ? (
+                                                        <div className="inline-flex min-w-[7rem] flex-col overflow-hidden rounded-md border border-slate-200/80 bg-white/80">
+                                                          {entry.book.map((line, index) => {
+                                                            const amount = Number(line.amount);
+                                                            const tone =
+                                                              amount < 0
+                                                                ? "text-rose-600"
+                                                                : amount > 0
+                                                                  ? "text-emerald-700"
+                                                                  : "text-slate-700";
+                                                            return (
+                                                              <div
+                                                                key={`${line.run}-${index}`}
+                                                                className={`flex items-center justify-between gap-3 px-1.5 py-0.5 ${
+                                                                  index > 0 ? "border-t border-slate-100" : ""
+                                                                }`}
+                                                              >
+                                                                <span className="tabular-nums text-slate-600">{line.run}</span>
+                                                                <span className={`font-semibold tabular-nums ${tone}`}>
+                                                                  {formatPosition(amount)}
+                                                                </span>
+                                                              </div>
+                                                            );
+                                                          })}
+                                                        </div>
+                                                      ) : (
+                                                        "—"
+                                                      )}
+                                                    </td>
+                                                  )}
                                                   <td className="whitespace-nowrap px-2 py-1.5 text-slate-700">
                                                     <div>{entry.createdDate || "—"}</div>
                                                     {entry.createdTime && (
