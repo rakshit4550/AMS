@@ -13,8 +13,10 @@ const entrySchema = new mongoose.Schema({
   },
   team: {
     type: String,
-    required: true,
     enum: ['team1', 'team2'],
+    required: function requiredTeam() {
+      return this.selection === 'Back' || this.selection === 'Lay';
+    },
   },
   teamname: {
     type: String,

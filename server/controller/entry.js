@@ -66,19 +66,15 @@ const parseSelection = (value, booktype) => {
 };
 
 const readEntryBody = (body, event, market) => {
-  const team = parseTeam(body.team, event);
   const stack = parsePositiveNumber(body.stack, 'Stack');
   const rate = parsePositiveNumber(body.rate, 'Rate');
   const selection = parseSelection(body.selection, market.booktype);
 
-  if (team.error) return { error: team.error };
   if (stack.error) return { error: stack.error };
   if (rate.error) return { error: rate.error };
   if (selection.error) return { error: selection.error };
 
   const value = {
-    team: team.team,
-    teamname: market.booktype === 'Fancy' ? market.marketname : team.teamname,
     stack: stack.value,
     rate: rate.value,
     selection: selection.value,
@@ -88,8 +84,14 @@ const readEntryBody = (body, event, market) => {
     const run = parsePositiveNumber(body.run, 'Run');
     if (run.error) return { error: run.error };
     value.run = run.value;
+    value.teamname = market.marketname;
+    return { value };
   }
 
+  const team = parseTeam(body.team, event);
+  if (team.error) return { error: team.error };
+  value.team = team.team;
+  value.teamname = team.teamname;
   return { value };
 };
 
@@ -138,8 +140,9 @@ const presentEntry = (entry, market) => {
   const source = typeof entry?.toObject === 'function' ? entry.toObject() : entry;
   const rest = { ...source };
   delete rest.book;
-  if (market?.booktype === 'Fancy' && market.marketname) {
-    rest.teamname = market.marketname;
+  if (market?.booktype === 'Fancy') {
+    delete rest.team;
+    if (market.marketname) rest.teamname = market.marketname;
   }
   return {
     ...rest,
@@ -147,32 +150,23 @@ const presentEntry = (entry, market) => {
   };
 };
 
-const marketBook = (event, entries) => {
-  const teams = [
-    { team: 'team1', teamname: event.team1 },
-    { team: 'team2', teamname: event.team2 },
-  ];
+const marketBook = (market, entries) => {
+  const totals = new Map();
 
-  return teams
-    .map((team) => {
-      const totals = new Map();
-      entries
-        .filter((entry) => entry.team === team.team)
-        .forEach((entry) => {
-          const lines = fancyBook(entry);
-          if (!lines) return;
-          lines.forEach((line) => {
-            totals.set(line.run, (totals.get(line.run) || 0) + line.amount);
-          });
-        });
+  entries.forEach((entry) => {
+    const lines = fancyBook(entry);
+    if (!lines) return;
+    lines.forEach((line) => {
+      totals.set(line.run, (totals.get(line.run) || 0) + line.amount);
+    });
+  });
 
-      const lines = [...totals.entries()]
-        .sort((left, right) => left[0] - right[0])
-        .map(([run, amount]) => ({ run, amount: roundMoney(amount) }));
+  const lines = [...totals.entries()]
+    .sort((left, right) => left[0] - right[0])
+    .map(([run, amount]) => ({ run, amount: roundMoney(amount) }));
 
-      return { ...team, lines };
-    })
-    .filter((team) => team.lines.length > 0);
+  if (!lines.length) return [];
+  return [{ teamname: market.marketname, lines }];
 };
 
 const roundMoney = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -214,18 +208,31 @@ const bookmakerPosition = (event, entries) => {
   };
 };
 
+const clearFancyTeam = (owned, userId) => Entry.updateMany(
+  {
+    createdBy: userId,
+    event: owned.event._id,
+    market: owned.market._id,
+    selection: { $in: ['Yes', 'No'] },
+    team: { $exists: true },
+  },
+  { $unset: { team: '' } }
+);
+
 const loadBook = async (owned, userId) => {
   if (owned.market.booktype !== 'Fancy') return null;
+
+  await clearFancyTeam(owned, userId);
 
   const rows = await Entry.find({
     createdBy: userId,
     event: owned.event._id,
     market: owned.market._id,
   })
-    .select('team selection run stack')
+    .select('selection run stack')
     .lean();
 
-  return marketBook(owned.event, rows);
+  return marketBook(owned.market, rows);
 };
 
 const loadPosition = async (owned, userId) => {
@@ -437,7 +444,8 @@ export const updateEntry = async (req, res) => {
     }
 
     const update = { $set: parsed.value };
-    if (owned.market.booktype !== 'Fancy') update.$unset = { run: 1 };
+    if (owned.market.booktype === 'Fancy') update.$unset = { team: '' };
+    else update.$unset = { run: '' };
 
     const entry = await Entry.findOneAndUpdate(
       {
