@@ -856,7 +856,9 @@ const Event = () => {
                                           <table className="w-full border-collapse text-xs">
                                             <thead>
                                               <tr className="bg-slate-100 text-left text-[11px] font-semibold text-slate-500">
-                                                <th className="px-2 py-1.5 font-semibold">Team</th>
+                                                <th className="px-2 py-1.5 font-semibold">
+                                                  {market.booktype === "Fancy" ? "Market name" : "Team"}
+                                                </th>
                                                 <th className="px-2 py-1.5 font-semibold">Stack</th>
                                                 <th className="px-2 py-1.5 font-semibold">Bhav/rate</th>
                                                 {market.booktype === "Fancy" && (
