@@ -13,9 +13,9 @@
     --app-primary-dark: #252858;
     --app-bg: #f4f7fb;
     --app-bottom-nav-height: 74px;
-    --app-mobile-header-height: 7.5rem;
-    --app-mobile-header-height-validity: 9.75rem;
-    --app-desktop-header-height: 4.5rem;
+    --app-mobile-header-height: 6.25rem;
+    --app-mobile-header-height-validity: 8.15rem;
+    --app-desktop-header-height: 3.25rem;
   }
 
   html {
@@ -336,7 +336,11 @@
 
   main .events-page th,
   main .events-page td {
-    padding-top: 0.4rem !important;
-    padding-bottom: 0.4rem !important;
+    padding: 0.5rem 0.7rem !important;
+  }
+
+  main .parties-page th,
+  main .parties-page td {
+    padding: 0.55rem 0.75rem !important;
   }
 }

@@ -41,6 +41,24 @@ const parseRunRate = (value) => {
   };
 };
 
+const fancyBookLines = (book) => {
+  const totals = new Map();
+  (Array.isArray(book) ? book : []).forEach((side) => {
+    (side.lines || []).forEach((line) => {
+      const run = Number(line.run);
+      const amount = Number(line.amount);
+      if (!Number.isFinite(run) || !Number.isFinite(amount)) return;
+      totals.set(run, (totals.get(run) || 0) + amount);
+    });
+  });
+  return [...totals.entries()]
+    .sort((left, right) => left[0] - right[0])
+    .map(([run, amount]) => ({
+      run,
+      amount: Math.round((amount + Number.EPSILON) * 100) / 100,
+    }));
+};
+
 const BOOK_TYPES = ["Bookmaker", "Fancy"];
 
 const todayInputDate = () =>
@@ -435,10 +453,9 @@ const Event = () => {
   };
 
   return (
-    <div className="z-[99] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-2 sm:min-h-[calc(100vh-5rem)] sm:py-3">
-      <div className="mx-auto flex w-full max-w-none flex-col gap-2">
-        <div className="events-page flex flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md sm:min-h-[min(70vh,calc(100vh-12rem))]">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 sm:px-4">
+    <div className="events-page z-[99] -mx-3 flex min-h-[calc(100dvh-var(--app-mobile-header-height)-var(--app-bottom-nav-height)-1.25rem)] flex-col bg-white sm:-mx-4 sm:min-h-[calc(100dvh-var(--app-desktop-header-height))] lg:-mb-8">
+      <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-3 py-2.5 sm:px-4">
             <h2 className="text-base font-bold text-slate-900">Events</h2>
             <div className="flex items-center gap-2">
               <input
@@ -446,7 +463,7 @@ const Event = () => {
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Search…"
-                className="!h-8 !min-h-0 w-28 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#424687]/40 sm:w-40"
+                className="!h-8 !min-h-0 w-36 rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#424687]/30 sm:w-52"
               />
               <button
                 type="button"
@@ -460,13 +477,13 @@ const Event = () => {
           </div>
           {formOpen && (
           <form onSubmit={handleSubmit} className="border-b border-slate-100 px-3 py-2 sm:px-4">
+            {(editId || (formData.team1.trim() && formData.team2.trim())) && (
             <p className="mb-1.5 text-[11px] text-slate-500">
               {editId
                 ? "Update event"
-                : formData.team1.trim() && formData.team2.trim()
-                  ? `${formData.team1.trim()} vs ${formData.team2.trim()}`
-                  : ""}
+                : `${formData.team1.trim()} vs ${formData.team2.trim()}`}
             </p>
+            )}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="grid grid-cols-2 gap-2 sm:flex">
                 <div className="min-w-0 sm:w-36">
@@ -544,14 +561,14 @@ const Event = () => {
           <div className="overflow-auto sm:min-h-0 sm:flex-1">
             <table className="w-full min-w-[320px] border-collapse text-sm">
               <thead className="sticky top-0 z-10 shadow-sm">
-                <tr className="bg-[#424687] text-white">
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                <tr className="bg-gradient-to-r from-[#353a6e] to-[#424687] text-white">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
                     Event
                   </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
                     Date
                   </th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
+                  <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide">
                     Actions
                   </th>
                 </tr>
@@ -579,12 +596,12 @@ const Event = () => {
                             : "bg-white"
                       }`}
                     >
-                      <td className="px-3 py-2.5 font-medium text-slate-900">{eventLabel(item)}</td>
-                      <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-slate-600">
+                      <td className="px-4 py-3 font-medium text-slate-900">{eventLabel(item)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 tabular-nums text-slate-600">
                         {item.date}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2.5">
-                        <div className="flex items-center gap-1">
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
                           <span className="inline-flex !h-7 !min-h-0 items-center rounded-md px-2 text-xs font-semibold text-[#424687]">
                             {eventOpen ? "Close" : "Open"}
                           </span>
@@ -604,37 +621,43 @@ const Event = () => {
                       </td>
                     </tr>
                     {eventOpen && (
-                      <tr data-event-id={item._id} className="border-b border-slate-100 bg-slate-50">
-                        <td colSpan={3} className="px-3 py-2">
-                          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#424687]">
+                      <tr data-event-id={item._id} className="border-b border-slate-200 bg-slate-50/80">
+                        <td colSpan={3} className="px-4 py-3">
+                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#424687]">
                             Market
                           </p>
                           <form
                             onSubmit={handleMarketSubmit}
-                            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 sm:flex sm:flex-wrap"
+                            className="flex flex-wrap items-end gap-2"
                           >
-                            <select
-                              name="booktype"
-                              aria-label="Book type"
-                              value={marketForm.booktype}
-                              onChange={handleMarketChange}
-                              className="!h-8 !min-h-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800"
-                            >
-                              {BOOK_TYPES.map((type) => (
-                                <option key={type} value={type}>
-                                  {type}
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              type="text"
-                              name="marketname"
-                              value={marketForm.marketname}
-                              onChange={handleMarketChange}
-                              placeholder="Market name"
-                              aria-label="Market name"
-                              className="!h-8 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 placeholder:text-slate-400 sm:w-52"
-                            />
+                            <label className="min-w-0">
+                              <span className="mb-0.5 block text-[10px] font-medium text-slate-500">Book type</span>
+                              <select
+                                name="booktype"
+                                aria-label="Book type"
+                                value={marketForm.booktype}
+                                onChange={handleMarketChange}
+                                className="!h-8 !min-h-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800"
+                              >
+                                {BOOK_TYPES.map((type) => (
+                                  <option key={type} value={type}>
+                                    {type}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="min-w-[10rem] flex-1 sm:w-56 sm:flex-none">
+                              <span className="mb-0.5 block text-[10px] font-medium text-slate-500">Market name</span>
+                              <input
+                                type="text"
+                                name="marketname"
+                                value={marketForm.marketname}
+                                onChange={handleMarketChange}
+                                placeholder="Market name"
+                                aria-label="Market name"
+                                className="!h-8 !min-h-0 w-full rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 placeholder:text-slate-400"
+                              />
+                            </label>
                             <button
                               type="submit"
                               disabled={marketSaving}
@@ -665,14 +688,16 @@ const Event = () => {
                                         openMarket(market);
                                       }
                                     }}
-                                    className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_4.75rem_4.75rem] items-center gap-1 px-2 py-1.5 sm:grid-cols-[minmax(0,1fr)_7.5rem_5.5rem] sm:gap-2 sm:px-3 sm:py-2 ${
+                                    className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_4.75rem_4.75rem] items-center gap-2 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_8rem_6.5rem] ${
                                       marketOpen ? "bg-[#424687]/5" : "hover:bg-slate-50"
                                     }`}
                                   >
                                     <span className="min-w-0 truncate font-medium text-slate-900">
                                       {market.marketname}
                                     </span>
-                                    <span className="truncate text-xs text-slate-500">{market.booktype}</span>
+                                    <span className="inline-flex w-fit rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                      {market.booktype}
+                                    </span>
                                     <div className="flex items-center justify-end gap-1">
                                       <span className="inline-flex !h-7 !min-h-0 items-center rounded-md px-2 text-xs font-semibold text-[#424687]">
                                         {marketOpen ? "Close" : "Open"}
@@ -692,14 +717,25 @@ const Event = () => {
                                     </div>
                                   </div>
                                   {marketOpen && (
-                                    <div className="border-t border-slate-100 px-2 py-2 sm:px-3">
-                                      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#424687]">
-                                        Entry · {market.marketname}
-                                      </p>
+                                    <div className="border-t border-slate-200 bg-white px-3 py-3 sm:px-4">
+                                      <div className="mb-3 flex items-center justify-between gap-2">
+                                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#424687]">
+                                          Entry · {market.marketname}
+                                        </p>
+                                        {market.booktype === "Fancy" && Array.isArray(book) && book.length > 0 && (
+                                          <button
+                                            type="button"
+                                            onClick={() => setBookOpen(true)}
+                                            className="inline-flex !h-7 !min-h-0 items-center rounded-md border border-[#424687]/20 bg-white px-2 text-[11px] font-semibold text-[#424687] hover:bg-[#424687]/5"
+                                          >
+                                            Book
+                                          </button>
+                                        )}
+                                      </div>
                                       <div className="flex items-start gap-2">
                                       <form
                                         onSubmit={handleEntrySubmit}
-                                        className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-end"
+                                        className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end"
                                       >
                                         <div className="flex flex-wrap items-center gap-1.5">
                                         {market.booktype !== "Fancy" && (
@@ -714,7 +750,7 @@ const Event = () => {
                                               onClick={() =>
                                                 setEntryForm((prev) => ({ ...prev, team: value }))
                                               }
-                                              className={`inline-flex !h-7 !min-h-0 items-center px-2.5 text-xs font-semibold ${
+                                              className={`inline-flex !h-8 !min-h-0 items-center px-3 text-xs font-semibold ${
                                                 entryForm.team === value
                                                   ? "bg-[#424687] text-white"
                                                   : "text-slate-500 hover:text-slate-700"
@@ -736,7 +772,7 @@ const Event = () => {
                                                 onClick={() =>
                                                   setEntryForm((prev) => ({ ...prev, selection: option }))
                                                 }
-                                                className={`inline-flex !h-7 !min-h-0 items-center px-2.5 text-xs font-semibold ${
+                                                className={`inline-flex !h-8 !min-h-0 items-center px-3 text-xs font-semibold ${
                                                   active
                                                     ? isBlue
                                                       ? "bg-blue-600 text-white"
@@ -752,8 +788,8 @@ const Event = () => {
                                           })}
                                         </div>
                                         </div>
-                                        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_auto] items-end gap-1.5 sm:flex">
-                                          <label className="min-w-0 sm:w-20">
+                                        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-end gap-2 sm:flex">
+                                          <label className="min-w-0 sm:w-24">
                                             <span className="mb-0.5 block text-[10px] font-medium text-slate-500">
                                               Stack
                                             </span>
@@ -766,11 +802,11 @@ const Event = () => {
                                               onChange={handleEntryChange}
                                               placeholder="Stack"
                                               aria-label="Stack"
-                                              className="!h-7 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800"
+                                              className="!h-8 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-800"
                                             />
                                           </label>
                                           {market.booktype === "Fancy" ? (
-                                            <label className="min-w-0 sm:w-28">
+                                            <label className="min-w-0 sm:w-36">
                                               <span className="mb-0.5 block text-[10px] font-medium text-slate-500">
                                                 Run/rate
                                               </span>
@@ -781,11 +817,11 @@ const Event = () => {
                                                 onChange={handleEntryChange}
                                                 placeholder="50/100"
                                                 aria-label="Run/rate"
-                                                className="!h-7 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800"
+                                                className="!h-8 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-800"
                                               />
                                             </label>
                                           ) : (
-                                            <label className="min-w-0 sm:w-24">
+                                            <label className="min-w-0 sm:w-28">
                                               <span className="mb-0.5 block text-[10px] font-medium text-slate-500">
                                                 Bhav/rate
                                               </span>
@@ -798,14 +834,14 @@ const Event = () => {
                                                 onChange={handleEntryChange}
                                                 placeholder="Bhav/rate"
                                                 aria-label="Bhav/rate"
-                                                className="!h-7 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800"
+                                                className="!h-8 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-800"
                                               />
                                             </label>
                                           )}
                                           <button
                                             type="submit"
                                             disabled={entrySaving}
-                                            className="inline-flex !h-7 !min-h-0 items-center rounded-md bg-[#424687] px-2.5 text-xs font-semibold text-white hover:bg-[#353a6e] disabled:opacity-60"
+                                            className="inline-flex !h-8 !min-h-0 items-center rounded-md bg-[#424687] px-3 text-xs font-semibold text-white hover:bg-[#353a6e] disabled:opacity-60"
                                           >
                                             {entryEditId ? "Save" : "Add"}
                                           </button>
@@ -827,14 +863,14 @@ const Event = () => {
                                             return (
                                               <div
                                                 key={key}
-                                                className={`flex items-center justify-between gap-6 px-2.5 py-1 ${
+                                                className={`flex items-center justify-between gap-8 px-3 py-1.5 ${
                                                   index === 0 ? "border-b border-slate-100" : ""
                                                 }`}
                                               >
-                                                <span className="max-w-[9rem] truncate text-xs font-medium text-slate-600">
+                                                <span className="max-w-[11rem] truncate text-sm font-medium text-slate-700">
                                                   {side.name}
                                                 </span>
-                                                <span className={`shrink-0 text-xs font-bold tabular-nums ${tone}`}>
+                                                <span className={`shrink-0 text-sm font-bold tabular-nums ${tone}`}>
                                                   {formatPosition(amount)}
                                                 </span>
                                               </div>
@@ -852,61 +888,78 @@ const Event = () => {
                                         <p className="mt-2 text-xs text-[#424687]">Loading…</p>
                                       )}
                                       {entries.length > 0 && (
-                                        <div className="mt-2 overflow-x-auto rounded-md border border-slate-200">
-                                          <table className="w-full border-collapse text-xs">
+                                        <div className="mt-2 overflow-x-auto rounded-md border border-slate-200 bg-white">
+                                          <table className="w-full border-collapse text-sm">
                                             <thead>
-                                              <tr className="bg-slate-100 text-left text-[11px] font-semibold text-slate-500">
-                                                <th className="px-2 py-1.5 font-semibold">
-                                                  {market.booktype === "Fancy" ? "Market name" : "Team"}
-                                                </th>
-                                                <th className="px-2 py-1.5 font-semibold">Stack</th>
-                                                <th className="px-2 py-1.5 font-semibold">Bhav/rate</th>
-                                                {market.booktype === "Fancy" && (
-                                                  <th className="px-2 py-1.5 font-semibold">Run</th>
+                                              <tr className="bg-slate-100 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                                {market.booktype === "Fancy" ? (
+                                                  <>
+                                                    <th className="px-3 py-2 font-semibold">Side</th>
+                                                    <th className="px-3 py-2 text-right font-semibold">Run</th>
+                                                    <th className="px-3 py-2 text-right font-semibold">Rate</th>
+                                                    <th className="px-3 py-2 text-right font-semibold">Stack</th>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <th className="px-3 py-2 font-semibold">Team</th>
+                                                    <th className="px-3 py-2 font-semibold">Side</th>
+                                                    <th className="px-3 py-2 text-right font-semibold">Stack</th>
+                                                    <th className="px-3 py-2 text-right font-semibold">Bhav/rate</th>
+                                                  </>
                                                 )}
-                                                <th className="px-2 py-1.5 font-semibold">Selection</th>
-                                                <th className="px-2 py-1.5 font-semibold">Date</th>
-                                                <th className="px-2 py-1.5 text-right">
-                                                  {market.booktype === "Fancy" && Array.isArray(book) && book.length > 0 && (
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => setBookOpen(true)}
-                                                      className="inline-flex !h-7 !min-h-0 items-center rounded-md bg-[#424687] px-2 text-[11px] font-semibold text-white hover:bg-[#353a6e]"
-                                                    >
-                                                      Book
-                                                    </button>
-                                                  )}
-                                                </th>
+                                                <th className="px-3 py-2 font-semibold">Time</th>
+                                                <th className="w-12 px-3 py-2" />
                                               </tr>
                                             </thead>
                                             <tbody>
-                                              {entries.map((entry) => (
+                                              {entries.map((entry) => {
+                                                const side = String(entry.selection || "");
+                                                const backSide = side === "Back" || side === "Yes";
+                                                return (
                                                 <tr
                                                   key={entry._id}
                                                   className={`border-t border-white/80 ${entryRowClass(entry.selection)}`}
                                                 >
-                                                  <td className="px-2 py-1.5 font-medium text-slate-900">
-                                                    {entry.teamname}
-                                                  </td>
-                                                  <td className="px-2 py-1.5 tabular-nums text-slate-800">
-                                                    {entry.stack}
-                                                  </td>
-                                                  <td className="px-2 py-1.5 tabular-nums text-slate-800">
-                                                    {entry.rate ?? "—"}
-                                                  </td>
-                                                  {market.booktype === "Fancy" && (
-                                                    <td className="px-2 py-1.5 tabular-nums text-slate-800">
-                                                      {entry.run ?? "—"}
-                                                    </td>
+                                                  {market.booktype === "Fancy" ? (
+                                                    <>
+                                                      <td className="px-3 py-2.5">
+                                                        <span className={`font-semibold ${backSide ? "text-blue-700" : "text-pink-700"}`}>
+                                                          {side || "—"}
+                                                        </span>
+                                                      </td>
+                                                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">
+                                                        {entry.run ?? "—"}
+                                                      </td>
+                                                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">
+                                                        {entry.rate ?? "—"}
+                                                      </td>
+                                                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">
+                                                        {entry.stack}
+                                                      </td>
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <td className="px-3 py-2.5 font-medium text-slate-900">
+                                                        {entry.teamname}
+                                                      </td>
+                                                      <td className="px-3 py-2.5">
+                                                        <span className={`font-semibold ${backSide ? "text-blue-700" : "text-pink-700"}`}>
+                                                          {side || "—"}
+                                                        </span>
+                                                      </td>
+                                                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">
+                                                        {entry.stack}
+                                                      </td>
+                                                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">
+                                                        {entry.rate ?? "—"}
+                                                      </td>
+                                                    </>
                                                   )}
-                                                  <td className="px-2 py-1.5 text-slate-800">{entry.selection}</td>
-                                                  <td className="whitespace-nowrap px-2 py-1.5 text-slate-700">
-                                                    <div>{entry.createdDate || "—"}</div>
-                                                    {entry.createdTime && (
-                                                      <div className="text-[11px] text-slate-500">{entry.createdTime}</div>
-                                                    )}
+                                                  <td className="whitespace-nowrap px-3 py-2.5 text-slate-600">
+                                                    {entry.createdDate || "—"}
+                                                    {entry.createdTime ? ` · ${entry.createdTime}` : ""}
                                                   </td>
-                                                  <td className="px-2 py-1.5 text-right">
+                                                  <td className="px-3 py-2.5 text-right">
                                                     <button
                                                       type="button"
                                                       onClick={() => handleEntryEdit(entry)}
@@ -918,59 +971,67 @@ const Event = () => {
                                                     </button>
                                                   </td>
                                                 </tr>
-                                              ))}
+                                                );
+                                              })}
                                             </tbody>
                                           </table>
                                         </div>
                                       )}
                                       {bookOpen && market.booktype === "Fancy" && Array.isArray(book) && book.length > 0 && (
                                         <div
-                                          className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/40 p-4"
+                                          className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/45 p-4"
                                           onClick={() => setBookOpen(false)}
                                         >
                                           <div
-                                            className="max-h-[70vh] w-full max-w-xs overflow-auto rounded-xl border border-slate-200 bg-white shadow-xl"
+                                            className="flex max-h-[75vh] w-full max-w-md flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
                                             onClick={(event) => event.stopPropagation()}
                                           >
-                                            <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-3 py-2">
-                                              <p className="text-xs font-semibold text-[#424687]">
-                                                Book · {market.marketname}
-                                              </p>
+                                            <div className="flex items-center justify-between bg-[#424687] px-4 py-3 text-white">
+                                              <div className="min-w-0">
+                                                <p className="truncate text-sm font-semibold">{market.marketname}</p>
+                                                <p className="text-[10px] uppercase tracking-wide text-white/70">Position book</p>
+                                              </div>
                                               <button
                                                 type="button"
                                                 onClick={() => setBookOpen(false)}
-                                                className="inline-flex !h-7 !min-h-0 items-center rounded-md px-2 text-xs font-semibold text-slate-500 hover:bg-slate-100"
+                                                className="inline-flex !h-7 !min-h-0 items-center rounded-md bg-white/15 px-2 text-xs font-semibold text-white hover:bg-white/25"
                                               >
                                                 Close
                                               </button>
                                             </div>
-                                            {book.map((side, sideIndex) => (
-                                              <div key={side.team || sideIndex} className={sideIndex > 0 ? "border-t border-slate-200" : ""}>
-                                                <p className="truncate bg-slate-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                                                  {side.teamname}
-                                                </p>
-                                                {(side.lines || []).map((line, index) => {
-                                                  const amount = Number(line.amount);
-                                                  const tone =
-                                                    amount < 0
-                                                      ? "text-rose-600"
-                                                      : amount > 0
-                                                        ? "text-emerald-700"
-                                                        : "text-slate-700";
-                                                  return (
-                                                    <div
-                                                      key={`${line.run}-${index}`}
-                                                      className="flex items-center justify-between gap-4 px-3 py-1"
-                                                    >
-                                                      <span className="text-xs tabular-nums text-slate-600">{line.run}</span>
-                                                      <span className={`text-xs font-bold tabular-nums ${tone}`}>
-                                                        {formatPosition(amount)}
-                                                      </span>
-                                                    </div>
-                                                  );
-                                                })}
-                                              </div>
-                                            ))}
+                                            <div className="overflow-auto">
+                                              <table className="w-full border-collapse text-sm">
+                                                <thead className="sticky top-0 bg-slate-50">
+                                                  <tr className="text-[11px] uppercase tracking-wide text-slate-500">
+                                                    <th className="px-4 py-2 text-left font-semibold">Run</th>
+                                                    <th className="px-4 py-2 text-right font-semibold">Amount</th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody>
+                                                  {fancyBookLines(book).map((line) => {
+                                                    const amount = Number(line.amount);
+                                                    const loss = amount < 0;
+                                                    const profit = amount > 0;
+                                                    return (
+                                                      <tr key={line.run} className="border-t border-slate-100">
+                                                        <td className="px-4 py-2.5 font-semibold tabular-nums text-slate-800">{line.run}</td>
+                                                        <td
+                                                          className={`px-4 py-2.5 text-right font-bold tabular-nums ${
+                                                            loss
+                                                              ? "bg-rose-50 text-rose-600"
+                                                              : profit
+                                                                ? "bg-emerald-50 text-emerald-700"
+                                                                : "text-slate-500"
+                                                          }`}
+                                                        >
+                                                          {formatPosition(amount)}
+                                                        </td>
+                                                      </tr>
+                                                    );
+                                                  })}
+                                                </tbody>
+                                              </table>
+                                            </div>
                                           </div>
                                         </div>
                                       )}
@@ -1044,7 +1105,6 @@ const Event = () => {
               </div>
             </div>
           )}
-        </div>
       </div>
     </div>
   );

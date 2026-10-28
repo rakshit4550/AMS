@@ -8,6 +8,7 @@ import {
 } from "../redux/partySlice";
 import "tailwindcss/tailwind.css";
 import { FaPlus, FaEdit, FaTrash } from "react-icons/fa";
+import { FiSearch } from "react-icons/fi";
 
 const Party = () => {
   const dispatch = useDispatch();
@@ -84,104 +85,98 @@ const Party = () => {
     });
   };
 
+  const clearForm = () => {
+    setFormData({ partyname: "", mobileNumber: "", city: "", remark: "" });
+    setEditId(null);
+  };
+
   const fieldClass =
-    "h-8 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2.5 text-xs transition placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#424687]/40 sm:text-sm";
+    "!h-8 !min-h-0 w-full rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-[#424687]/40 focus:outline-none focus:ring-2 focus:ring-[#424687]/20";
 
   return (
-    <div className="z-[99] min-h-[calc(100vh-5rem)] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-2 sm:py-3">
-      <div className="mx-auto flex w-full max-w-none flex-col gap-2">
-        <div className="w-full rounded-xl border  bg-white/95 px-2.5 py-2.5 shadow-sm backdrop-blur-sm sm:px-4 sm:py-3">
+    <div className="parties-page -mx-3 flex min-h-[calc(100dvh-var(--app-mobile-header-height)-var(--app-bottom-nav-height)-1.25rem)] flex-col bg-white sm:-mx-4 sm:min-h-[calc(100dvh-var(--app-desktop-header-height))] lg:-mb-8">
+      <div className="flex flex-col gap-2 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-3 py-2 sm:flex-row sm:items-end">
           <form
             onSubmit={handleSubmit}
-            className="flex flex-col gap-2 border-t border-slate-100 pt-3"
+            className="grid flex-1 grid-cols-2 items-end gap-2 sm:flex sm:flex-wrap"
           >
-            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 lg:gap-3">
-              <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-                <label className="mb-0.5 block text-[11px] font-medium text-slate-600 sm:text-xs">
-                  Party name*
-                </label>
-                <input
-                  type="text"
-                  name="partyname"
-                  value={formData.partyname}
-                  onChange={handleInputChange}
-                  placeholder="Party name"
-                  className={fieldClass}
-                  required
-                />
-              </div>
-              <div className="min-w-0">
-                <label className="mb-0.5 block text-[11px] font-medium text-slate-600 sm:text-xs">
-                  Mobile
-                </label>
-                <input
-                  type="text"
-                  name="mobileNumber"
-                  value={formData.mobileNumber}
-                  onChange={handleInputChange}
-                  placeholder="Optional"
-                  className={fieldClass}
-                  inputMode="numeric"
-                />
-              </div>
-              <div className="min-w-0">
-                <label className="mb-0.5 block text-[11px] font-medium text-slate-600 sm:text-xs">
-                  City
-                </label>
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  placeholder="City"
-                  className={fieldClass}
-                />
-              </div>
-              <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-                <label className="mb-0.5 block text-[11px] font-medium text-slate-600 sm:text-xs">
-                  Remark
-                </label>
-                <input
-                  type="text"
-                  name="remark"
-                  value={formData.remark}
-                  onChange={handleInputChange}
-                  placeholder="Remark"
-                  className={fieldClass}
-                />
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 pt-1">
+            <label className="col-span-2 min-w-0 sm:w-48">
+              <span className="mb-1 block text-[11px] font-medium text-slate-500">Party name</span>
+              <input
+                type="text"
+                name="partyname"
+                value={formData.partyname}
+                onChange={handleInputChange}
+                placeholder="Party name"
+                className={fieldClass}
+                required
+              />
+            </label>
+            <label className="min-w-0 sm:w-36">
+              <span className="mb-1 block text-[11px] font-medium text-slate-500">Mobile</span>
+              <input
+                type="text"
+                name="mobileNumber"
+                value={formData.mobileNumber}
+                onChange={handleInputChange}
+                placeholder="Optional"
+                className={fieldClass}
+                inputMode="numeric"
+              />
+            </label>
+            <label className="min-w-0 sm:w-32">
+              <span className="mb-1 block text-[11px] font-medium text-slate-500">City</span>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleInputChange}
+                placeholder="City"
+                className={fieldClass}
+              />
+            </label>
+            <label className="col-span-2 min-w-0 sm:w-52">
+              <span className="mb-1 block text-[11px] font-medium text-slate-500">Remark</span>
+              <input
+                type="text"
+                name="remark"
+                value={formData.remark}
+                onChange={handleInputChange}
+                placeholder="Remark"
+                className={fieldClass}
+              />
+            </label>
+            <div className="col-span-2 flex items-center gap-2">
               <button
                 type="submit"
-                className="inline-flex h-8 items-center justify-center rounded-md bg-[#424687] px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#353a6e] sm:text-sm"
+                className="inline-flex !h-8 !min-h-0 items-center justify-center gap-1.5 rounded-md bg-[#424687] px-3 text-xs font-semibold text-white shadow-sm hover:bg-[#353a6e]"
               >
-                {editId ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <FaEdit size={13} />
-                    Update
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5">
-                    <FaPlus size={13} />
-                    Submit
-                  </span>
-                )}
+                {editId ? <FaEdit size={12} /> : <FaPlus size={12} />}
+                {editId ? "Update" : "Add"}
               </button>
+              {editId && (
+                <button
+                  type="button"
+                  onClick={clearForm}
+                  className="inline-flex !h-8 !min-h-0 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
           </form>
-        </div>
-
-        <div className="flex min-h-[min(70vh,calc(100vh-12rem))] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md">
-          <div className="border-b border-slate-100 px-3 py-2 sm:px-4">
+          <div className="relative w-full sm:w-52">
+            <FiSearch className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <input
               type="search"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search parties…"
-              className={fieldClass}
+              placeholder="Search"
+              aria-label="Search parties"
+              className="!h-8 !min-h-0 w-full rounded-md border border-slate-200 bg-white pl-8 pr-2.5 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-[#424687]/40 focus:outline-none focus:ring-2 focus:ring-[#424687]/20"
             />
           </div>
+      </div>
           {loading && (
             <p className="border-b border-slate-100 bg-slate-50 py-2 text-center text-sm text-[#424687]">
               Loading…
@@ -193,33 +188,20 @@ const Party = () => {
             </p>
           )}
           <div className="min-h-0 flex-1 overflow-auto">
-            <table className="w-full min-w-[640px] border-collapse text-sm">
-              <thead className="sticky top-0 z-10 shadow-sm">
-                <tr className="bg-[#424687] text-white">
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
-                    Party name
-                  </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
-                    Mobile
-                  </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
-                    City
-                  </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
-                    Remark
-                  </th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide">
-                    Actions
-                  </th>
+            <table className="w-full min-w-[680px] border-collapse text-sm">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-gradient-to-r from-[#353a6e] to-[#424687] text-white">
+                  <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide">Party name</th>
+                  <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide">Mobile</th>
+                  <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide">City</th>
+                  <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide">Remark</th>
+                  <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {parties.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={5}
-                      className="px-4 py-12 text-center text-sm text-slate-500"
-                    >
+                    <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500">
                       No parties found.
                     </td>
                   </tr>
@@ -227,37 +209,46 @@ const Party = () => {
                   parties.map((party, index) => (
                     <tr
                       key={party._id}
-                      className={`border-b border-slate-100/80 transition-colors hover:bg-indigo-50/40 ${index % 2 === 0 ? "bg-slate-50/50" : "bg-white"}`}
+                      className={`border-b border-slate-100 transition-colors hover:bg-indigo-50/60 ${
+                        editId === party._id
+                          ? "bg-[#424687]/10"
+                          : index % 2 === 0
+                            ? "bg-white"
+                            : "bg-slate-50/80"
+                      }`}
                     >
-                      <td className="px-3 py-2.5 font-medium text-slate-900">
-                        {party.partyname}
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#424687]/10 text-[11px] font-bold uppercase text-[#424687]">
+                            {(party.partyname || "?").trim().slice(0, 1)}
+                          </span>
+                          <span className="font-medium text-slate-900">{party.partyname}</span>
+                        </div>
                       </td>
-                      <td className="px-3 py-2.5 tabular-nums text-slate-600">
+                      <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-slate-700">
                         {party.mobileNumber || "—"}
                       </td>
-                      <td className="px-3 py-2.5 text-slate-600">
-                        {party.city || "—"}
-                      </td>
-                      <td className="max-w-[12rem] truncate px-3 py-2.5 text-slate-600 sm:max-w-md sm:whitespace-normal sm:break-words">
-                        {party.remark || "—"}
-                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-slate-700">{party.city || "—"}</td>
+                      <td className="px-3 py-2.5 text-slate-600">{party.remark || "—"}</td>
                       <td className="whitespace-nowrap px-3 py-2.5">
-                        <div className="flex flex-wrap items-center gap-1">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
                             onClick={() => handleEdit(party)}
-                            className="rounded-md p-1.5 text-[#424687] transition hover:bg-[#424687]/10 hover:text-[#353a6e]"
+                            className="inline-flex !h-7 !w-7 !min-h-0 items-center justify-center rounded-md bg-[#424687]/10 p-0 text-[#424687] hover:bg-[#424687]/20"
                             title="Edit party"
+                            aria-label="Edit party"
                           >
-                            <FaEdit size={16} />
+                            <FaEdit size={13} />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDelete(party._id)}
-                            className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-800"
+                            className="inline-flex !h-7 !w-7 !min-h-0 items-center justify-center rounded-md bg-red-50 p-0 text-red-600 hover:bg-red-100"
                             title="Delete party"
+                            aria-label="Delete party"
                           >
-                            <FaTrash size={16} />
+                            <FaTrash size={12} />
                           </button>
                         </div>
                       </td>
@@ -268,8 +259,8 @@ const Party = () => {
             </table>
           </div>
           {pagination && pagination.totalRecords > 0 && (
-            <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-xs text-slate-600">
+            <div className="flex flex-col gap-2 border-t border-slate-200 bg-slate-50/80 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-slate-500">
                 Showing{" "}
                 {pagination.totalRecords
                   ? (pagination.currentPage - 1) * pagination.limit + 1
@@ -279,52 +270,48 @@ const Party = () => {
                   pagination.currentPage * pagination.limit,
                   pagination.totalRecords,
                 )}{" "}
-                of {pagination.totalRecords} parties
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-600">Show</label>
+                of {pagination.totalRecords}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-2 text-xs text-slate-500">
+                  Show
                   <select
                     value={entriesPerPage}
                     onChange={(e) => {
                       setEntriesPerPage(Number(e.target.value));
                       setCurrentPage(1);
                     }}
-                    className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs"
+                    className="!h-8 !min-h-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-700"
                   >
-                    {entriesPerPageOptions.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
+                    {entriesPerPageOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={!pagination.hasPreviousPage}
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium disabled:opacity-40"
-                  >
-                    Previous
-                  </button>
-                  <span className="flex items-center text-xs text-slate-600">
-                    Page {pagination.currentPage} of {pagination.totalPages || 1}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={!pagination.hasNextPage}
-                    onClick={() => setCurrentPage((p) => p + 1)}
-                    className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium disabled:opacity-40"
-                  >
-                    Next
-                  </button>
-                </div>
+                </label>
+                <button
+                  type="button"
+                  disabled={!pagination.hasPreviousPage}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  className="inline-flex !h-8 !min-h-0 items-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-40"
+                >
+                  Previous
+                </button>
+                <span className="inline-flex !h-8 !min-h-0 items-center rounded-md bg-[#424687] px-2.5 text-xs font-semibold text-white">
+                  {pagination.currentPage} / {pagination.totalPages || 1}
+                </span>
+                <button
+                  type="button"
+                  disabled={!pagination.hasNextPage}
+                  onClick={() => setCurrentPage((page) => page + 1)}
+                  className="inline-flex !h-8 !min-h-0 items-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-40"
+                >
+                  Next
+                </button>
               </div>
             </div>
           )}
-        </div>
-      </div>
     </div>
   );
 };

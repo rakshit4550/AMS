@@ -348,15 +348,36 @@ const Layout = ({ children }) => {
   const isAuthenticated = Boolean(token);
   const location = useLocation();
   const [hideHeader, setHideHeader] = useState(false);
+  const [sidebarPinned, setSidebarPinned] = useState(
+    () => localStorage.getItem("ams-sidebar-pinned") === "1"
+  );
+  const [sidebarHover, setSidebarHover] = useState(false);
   const showValidityBadge = isAuthenticated && role !== "admin";
+  const sidebarExpanded = sidebarPinned || sidebarHover;
 
   useEffect(() => {
     const shouldHideHeader = location.pathname?.includes("/pay/");
     setHideHeader(shouldHideHeader);
   }, [location]);
 
+  const toggleSidebar = () => {
+    setSidebarPinned((open) => {
+      const next = !open;
+      localStorage.setItem("ams-sidebar-pinned", next ? "1" : "0");
+      if (!next) setSidebarHover(false);
+      return next;
+    });
+  };
+
   return (
-    <div className="min-h-screen">
+    <div
+      className="min-h-screen"
+      style={
+        isAuthenticated && !hideHeader
+          ? { "--app-sidebar-width": sidebarExpanded ? "15rem" : "5rem" }
+          : undefined
+      }
+    >
       <SessionSync />
       <ToastContainer
         position="top-center"
@@ -375,8 +396,16 @@ const Layout = ({ children }) => {
       {!hideHeader && isAuthenticated && <MobileBottomNav />}
       <div className="flex min-w-0">
         {!hideHeader && isAuthenticated && (
-          <div className="fixed left-0 top-0 z-40 hidden h-screen w-60 overflow-hidden overflow-y-auto border-r border-slate-200/90 lg:block">
-            <Sidebar />
+          <div
+            className="fixed left-0 top-0 z-40 hidden h-screen w-[var(--app-sidebar-width)] overflow-visible border-r border-slate-200/90 transition-[width] duration-300 ease-out lg:block"
+            onMouseEnter={() => setSidebarHover(true)}
+            onMouseLeave={() => setSidebarHover(false)}
+          >
+            <Sidebar
+              expanded={sidebarExpanded}
+              pinned={sidebarPinned}
+              onToggle={toggleSidebar}
+            />
           </div>
         )}
         <main
@@ -385,7 +414,7 @@ const Layout = ({ children }) => {
               ? "min-w-0 flex-1"
               : isAuthenticated
                 ? [
-                    "app-main app-main--authenticated box-border w-full min-w-0 flex-1 lg:ml-60 lg:w-[calc(100%-15rem)]",
+                    "app-main app-main--authenticated box-border w-full min-w-0 flex-1 transition-[margin,width] duration-300 ease-out lg:ml-[var(--app-sidebar-width)] lg:w-[calc(100%-var(--app-sidebar-width))]",
                     showValidityBadge ? "has-validity-badge" : "",
                   ]
                     .filter(Boolean)

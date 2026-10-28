@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { fetchDashboardSummary } from "../api/paginatedApi";
+import DateRangePicker from "../components/DateRangePicker";
 import { AiFillDashboard } from "react-icons/ai";
 import { FaArrowTrendDown, FaArrowTrendUp } from "react-icons/fa6";
 import { BsReceiptCutoff } from "react-icons/bs";
@@ -118,42 +119,13 @@ const Dashboard = () => {
     topUtrDeposit,
   } = summary;
 
-  const fromInputMax = dateTo || todayStr;
-
-  const dateFieldClass =
-    "h-9 min-w-[10.5rem] rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-800 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[#424687]/40";
-
-  const onFromChange = (v) => {
-    if (!v) {
-      setDateFrom("");
-      return;
-    }
-    const t = getTodayIST();
-    let next = v;
-    if (next > t) next = t;
-    setDateFrom(next);
-    if (dateTo && next > dateTo) setDateTo(next);
-  };
-
-  const onToChange = (v) => {
-    if (!v) {
-      setDateTo("");
-      return;
-    }
-    const t = getTodayIST();
-    let next = v;
-    if (next > t) next = t;
-    setDateTo(next);
-    if (dateFrom && next < dateFrom) setDateFrom(next);
-  };
-
   const rankedListScrollClass =
-    "max-h-[min(42vh,20rem)] overflow-y-auto overscroll-y-contain scroll-smooth [-webkit-overflow-scrolling:touch]";
+    "max-h-[40rem] overflow-y-auto overscroll-y-contain scroll-smooth [-webkit-overflow-scrolling:touch]";
 
   const partyClosingList = (items, tone, side) => {
     if (items.length === 0) {
       return (
-        <div className="px-4 py-8 text-center text-sm text-slate-500">
+        <div className="px-5 py-10 text-center text-sm text-slate-500">
           {side === "dr"
             ? "No party with Dr closing (debit balance)."
             : "No party with Cr closing (credit balance)."}
@@ -166,39 +138,21 @@ const Dashboard = () => {
           {items.map((row, i) => (
             <li
               key={row.partyId}
-              className="flex items-start justify-between gap-3 px-4 py-3 transition hover:bg-slate-50/80 sm:items-center"
+              className="flex items-center justify-between gap-4 px-5 py-4 transition hover:bg-slate-50/80"
             >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start gap-3">
-                  <span
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums ${tone.rank}`}
-                  >
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className="break-words font-medium leading-snug text-slate-800"
-                      title={row.name}
-                    >
-                      {row.name}
-                    </p>
-                    <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
-                      Overall closing balance (all ledger entries)
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="shrink-0 text-right">
-                <p
-                  className={`text-sm font-semibold tabular-nums ${tone.amount}`}
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums ${tone.rank}`}
                 >
-                  ₹ {formatNumber(Math.abs(row.closing))}{" "}
-                  {side === "dr" ? "Dr" : "Cr"}
-                </p>
-                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                  {side === "dr" ? "Debit balance" : "Credit balance"}
+                  {i + 1}
+                </span>
+                <p className="min-w-0 break-words text-sm font-medium leading-snug text-slate-800 sm:text-[15px]" title={row.name}>
+                  {row.name}
                 </p>
               </div>
+              <p className={`shrink-0 text-base font-semibold tabular-nums ${tone.amount}`}>
+                ₹ {formatNumber(Math.abs(row.closing))} {side === "dr" ? "Dr" : "Cr"}
+              </p>
             </li>
           ))}
         </ol>
@@ -209,7 +163,7 @@ const Dashboard = () => {
   const utrRankList = (items, tone) => {
     if (items.length === 0) {
       return (
-        <div className="px-4 py-8 text-center text-sm text-slate-500">
+        <div className="px-5 py-10 text-center text-sm text-slate-500">
           No UTR entries in this date range.
         </div>
       );
@@ -220,7 +174,7 @@ const Dashboard = () => {
           {items.map((u, i) => (
             <li
               key={u._id}
-              className="flex flex-col gap-1 px-4 py-3 transition hover:bg-slate-50/80 sm:flex-row sm:items-center sm:justify-between"
+              className="flex items-center justify-between gap-4 px-5 py-4 transition hover:bg-slate-50/80"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <span
@@ -229,18 +183,16 @@ const Dashboard = () => {
                   {i + 1}
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate font-mono text-xs font-medium text-slate-800 sm:text-sm">
+                  <p className="truncate font-mono text-sm font-medium text-slate-800">
                     {u.utrNo}
                   </p>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="mt-0.5 text-xs text-slate-500">
                     {formatUtrDate(u.date)}
                     {u.time ? ` · ${u.time}` : ""}
                   </p>
                 </div>
               </div>
-              <span
-                className={`text-sm font-semibold tabular-nums ${tone.amount}`}
-              >
+              <span className={`shrink-0 text-base font-semibold tabular-nums ${tone.amount}`}>
                 ₹ {formatNumber(u.amount)}
               </span>
             </li>
@@ -251,84 +203,51 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="z-[99] min-h-[calc(100vh-5rem)] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-2 sm:py-3">
-      <div className="mx-auto flex w-full max-w-none flex-col gap-4">
-        <div className="rounded-xl border border-slate-200/90 bg-white/95 p-3 shadow-sm ring-1 ring-slate-100/80 sm:p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-            Date range
-          </p>
-          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-            <div className="min-w-0 sm:w-auto">
-              <label
-                htmlFor="dash-date-from"
-                className="mb-1 block text-xs font-medium text-slate-600"
-              >
-                From
-              </label>
-              <input
-                id="dash-date-from"
-                type="date"
-                value={dateFrom}
-                max={fromInputMax}
-                onChange={(e) => onFromChange(e.target.value)}
-                className={dateFieldClass}
-              />
-            </div>
-            <div className="min-w-0 sm:w-auto">
-              <label
-                htmlFor="dash-date-to"
-                className="mb-1 block text-xs font-medium text-slate-600"
-              >
-                To
-              </label>
-              <input
-                id="dash-date-to"
-                type="date"
-                value={dateTo}
-                min={dateFrom || undefined}
-                max={todayStr}
-                onChange={(e) => onToChange(e.target.value)}
-                className={dateFieldClass}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const t = getTodayIST();
-                setDateFrom(t);
-                setDateTo(t);
-              }}
-              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-white hover:text-[#424687] sm:shrink-0"
-            >
-              Today (IST)
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            {dateFrom || dateTo ? (
-              <>
-                Showing data for{" "}
-                <span className="font-semibold text-slate-700">
-                  {rangeSummary}
-                </span>{" "}
-                <span className="text-slate-400">(IST)</span>
-                <span className="mx-1.5 text-slate-300">·</span>
-              </>
-            ) : (
-              <>
-                <span className="font-semibold text-slate-700">
-                  {rangeSummary}
+    <div className="z-[99] bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100/90 py-4 sm:py-6">
+      <div className="mx-auto flex w-full max-w-none flex-col gap-5 sm:gap-6">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#424687] text-white">
+                  <AiFillDashboard className="h-4 w-4" aria-hidden />
                 </span>
-                <span className="mx-1.5 text-slate-300">·</span>
-              </>
+                <h1 className="text-lg font-bold text-slate-900">Dashboard</h1>
+              </div>
+              <p className="mt-2 text-sm text-slate-600">
+                {dateFrom || dateTo ? (
+                  <>
+                    Showing{" "}
+                    <span className="font-semibold text-slate-800">{rangeSummary}</span>
+                    <span className="text-slate-400"> · IST</span>
+                  </>
+                ) : (
+                  <span className="font-medium text-slate-700">{rangeSummary}</span>
+                )}
+              </p>
+            </div>
+            <DateRangePicker
+              from={dateFrom}
+              to={dateTo}
+              max={todayStr}
+              onChange={(nextFrom, nextTo) => {
+                setDateFrom(nextFrom);
+                setDateTo(nextTo);
+              }}
+            />
+          </div>
+          <div className={`mt-4 grid gap-3 ${isTrader ? "sm:grid-cols-2" : "sm:max-w-xs"}`}>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Ledger rows</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-[#424687]">{formatNumber(ledgerCountInRange)}</p>
+            </div>
+            {isTrader && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">UTR rows</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-[#424687]">{formatNumber(utrCountInRange)}</p>
+              </div>
             )}
-            <span className="text-slate-600">
-              {ledgerCountInRange} ledger row
-              {ledgerCountInRange === 1 ? "" : "s"}
-              {isTrader
-                ? ` · ${utrCountInRange} UTR row${utrCountInRange === 1 ? "" : "s"}`
-                : ""}
-            </span>
-          </p>
+          </div>
         </div>
 
         {error && (
@@ -344,9 +263,9 @@ const Dashboard = () => {
           </div>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
           <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-100/60">
-            <div className="flex items-center gap-2 border-b border-slate-100 bg-gradient-to-r from-red-50/90 to-white px-4 py-3">
+            <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-red-50/90 to-white px-5 py-4">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-100 text-red-700">
                 <FaArrowTrendDown className="h-4 w-4" aria-hidden />
               </span>
@@ -367,7 +286,7 @@ const Dashboard = () => {
           </div>
 
           <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-100/60">
-            <div className="flex items-center gap-2 border-b border-slate-100 bg-gradient-to-r from-emerald-50/90 to-white px-4 py-3">
+            <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-emerald-50/90 to-white px-5 py-4">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
                 <FaArrowTrendUp className="h-4 w-4" aria-hidden />
               </span>
@@ -389,9 +308,9 @@ const Dashboard = () => {
         </div>
 
         {isTrader && (
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
             <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-100/60">
-              <div className="flex items-center gap-2 border-b border-slate-100 bg-gradient-to-r from-[#424687]/10 to-white px-4 py-3">
+              <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-[#424687]/10 to-white px-5 py-4">
                 <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#424687]/15 text-[#424687]">
                   <BsReceiptCutoff className="h-4 w-4" aria-hidden />
                 </span>
@@ -408,7 +327,7 @@ const Dashboard = () => {
             </div>
 
             <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-100/60">
-              <div className="flex items-center gap-2 border-b border-slate-100 bg-gradient-to-r from-[#424687]/10 to-white px-4 py-3">
+              <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-[#424687]/10 to-white px-5 py-4">
                 <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#424687]/15 text-[#424687]">
                   <BsReceiptCutoff className="h-4 w-4" aria-hidden />
                 </span>

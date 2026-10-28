@@ -85,20 +85,20 @@ const Modal = ({ title, subtitle, onClose, children }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="settlement-modal-title"
-        className="flex max-h-[min(88vh,760px)] w-full max-w-md flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
+        className="flex max-h-[min(88vh,760px)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+        <div className="flex items-start justify-between gap-3 bg-gradient-to-r from-[#424687] to-[#353a6e] px-5 py-3.5">
           <div className="min-w-0">
-            <h2 id="settlement-modal-title" className="text-lg font-bold text-slate-800">
+            <h2 id="settlement-modal-title" className="text-base font-bold text-white">
               {title}
             </h2>
-            {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
+            {subtitle && <p className="mt-0.5 text-xs text-indigo-100">{subtitle}</p>}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-red-600"
+            className="inline-flex !h-7 !w-7 !min-h-0 items-center justify-center rounded-md p-0 text-white/80 transition hover:bg-white/15 hover:text-white"
             aria-label="Close"
           >
             <FaTimes size={16} />
@@ -281,9 +281,9 @@ const Settlement = () => {
   const isDeposit = ledgerForm.transactionType === "deposit";
 
   const fieldClass =
-    "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#424687]/40";
+    "!h-9 !min-h-0 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-[#424687]/40 focus:outline-none focus:ring-2 focus:ring-[#424687]/20";
   const selectClass =
-    "h-8 min-w-[9.5rem] rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#424687]/30";
+    "!h-8 !min-h-0 min-w-[9.5rem] rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#424687]/30";
 
   const parsePercent = (value, required) => {
     const text = String(value ?? "").trim();
@@ -521,7 +521,13 @@ const Settlement = () => {
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-[#424687] to-[#353a6e] px-4 py-2.5">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-white">Settlement entry</h2>
-            <p className="text-[11px] text-indigo-100">Party, username, type, settlement</p>
+            <p className="truncate text-[11px] text-indigo-100">
+              {selectedUser
+                ? `${selectedParty.partyname} · ${selectedUser.username}`
+                : selectedParty
+                  ? selectedParty.partyname
+                  : "Party, username, type, settlement"}
+            </p>
           </div>
           <button
             type="button"
@@ -533,7 +539,7 @@ const Settlement = () => {
           </button>
         </div>
 
-        <form onSubmit={handleEntrySubmit} className="shrink-0 border-b border-slate-100 px-3 py-2.5">
+        <form onSubmit={handleEntrySubmit} className="shrink-0 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-3 py-2.5">
           <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1.25fr)_auto_auto]">
             <label className="block min-w-0">
               <span className="mb-1 flex items-center justify-between text-[11px] font-medium text-slate-500">
@@ -616,12 +622,12 @@ const Settlement = () => {
 
             <div>
               <span className="mb-1 block text-[11px] font-medium text-slate-500">3 · Type</span>
-              <div className="grid h-11 w-full grid-cols-2 gap-0.5 overflow-hidden rounded-lg bg-slate-100 p-0.5 lg:inline-flex lg:h-8 lg:w-auto">
+              <div className="grid !h-9 !min-h-0 w-full grid-cols-2 gap-0.5 overflow-hidden rounded-lg bg-slate-100 p-0.5 lg:inline-flex lg:!h-8 lg:w-auto">
                 <button
                   type="button"
                   onClick={() => setLedgerForm((prev) => ({ ...prev, transactionType: "deposit" }))}
-                  className={`flex h-full items-center justify-center rounded-md px-3 text-xs font-semibold leading-none transition ${
-                    isDeposit ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600"
+                  className={`flex !h-full !min-h-0 items-center justify-center rounded-md px-3 text-xs font-semibold leading-none transition ${
+                    isDeposit ? "bg-emerald-600 text-white shadow-sm" : "text-slate-500 hover:text-emerald-700"
                   }`}
                 >
                   Deposit
@@ -629,8 +635,8 @@ const Settlement = () => {
                 <button
                   type="button"
                   onClick={() => setLedgerForm((prev) => ({ ...prev, transactionType: "withdrawal" }))}
-                  className={`flex h-full items-center justify-center rounded-md px-3 text-xs font-semibold leading-none transition ${
-                    !isDeposit ? "bg-red-600 text-white shadow-sm" : "text-slate-600"
+                  className={`flex !h-full !min-h-0 items-center justify-center rounded-md px-3 text-xs font-semibold leading-none transition ${
+                    !isDeposit ? "bg-red-600 text-white shadow-sm" : "text-slate-500 hover:text-red-600"
                   }`}
                 >
                   Withdraw
@@ -648,8 +654,14 @@ const Settlement = () => {
                   </span>
                 )}
               </span>
-              <div className="flex w-full items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-[#424687]/30 lg:h-8 lg:w-auto">
-                <span className="flex items-center pl-2.5 text-xs font-medium text-slate-400">₹</span>
+              <div
+                className={`flex w-full items-stretch overflow-hidden rounded-lg border bg-white shadow-sm focus-within:ring-2 lg:!h-8 lg:w-auto ${
+                  isDeposit
+                    ? "border-emerald-200 focus-within:ring-emerald-500/30"
+                    : "border-red-200 focus-within:ring-red-400/30"
+                }`}
+              >
+                <span className={`flex items-center pl-2.5 text-xs font-semibold ${isDeposit ? "text-emerald-600" : "text-red-500"}`}>₹</span>
                 <input
                   ref={amountRef}
                   type="number"
@@ -662,12 +674,16 @@ const Settlement = () => {
                   placeholder="Settlement"
                   aria-label="Settlement"
                   disabled={!selectedUser}
-                  className="min-w-0 flex-1 border-0 bg-transparent px-2 text-sm text-slate-900 outline-none [appearance:textfield] placeholder:text-slate-400 disabled:cursor-not-allowed lg:w-28 lg:flex-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  className={`!h-9 !min-h-0 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm font-semibold outline-none [appearance:textfield] placeholder:font-normal placeholder:text-slate-400 disabled:cursor-not-allowed lg:!h-8 lg:w-28 lg:flex-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+                    isDeposit ? "text-emerald-700" : "text-red-600"
+                  }`}
                 />
                 <button
                   type="submit"
                   disabled={!selectedUser || !appliedPercent}
-                  className="shrink-0 bg-[#424687] px-3.5 text-xs font-semibold text-white hover:bg-[#353a6e] disabled:cursor-not-allowed disabled:bg-slate-300"
+                  className={`shrink-0 px-3.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300 ${
+                    isDeposit ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"
+                  }`}
                 >
                   Save
                 </button>
@@ -676,10 +692,20 @@ const Settlement = () => {
           </div>
 
           {total !== null && (
-            <p className="mt-1.5 text-right text-[11px] text-slate-500">
-              Share {rupee(share)} · Total{" "}
-              <span className="font-semibold text-slate-800">{rupee(total)}</span>
-            </p>
+            <div className="mt-1.5 flex justify-end gap-1.5 text-[11px]">
+              <span className="rounded-full bg-white px-2 py-0.5 text-slate-500 shadow-sm ring-1 ring-slate-200">
+                Share <span className="font-semibold text-slate-700">{rupee(share)}</span>
+              </span>
+              <span
+                className={`rounded-full px-2 py-0.5 font-semibold shadow-sm ring-1 ${
+                  isDeposit
+                    ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
+                    : "bg-red-50 text-red-600 ring-red-100"
+                }`}
+              >
+                Total {rupee(total)}
+              </span>
+            </div>
           )}
           {(ledgerError || (selectedUser && !appliedPercent) || (error && !partyModal && !userModal)) && (
             <p className="mt-1 text-xs text-red-600">
@@ -693,23 +719,23 @@ const Settlement = () => {
         {selectedUser ? (
           <>
             <div className="grid shrink-0 grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
-              <div className="border-t-2 border-emerald-500 px-3 py-1.5">
+              <div className="border-t-2 border-emerald-500 bg-emerald-50/50 px-3 py-1.5">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
                   Deposit
                 </p>
-                <p className="text-sm font-semibold tabular-nums text-slate-900">
+                <p className="text-sm font-semibold tabular-nums text-emerald-800">
                   {rupee(ledgerSummary?.deposit?.totalAmount)}
                 </p>
               </div>
-              <div className="border-t-2 border-red-400 px-3 py-1.5">
+              <div className="border-t-2 border-red-400 bg-red-50/50 px-3 py-1.5">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-red-500">
                   Withdrawal
                 </p>
-                <p className="text-sm font-semibold tabular-nums text-slate-900">
+                <p className="text-sm font-semibold tabular-nums text-red-700">
                   {rupee(ledgerSummary?.withdrawal?.totalAmount)}
                 </p>
               </div>
-              <div className="border-t-2 border-[#424687] px-3 py-1.5">
+              <div className="border-t-2 border-[#424687] bg-indigo-50/40 px-3 py-1.5">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[#424687]">
                   Closing
                 </p>
@@ -732,7 +758,7 @@ const Settlement = () => {
               <div className="min-h-[22rem] overflow-auto sm:min-h-0 sm:flex-1">
                 <table className="w-full min-w-[720px] border-collapse text-sm">
                   <thead className="sticky top-0 z-10">
-                    <tr className="bg-[#424687] text-white">
+                    <tr className="bg-gradient-to-r from-[#353a6e] to-[#424687] text-white">
                       <th className="w-12 px-3 py-2 text-left text-xs font-semibold">Sr</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold">Date</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold">Type</th>
@@ -754,8 +780,10 @@ const Settlement = () => {
                         return (
                           <tr
                             key={row._id}
-                            className={`border-b border-slate-100 transition-colors hover:bg-indigo-50/50 ${
-                              index % 2 === 0 ? "bg-white" : "bg-slate-50/70"
+                            className={`border-b border-slate-100 transition-colors ${
+                              deposit
+                                ? "bg-emerald-50/40 hover:bg-emerald-50"
+                                : "bg-red-50/40 hover:bg-red-50"
                             }`}
                           >
                             <td className="px-3 py-2 tabular-nums text-slate-500">
@@ -815,7 +843,7 @@ const Settlement = () => {
                           setLedgerLimit(Number(event.target.value));
                           setLedgerPage(1);
                         }}
-                        className="h-7 rounded-md border border-slate-300 bg-white px-1.5 text-xs"
+                        className="!h-7 !min-h-0 rounded-md border border-slate-300 bg-white px-1.5 text-xs"
                       >
                         {[10, 20, 50].map((value) => (
                           <option key={value} value={value}>
@@ -828,18 +856,18 @@ const Settlement = () => {
                       type="button"
                       disabled={!ledgerPagination.hasPreviousPage}
                       onClick={() => setLedgerPage((page) => Math.max(1, page - 1))}
-                      className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+                      className="inline-flex !h-7 !min-h-0 items-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium disabled:opacity-40"
                     >
                       Previous
                     </button>
-                    <span className="text-xs text-slate-600">
+                    <span className="inline-flex !h-7 !min-h-0 items-center rounded-md bg-[#424687] px-2 text-xs font-semibold text-white">
                       {ledgerPagination.currentPage} / {ledgerPagination.totalPages || 1}
                     </span>
                     <button
                       type="button"
                       disabled={!ledgerPagination.hasNextPage}
                       onClick={() => setLedgerPage((page) => page + 1)}
-                      className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+                      className="inline-flex !h-7 !min-h-0 items-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium disabled:opacity-40"
                     >
                       Next
                     </button>
@@ -866,7 +894,7 @@ const Settlement = () => {
                     type="date"
                     value={fromDate}
                     onChange={(event) => setFromDate(event.target.value)}
-                    className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800 sm:w-auto"
+                    className="!h-8 !min-h-0 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800 shadow-sm sm:w-auto"
                   />
                 </label>
                 <label className="block min-w-0">
@@ -875,7 +903,7 @@ const Settlement = () => {
                     type="date"
                     value={toDate}
                     onChange={(event) => setToDate(event.target.value)}
-                    className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800 sm:w-auto"
+                    className="!h-8 !min-h-0 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800 shadow-sm sm:w-auto"
                   />
                 </label>
               </div>
@@ -893,7 +921,7 @@ const Settlement = () => {
             <div className="min-h-[22rem] overflow-auto sm:min-h-0 sm:flex-1">
               <table className="w-full min-w-[760px] border-collapse text-sm">
                 <thead className="sticky top-0 z-10">
-                  <tr className="bg-[#424687] text-white">
+                  <tr className="bg-gradient-to-r from-[#353a6e] to-[#424687] text-white">
                     <th className="px-3 py-2 text-left text-xs font-semibold">Date</th>
                     <th className="px-3 py-2 text-left text-xs font-semibold">Username</th>
                     <th className="px-3 py-2 text-right text-xs font-semibold">Settlement</th>
@@ -911,11 +939,13 @@ const Settlement = () => {
                       </td>
                     </tr>
                   ) : (
-                    partyLines.map((entry, index) => (
+                    partyLines.map((entry) => (
                       <tr
                         key={entry._id}
                         className={`border-b border-slate-100 ${
-                          index % 2 === 0 ? "bg-white" : "bg-slate-50/70"
+                          entry.transactionType === "deposit"
+                            ? "bg-emerald-50/40"
+                            : "bg-red-50/40"
                         }`}
                       >
                         <td className="whitespace-nowrap px-3 py-2 text-slate-700">
@@ -1023,13 +1053,13 @@ const Settlement = () => {
               <button
                 type="button"
                 onClick={() => setPartyModal(null)}
-                className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700"
+                className="inline-flex !h-9 !min-h-0 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="h-9 rounded-lg bg-[#424687] px-4 text-sm font-semibold text-white hover:bg-[#353a6e]"
+                className="inline-flex !h-9 !min-h-0 items-center rounded-lg bg-[#424687] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#353a6e]"
               >
                 Save
               </button>
@@ -1075,13 +1105,13 @@ const Settlement = () => {
               <button
                 type="button"
                 onClick={() => setUserModal(null)}
-                className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700"
+                className="inline-flex !h-9 !min-h-0 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="h-9 rounded-lg bg-[#424687] px-4 text-sm font-semibold text-white hover:bg-[#353a6e]"
+                className="inline-flex !h-9 !min-h-0 items-center rounded-lg bg-[#424687] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#353a6e]"
               >
                 Save
               </button>
