@@ -90,6 +90,7 @@ const Event = () => {
   const {
     entries,
     position,
+    book,
     loading: entryLoading,
     error: entryError,
   } = useSelector((state) => state.entry);
@@ -116,6 +117,7 @@ const Event = () => {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(20);
+  const [bookOpen, setBookOpen] = useState(false);
 
   const fieldClass =
     "!h-8 !min-h-0 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 transition placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#424687]/40";
@@ -162,6 +164,7 @@ const Event = () => {
       setMarketFormError("");
       setEntryEditId(null);
       setEntryFormError("");
+      setBookOpen(false);
     };
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
@@ -265,6 +268,7 @@ const Event = () => {
       setMarketFormError("");
       setEntryEditId(null);
       setEntryFormError("");
+      setBookOpen(false);
       return;
     }
     setSelectedEvent(item);
@@ -343,12 +347,14 @@ const Event = () => {
       setSelectedMarket(null);
       setEntryEditId(null);
       setEntryFormError("");
+      setBookOpen(false);
       return;
     }
     setSelectedMarket(market);
     setEntryForm(blankEntry(market.booktype));
     setEntryEditId(null);
     setEntryFormError("");
+    setBookOpen(false);
   };
 
   const handleEntryChange = (event) => {
@@ -690,7 +696,7 @@ const Event = () => {
                                       <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#424687]">
                                         Entry · {market.marketname}
                                       </p>
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-start gap-2">
                                       <form
                                         onSubmit={handleEntrySubmit}
                                         className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-end"
@@ -855,11 +861,18 @@ const Event = () => {
                                                   <th className="px-2 py-1.5 font-semibold">Run</th>
                                                 )}
                                                 <th className="px-2 py-1.5 font-semibold">Selection</th>
-                                                {market.booktype === "Fancy" && (
-                                                  <th className="px-2 py-1.5 font-semibold">Book</th>
-                                                )}
                                                 <th className="px-2 py-1.5 font-semibold">Date</th>
-                                                <th className="w-10 px-2 py-1.5" />
+                                                <th className="px-2 py-1.5 text-right">
+                                                  {market.booktype === "Fancy" && Array.isArray(book) && book.length > 0 && (
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => setBookOpen(true)}
+                                                      className="inline-flex !h-7 !min-h-0 items-center rounded-md bg-[#424687] px-2 text-[11px] font-semibold text-white hover:bg-[#353a6e]"
+                                                    >
+                                                      Book
+                                                    </button>
+                                                  )}
+                                                </th>
                                               </tr>
                                             </thead>
                                             <tbody>
@@ -883,38 +896,6 @@ const Event = () => {
                                                     </td>
                                                   )}
                                                   <td className="px-2 py-1.5 text-slate-800">{entry.selection}</td>
-                                                  {market.booktype === "Fancy" && (
-                                                    <td className="px-2 py-1.5">
-                                                      {Array.isArray(entry.book) && entry.book.length > 0 ? (
-                                                        <div className="inline-flex min-w-[7rem] flex-col overflow-hidden rounded-md border border-slate-200/80 bg-white/80">
-                                                          {entry.book.map((line, index) => {
-                                                            const amount = Number(line.amount);
-                                                            const tone =
-                                                              amount < 0
-                                                                ? "text-rose-600"
-                                                                : amount > 0
-                                                                  ? "text-emerald-700"
-                                                                  : "text-slate-700";
-                                                            return (
-                                                              <div
-                                                                key={`${line.run}-${index}`}
-                                                                className={`flex items-center justify-between gap-3 px-1.5 py-0.5 ${
-                                                                  index > 0 ? "border-t border-slate-100" : ""
-                                                                }`}
-                                                              >
-                                                                <span className="tabular-nums text-slate-600">{line.run}</span>
-                                                                <span className={`font-semibold tabular-nums ${tone}`}>
-                                                                  {formatPosition(amount)}
-                                                                </span>
-                                                              </div>
-                                                            );
-                                                          })}
-                                                        </div>
-                                                      ) : (
-                                                        "—"
-                                                      )}
-                                                    </td>
-                                                  )}
                                                   <td className="whitespace-nowrap px-2 py-1.5 text-slate-700">
                                                     <div>{entry.createdDate || "—"}</div>
                                                     {entry.createdTime && (
@@ -936,6 +917,57 @@ const Event = () => {
                                               ))}
                                             </tbody>
                                           </table>
+                                        </div>
+                                      )}
+                                      {bookOpen && market.booktype === "Fancy" && Array.isArray(book) && book.length > 0 && (
+                                        <div
+                                          className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/40 p-4"
+                                          onClick={() => setBookOpen(false)}
+                                        >
+                                          <div
+                                            className="max-h-[70vh] w-full max-w-xs overflow-auto rounded-xl border border-slate-200 bg-white shadow-xl"
+                                            onClick={(event) => event.stopPropagation()}
+                                          >
+                                            <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-3 py-2">
+                                              <p className="text-xs font-semibold text-[#424687]">
+                                                Book · {market.marketname}
+                                              </p>
+                                              <button
+                                                type="button"
+                                                onClick={() => setBookOpen(false)}
+                                                className="inline-flex !h-7 !min-h-0 items-center rounded-md px-2 text-xs font-semibold text-slate-500 hover:bg-slate-100"
+                                              >
+                                                Close
+                                              </button>
+                                            </div>
+                                            {book.map((side, sideIndex) => (
+                                              <div key={side.team || sideIndex} className={sideIndex > 0 ? "border-t border-slate-200" : ""}>
+                                                <p className="truncate bg-slate-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                                  {side.teamname}
+                                                </p>
+                                                {(side.lines || []).map((line, index) => {
+                                                  const amount = Number(line.amount);
+                                                  const tone =
+                                                    amount < 0
+                                                      ? "text-rose-600"
+                                                      : amount > 0
+                                                        ? "text-emerald-700"
+                                                        : "text-slate-700";
+                                                  return (
+                                                    <div
+                                                      key={`${line.run}-${index}`}
+                                                      className="flex items-center justify-between gap-4 px-3 py-1"
+                                                    >
+                                                      <span className="text-xs tabular-nums text-slate-600">{line.run}</span>
+                                                      <span className={`text-xs font-bold tabular-nums ${tone}`}>
+                                                        {formatPosition(amount)}
+                                                      </span>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            ))}
+                                          </div>
                                         </div>
                                       )}
                                     </div>
