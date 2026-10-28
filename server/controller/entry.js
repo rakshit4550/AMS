@@ -78,7 +78,7 @@ const readEntryBody = (body, event, market) => {
 
   const value = {
     team: team.team,
-    teamname: team.teamname,
+    teamname: market.booktype === 'Fancy' ? market.marketname : team.teamname,
     stack: stack.value,
     rate: rate.value,
     selection: selection.value,
@@ -134,10 +134,13 @@ const fancyBook = (entry) => {
   ];
 };
 
-const presentEntry = (entry) => {
+const presentEntry = (entry, market) => {
   const source = typeof entry?.toObject === 'function' ? entry.toObject() : entry;
   const rest = { ...source };
   delete rest.book;
+  if (market?.booktype === 'Fancy' && market.marketname) {
+    rest.teamname = market.marketname;
+  }
   return {
     ...rest,
     ...formatCreatedAt(source.createdAt),
@@ -253,7 +256,7 @@ const findOwnedMarket = async (eventId, marketId, userId) => {
     event: event._id,
     createdBy: userId,
   })
-    .select('_id booktype event')
+    .select('_id booktype marketname event')
     .lean();
   if (!market) return { error: 'Market not found or you do not have access', status: 404 };
 
@@ -283,7 +286,7 @@ export const createEntry = async (req, res) => {
 
     return res.status(201).json({
       message: 'Entry created successfully',
-      entry: presentEntry(entry),
+      entry: presentEntry(entry, owned.market),
       position,
     });
   } catch (error) {
@@ -345,7 +348,7 @@ export const getEntriesByMarket = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      entries: entries.map(presentEntry),
+      entries: entries.map((entry) => presentEntry(entry, owned.market)),
       position,
       book,
       pagination: {
@@ -384,7 +387,15 @@ export const getEntryById = async (req, res) => {
       return res.status(404).json({ message: 'Entry not found or you do not have access' });
     }
 
-    return res.status(200).json(presentEntry(entry));
+    const market = await Market.findOne({
+      _id: req.params.marketId,
+      event: req.params.eventId,
+      createdBy: req.user.id,
+    })
+      .select('booktype marketname')
+      .lean();
+
+    return res.status(200).json(presentEntry(entry, market));
   } catch (error) {
     return res.status(500).json({ message: 'Server error' });
   }
@@ -447,7 +458,7 @@ export const updateEntry = async (req, res) => {
 
     return res.status(200).json({
       message: 'Entry updated successfully',
-      entry: presentEntry(entry),
+      entry: presentEntry(entry, owned.market),
       position,
     });
   } catch (error) {
