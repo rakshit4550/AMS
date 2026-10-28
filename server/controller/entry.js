@@ -119,21 +119,16 @@ const formatCreatedAt = (value) => {
   };
 };
 
-const fancyBook = (entry) => {
+const fancyEntryAmount = (entry, run) => {
   if (entry.selection !== 'Yes' && entry.selection !== 'No') return null;
 
-  const run = Number(entry.run);
+  const entryRun = Number(entry.run);
   const stack = Number(entry.stack);
-  if (!Number.isFinite(run) || !Number.isFinite(stack)) return null;
+  if (!Number.isFinite(entryRun) || !Number.isFinite(stack)) return null;
 
-  const onLine = entry.selection === 'Yes' ? stack : -stack;
-  const belowLine = -onLine;
-
-  return [
-    { run: roundMoney(run - 1), amount: roundMoney(belowLine) },
-    { run: roundMoney(run), amount: roundMoney(onLine) },
-    { run: roundMoney(run + 1), amount: roundMoney(onLine) },
-  ];
+  const onOrAbove = run >= entryRun;
+  if (entry.selection === 'Yes') return onOrAbove ? stack : -stack;
+  return onOrAbove ? -stack : stack;
 };
 
 const presentEntry = (entry, market) => {
@@ -151,21 +146,24 @@ const presentEntry = (entry, market) => {
 };
 
 const marketBook = (market, entries) => {
-  const totals = new Map();
+  const valid = entries.filter((entry) => fancyEntryAmount(entry, 0) !== null);
+  if (!valid.length) return [];
 
-  entries.forEach((entry) => {
-    const lines = fancyBook(entry);
-    if (!lines) return;
-    lines.forEach((line) => {
-      totals.set(line.run, (totals.get(line.run) || 0) + line.amount);
-    });
+  const runs = new Set();
+  valid.forEach((entry) => {
+    const run = Number(entry.run);
+    runs.add(roundMoney(run - 1));
+    runs.add(roundMoney(run));
+    runs.add(roundMoney(run + 1));
   });
 
-  const lines = [...totals.entries()]
-    .sort((left, right) => left[0] - right[0])
-    .map(([run, amount]) => ({ run, amount: roundMoney(amount) }));
+  const lines = [...runs]
+    .sort((left, right) => left - right)
+    .map((run) => ({
+      run,
+      amount: roundMoney(valid.reduce((sum, entry) => sum + fancyEntryAmount(entry, run), 0)),
+    }));
 
-  if (!lines.length) return [];
   return [{ teamname: market.marketname, lines }];
 };
 
