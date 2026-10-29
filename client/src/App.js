@@ -254,6 +254,7 @@ import ResetAuthenticator from "./pages/ResetAuthenticator";
 import Party from "./pages/Party";
 import Settlement from "./pages/Settlement";
 import Event from "./pages/Event";
+import Interest from "./pages/Interest";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import MobileBottomNav from "./components/MobileBottomNav";
@@ -484,6 +485,16 @@ function App() {
             <Layout>
               <ProtectedRoute>
                 <Settlement />
+              </ProtectedRoute>
+            </Layout>
+          }
+        />
+        <Route
+          path="/interest"
+          element={
+            <Layout>
+              <ProtectedRoute>
+                <Interest />
               </ProtectedRoute>
             </Layout>
           }

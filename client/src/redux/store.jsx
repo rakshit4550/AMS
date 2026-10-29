@@ -7,6 +7,7 @@ import settlementReducer from './settlementSlice';
 import eventReducer from './eventSlice';
 import marketReducer from './marketSlice';
 import entryReducer from './entrySlice';
+import interestReducer from './interestSlice';
 
 export const store = configureStore({
   reducer: {
@@ -18,5 +19,6 @@ export const store = configureStore({
     event: eventReducer,
     market: marketReducer,
     entry: entryReducer,
+    interest: interestReducer,
   },
 });

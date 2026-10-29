@@ -5,6 +5,7 @@ import { toast } from "./AppToast";
 import { AiFillBank, AiFillDashboard } from "react-icons/ai";
 import { GrTransaction } from "react-icons/gr";
 import { FaHandshake, FaUser } from "react-icons/fa";
+import { FaPiggyBank } from "react-icons/fa6";
 import { TbReportAnalytics } from "react-icons/tb";
 import { BsReceiptCutoff } from "react-icons/bs";
 import { IoLogOutOutline } from "react-icons/io5";
@@ -31,6 +32,7 @@ const MobileBottomNav = () => {
   const items = [
     { to: "/dashboard", label: "Home", icon: AiFillDashboard },
     { to: "/parties", label: "Parties", icon: AiFillBank },
+    { to: "/interest", label: "Interest", icon: FaPiggyBank },
     { to: "/settlement", label: "Settle", icon: FaHandshake },
     { to: "/events", label: "Events", icon: MdEvent },
     { to: "/account", label: "Account", icon: GrTransaction },
