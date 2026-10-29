@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
+import { markIntentionalLogout } from "../api/logoutSignal";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -221,7 +222,9 @@ export const confirmReset2FA = createAsyncThunk(
 
 // Logout user. Ask the server to revoke the JWT, then always clear this browser.
 export const logout = createAsyncThunk("user/logout", async () => {
+  markIntentionalLogout();
   const token = localStorage.getItem("token");
+  localStorage.removeItem("token");
   try {
     if (token) {
       await axios.post(
@@ -234,6 +237,7 @@ export const logout = createAsyncThunk("user/logout", async () => {
     // The browser session still ends. If this call fails, the token stays valid until it expires.
   } finally {
     localStorage.removeItem("token");
+    markIntentionalLogout();
   }
   return null;
 });

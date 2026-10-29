@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { FaTimes } from "react-icons/fa";
-import { toast } from "react-toastify";
+import { toast } from "./AppToast";
 import { disable2FA, enable2FA, setup2FA } from "../redux/authSlice";
 
 const TwoFactorModal = ({ onClose }) => {

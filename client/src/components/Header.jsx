@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { FiCalendar, FiChevronDown, FiClock, FiLock, FiLogOut, FiShield } from "react-icons/fi";
-import { toast } from "react-toastify";
+import { toast } from "./AppToast";
 import { logout } from "../redux/authSlice";
 import ChangePasswordModal from "./ChangePasswordModal";
 import TwoFactorModal from "./TwoFactorModal";

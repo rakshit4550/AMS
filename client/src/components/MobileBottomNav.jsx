@@ -1,7 +1,7 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { toast } from "react-toastify";
+import { toast } from "./AppToast";
 import { AiFillBank, AiFillDashboard } from "react-icons/ai";
 import { GrTransaction } from "react-icons/gr";
 import { FaHandshake, FaUser } from "react-icons/fa";

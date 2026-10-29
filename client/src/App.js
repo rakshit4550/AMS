@@ -247,8 +247,7 @@ import {
 } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import "tailwindcss/tailwind.css";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { ToastContainer, toast } from "./components/AppToast";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import ResetAuthenticator from "./pages/ResetAuthenticator";
@@ -380,17 +379,13 @@ const Layout = ({ children }) => {
     >
       <SessionSync />
       <ToastContainer
-        position="top-center"
-        autoClose={2000}
-        hideProgressBar
-        newestOnTop={false}
-        closeButton={false}
-        icon={false}
-        rtl={false}
-        pauseOnFocusLoss
-        draggable={false}
-        pauseOnHover
-        theme="colored"
+        placement={
+          isAuthenticated && !hideHeader
+            ? showValidityBadge
+              ? "header-validity"
+              : "header"
+            : "safe"
+        }
       />
       {!hideHeader && isAuthenticated && <Header />}
       {!hideHeader && isAuthenticated && <MobileBottomNav />}

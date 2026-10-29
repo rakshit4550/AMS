@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { FaEye, FaEyeSlash, FaTimes } from "react-icons/fa";
-import { toast } from "react-toastify";
+import { toast } from "./AppToast";
 import { changePassword, verifyOldPassword } from "../redux/authSlice";
 
 const ChangePasswordModal = ({ onClose }) => {
