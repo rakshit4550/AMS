@@ -56,6 +56,7 @@ const Interest = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [receipt, setReceipt] = useState({ amount: "", date: todayInputDate() });
+  const [editingReceiptDate, setEditingReceiptDate] = useState("");
   const [openMonth, setOpenMonth] = useState(null);
 
   useEffect(() => {
@@ -154,18 +155,24 @@ const Interest = () => {
     if (ok) setEditOpen(false);
   };
 
+  const resetReceiptForm = () => {
+    setEditingReceiptDate("");
+    setReceipt({ amount: "", date: todayInputDate() });
+  };
+
   const handleReceipt = async (event) => {
     event.preventDefault();
     const ok = await saveLoan({
       receivedAmount: Number(receipt.amount),
-      receivedDate: receipt.date,
+      receivedDate: editingReceiptDate || receipt.date,
     });
-    if (ok) setReceipt({ amount: "", date: todayInputDate() });
+    if (ok) resetReceiptForm();
   };
 
-  const clearReceipts = async () => {
-    if (!window.confirm("Clear every receipt on this loan?")) return;
-    await saveLoan({ receivedAmount: "", receivedDate: "" });
+  const startEditReceipt = (item) => {
+    setEditingReceiptDate(item.date);
+    setReceipt({ amount: String(item.amount ?? ""), date: item.date });
+    setDetailError("");
   };
 
   const toggleReceived = async (month) => {
@@ -194,7 +201,7 @@ const Interest = () => {
     setEditOpen(false);
     setDetailError("");
     setOpenMonth(null);
-    setReceipt({ amount: "", date: todayInputDate() });
+    resetReceiptForm();
   };
 
   return (
@@ -249,6 +256,7 @@ const Interest = () => {
           saving={saving}
           detailError={detailError}
           receipt={receipt}
+          editingReceiptDate={editingReceiptDate}
           openMonth={openMonth}
           parties={partyChoices(form.party)}
           onBack={() => setLoan(null)}
@@ -261,7 +269,8 @@ const Interest = () => {
             setReceipt((prev) => ({ ...prev, [name]: value }));
           }}
           onReceipt={handleReceipt}
-          onClearReceipts={clearReceipts}
+          onEditReceipt={startEditReceipt}
+          onCancelReceiptEdit={resetReceiptForm}
           onToggleMonth={setOpenMonth}
           onToggleReceived={toggleReceived}
         />
@@ -434,6 +443,7 @@ const LoanDetail = ({
   saving,
   detailError,
   receipt,
+  editingReceiptDate,
   openMonth,
   parties,
   onBack,
@@ -443,7 +453,8 @@ const LoanDetail = ({
   onTerms,
   onReceiptChange,
   onReceipt,
-  onClearReceipts,
+  onEditReceipt,
+  onCancelReceiptEdit,
   onToggleMonth,
   onToggleReceived,
 }) => {
@@ -512,14 +523,22 @@ const LoanDetail = ({
           </label>
           <label className="w-40">
             <span className="mb-1 block text-[11px] font-medium text-slate-500">Date</span>
-            <input type="date" name="date" value={receipt.date} onChange={onReceiptChange} required className={fieldClass} />
+            <input
+              type="date"
+              name="date"
+              value={receipt.date}
+              onChange={onReceiptChange}
+              required
+              disabled={Boolean(editingReceiptDate)}
+              className={fieldClass}
+            />
           </label>
-          <button type="submit" disabled={saving || loan.status === "closed"} className="inline-flex !h-8 !min-h-0 items-center rounded-md bg-[#424687] px-3 text-xs font-semibold text-white disabled:opacity-50">
-            Save receipt
+          <button type="submit" disabled={saving || (loan.status === "closed" && !editingReceiptDate)} className="inline-flex !h-8 !min-h-0 items-center rounded-md bg-[#424687] px-3 text-xs font-semibold text-white disabled:opacity-50">
+            {editingReceiptDate ? "Update receipt" : "Save receipt"}
           </button>
-          {loan.receipts?.length > 0 && (
-            <button type="button" onClick={onClearReceipts} disabled={saving} className="inline-flex !h-8 !min-h-0 items-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600">
-              Clear all
+          {editingReceiptDate && (
+            <button type="button" onClick={onCancelReceiptEdit} disabled={saving} className="inline-flex !h-8 !min-h-0 items-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600">
+              Cancel
             </button>
           )}
         </form>
@@ -534,15 +553,26 @@ const LoanDetail = ({
                   <th className="px-3 py-2 text-right">Amount</th>
                   <th className="px-3 py-2 text-right">Principal</th>
                   <th className="px-3 py-2 text-right">Interest</th>
+                  <th className="px-3 py-2 text-right"> </th>
                 </tr>
               </thead>
               <tbody>
                 {loan.receipts.map((item) => (
-                  <tr key={`${item.date}-${item.amount}`} className="border-t border-slate-100">
+                  <tr key={item.date} className="border-t border-slate-100">
                     <td className="px-3 py-2">{showDate(item.date)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{money(item.amount)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{money(item.principal)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{money(item.interest)}</td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => onEditReceipt(item)}
+                        disabled={saving}
+                        className="inline-flex !h-7 !min-h-0 items-center rounded-md border border-[#424687]/20 px-2 text-xs font-semibold text-[#424687]"
+                      >
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
