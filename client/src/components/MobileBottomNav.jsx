@@ -32,13 +32,13 @@ const MobileBottomNav = () => {
   const items = [
     { to: "/dashboard", label: "Home", icon: AiFillDashboard },
     { to: "/parties", label: "Parties", icon: AiFillBank },
-    { to: "/interest", label: "Interest", icon: FaPiggyBank },
     { to: "/settlement", label: "Settle", icon: FaHandshake },
     { to: "/events", label: "Events", icon: MdEvent },
     { to: "/account", label: "Account", icon: GrTransaction },
     ...(userRole === "trader"
       ? [{ to: "/utr", label: "UTR", icon: BsReceiptCutoff }]
       : []),
+    { to: "/interest", label: "Interest", icon: FaPiggyBank },
     { to: "/report", label: "Report", icon: TbReportAnalytics },
     ...(userRole === "admin"
       ? [{ to: "/user", label: "Users", icon: FaUser }]

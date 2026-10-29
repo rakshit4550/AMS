@@ -68,13 +68,13 @@ const Sidebar = ({ expanded = true, pinned = false, onToggle, onMenuClick }) => 
   const navItems = [
     { to: "/dashboard", label: "Dashboard", icon: "AiOutlineDashboard" },
     { to: "/parties", label: "Parties", icon: "AiOutlineWallet" },
-    { to: "/interest", label: "Interest", icon: "FaPiggyBank" },
     { to: "/settlement", label: "Settlement", icon: "FaHandshake" },
     { to: "/events", label: "Book", icon: "MdEvent" },
     { to: "/account", label: "Account", icon: "AiOutlineCreditCard" },
     ...(userRole === "trader"
       ? [{ to: "/utr", label: "UTR", icon: "BsReceiptCutoff" }]
       : []),
+    { to: "/interest", label: "Interest", icon: "FaPiggyBank" },
     { to: "/report", label: "Report", icon: "TbReportAnalytics" },
     ...(role === "admin"
       ? [{ to: "/user", label: "Users", icon: "AiOutlineFileText" }]

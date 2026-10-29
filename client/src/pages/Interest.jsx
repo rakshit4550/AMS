@@ -16,7 +16,7 @@ const blankForm = () => ({
   amount: "",
   interestRate: "",
   interestType: "simple",
-  months: "12",
+  months: "",
   date: todayInputDate(),
 });
 
@@ -391,7 +391,7 @@ const LoanForm = ({ form, parties, saving, errorText, submitLabel, onChange, onS
     </label>
     <label className="min-w-0 sm:w-28">
       <span className="mb-1 block text-[11px] font-medium text-slate-500">Rate %</span>
-      <input type="number" name="interestRate" min="0.0001" max="100" step="0.01" value={form.interestRate} onChange={onChange} required className={fieldClass} />
+      <input type="number" name="interestRate" step="any" value={form.interestRate} onChange={onChange} required className={fieldClass} />
     </label>
     <label className="min-w-0 sm:w-32">
       <span className="mb-1 block text-[11px] font-medium text-slate-500">Type</span>
