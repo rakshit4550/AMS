@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import partyRoutes from './route/party.js';
+import interestRoutes from './route/interest.js';
 import authRoutes from './route/user.js';
 import accountRoutes from './route/account.js';
 import dotenv from 'dotenv';
@@ -36,6 +37,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use('/api/parties', partyRoutes);
+app.use('/api/interests', interestRoutes);
 app.use('/api', authRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/utrs', utrRoutes);
