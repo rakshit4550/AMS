@@ -3,7 +3,17 @@ import Interest from '../model/Interest.js';
 import Party from '../model/Party.js';
 
 const MAX_MONTHS = 120;
-const EDITABLE_FIELDS = ['party', 'amount', 'interestRate', 'interestType', 'months', 'date', 'schedule'];
+const EDITABLE_FIELDS = [
+  'party',
+  'amount',
+  'interestRate',
+  'interestType',
+  'months',
+  'date',
+  'schedule',
+  'receivedAmount',
+  'receivedDate',
+];
 
 const isValidId = (id) => {
   if (typeof id !== 'string' || !mongoose.Types.ObjectId.isValid(id)) return false;
@@ -112,22 +122,167 @@ const monthStartFor = (start, index) => {
 
 const daysBetween = (start, end) => Math.round((end.getTime() - start.getTime()) / 86400000);
 
-const buildInterestDays = (monthlyInterest, monthStart, dayCount, carriedInterest) => {
-  let previousTotal = 0;
+const asDate = (value) => {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
 
-  return Array.from({ length: dayCount }, (_, index) => {
-    const day = index + 1;
-    const totalInterest = roundMoney((monthlyInterest * day) / dayCount);
-    const interest = roundMoney(totalInterest - previousTotal);
-    previousTotal = totalInterest;
+const principalOnDate = (amount, receipts, dayDate) => {
+  const returned = receipts.reduce((sum, receipt) => (
+    receipt.date.getTime() < dayDate.getTime() ? sum + receipt.principal : sum
+  ), 0);
+  return roundMoney(Math.max(0, amount - returned));
+};
+
+const buildMonthDays = ({
+  amount,
+  interestRate,
+  monthStart,
+  dayCount,
+  receipts,
+  carriedInterest,
+}) => {
+  const datedDays = Array.from({ length: dayCount }, (_, index) => {
+    const date = addDays(monthStart, index);
     return {
-      day,
-      date: formatDateOnly(addDays(monthStart, day - 1)),
-      interest,
-      totalInterest,
-      accruedInterest: roundMoney(carriedInterest + totalInterest),
+      date,
+      principal: principalOnDate(amount, receipts, date),
     };
   });
+
+  const segments = [];
+  datedDays.forEach((item) => {
+    const current = segments[segments.length - 1];
+    if (current && current.principal === item.principal) {
+      current.dates.push(item.date);
+      return;
+    }
+    segments.push({ principal: item.principal, dates: [item.date] });
+  });
+
+  let monthInterest = 0;
+  let accruedInterest = carriedInterest;
+  const days = [];
+
+  segments.forEach((segment) => {
+    const monthly = roundMoney((segment.principal * interestRate) / 100);
+    const segmentInterest = roundMoney((monthly * segment.dates.length) / dayCount);
+    segment.dates.forEach((date, index) => {
+      const through = roundMoney((segmentInterest * (index + 1)) / segment.dates.length);
+      const previous = index === 0 ? 0 : roundMoney((segmentInterest * index) / segment.dates.length);
+      const interest = roundMoney(through - previous);
+      monthInterest = roundMoney(monthInterest + interest);
+      accruedInterest = roundMoney(accruedInterest + interest);
+      days.push({
+        day: days.length + 1,
+        date: formatDateOnly(date),
+        dateTime: date,
+        principal: segment.principal,
+        interest,
+        totalInterest: monthInterest,
+        accruedInterest,
+      });
+    });
+  });
+
+  return { days, monthInterest, accruedInterest };
+};
+
+const buildTimeline = ({ amount, interestRate, months, start, receipts }) => {
+  let carriedInterest = 0;
+  return Array.from({ length: months }, (_, index) => {
+    const monthStart = monthStartFor(start, index);
+    const dayCount = daysBetween(monthStart, monthStartFor(start, index + 1));
+    const month = buildMonthDays({
+      amount,
+      interestRate,
+      monthStart,
+      dayCount,
+      receipts,
+      carriedInterest,
+    });
+    carriedInterest = month.accruedInterest;
+    return {
+      month: index + 1,
+      monthStart,
+      dayCount,
+      monthInterest: month.monthInterest,
+      days: month.days,
+    };
+  });
+};
+
+const interestThroughDate = (timeline, throughDate, termEnd) => {
+  const limit = throughDate.getTime() >= termEnd.getTime() ? addDays(termEnd, -1) : throughDate;
+  let accrued = 0;
+  timeline.forEach((month) => {
+    month.days.forEach((day) => {
+      if (day.dateTime.getTime() <= limit.getTime()) accrued = day.accruedInterest;
+    });
+  });
+  return accrued;
+};
+
+const applyReceiptList = ({
+  amount,
+  interestRate,
+  interestType,
+  months,
+  start,
+  receipts,
+}) => {
+  const termEnd = monthStartFor(start, months);
+  const sorted = [...receipts].sort((left, right) => left.date.getTime() - right.date.getTime());
+  const accepted = [];
+
+  for (let index = 0; index < sorted.length; index += 1) {
+    const receipt = sorted[index];
+    if (receipt.date.getTime() < start.getTime()) {
+      return { error: 'Received date cannot be before the start date' };
+    }
+
+    const outstanding = roundMoney(amount - accepted.reduce((sum, item) => sum + item.principal, 0));
+    const timeline = buildTimeline({
+      amount,
+      interestRate,
+      months,
+      start,
+      receipts: accepted,
+    });
+    const accrued = interestThroughDate(timeline, receipt.date, termEnd);
+    const interestPaid = roundMoney(accepted.reduce((sum, item) => sum + item.interest, 0));
+    const interestDue = roundMoney(Math.max(0, accrued - interestPaid));
+    const closeTarget = interestType === 'advance'
+      ? outstanding
+      : roundMoney(outstanding + interestDue);
+
+    if (roundMoney(receipt.amount) === closeTarget) {
+      if (index < sorted.length - 1) {
+        return { error: 'Cannot record another receipt after the loan is closed' };
+      }
+      accepted.push({
+        amount: roundMoney(receipt.amount),
+        principal: outstanding,
+        interest: interestDue,
+        date: receipt.date,
+      });
+      return { value: { receipts: accepted, closed: true } };
+    }
+
+    if (receipt.amount > outstanding) {
+      return { error: 'Received amount is more than the remaining amount' };
+    }
+
+    accepted.push({
+      amount: roundMoney(receipt.amount),
+      principal: roundMoney(receipt.amount),
+      interest: 0,
+      date: receipt.date,
+    });
+  }
+
+  return { value: { receipts: accepted, closed: false } };
 };
 
 const parseBoolean = (value, label) => {
@@ -188,7 +343,7 @@ const mergeSchedule = (previous, months, interestType) => {
       interestReceived: interestType === 'advance' && month === 1
         ? true
         : Boolean(existing?.interestReceived),
-      amountReturned: Boolean(existing?.amountReturned),
+      amountReturned: false,
     };
   });
 };
@@ -216,13 +371,15 @@ const parseSchedule = (input, months, interestType) => {
 
     const interestReceived = parseBoolean(item.interestReceived, `Month ${month} interest received`);
     if (interestReceived.error) return interestReceived;
-    const amountReturned = parseBoolean(item.amountReturned, `Month ${month} amount returned`);
-    if (amountReturned.error) return amountReturned;
+    if (Object.prototype.hasOwnProperty.call(item, 'amountReturned')) {
+      const amountReturned = parseBoolean(item.amountReturned, `Month ${month} amount returned`);
+      if (amountReturned.error) return amountReturned;
+    }
 
     rows.push({
       month,
       interestReceived: interestReceived.value,
-      amountReturned: amountReturned.value,
+      amountReturned: false,
     });
   }
 
@@ -246,9 +403,7 @@ const buildScheduleForSave = ({ months, interestType, schedule, previous }) => {
     return { value: created };
   }
 
-  const dropped = previous.filter(
-    (row) => row.month > months && (row.interestReceived || row.amountReturned),
-  );
+  const dropped = previous.filter((row) => row.month > months && row.interestReceived);
   if (dropped.length) {
     const labels = dropped.map((row) => row.month).join(', ');
     return {
@@ -277,50 +432,129 @@ const partyView = (party) => {
   };
 };
 
+// A receipt reduces the principal from the next day. Later interest is calculated
+// on the amount still outstanding. Advance closes when the remaining principal
+// is received. Simple closes when the remaining principal and the interest due
+// on that date are received together.
 // Each interest month runs until the same date next month. February uses 28 or 29
-// days, and a 31st starts on the last day of a shorter month. Daily interest is
-// the monthly interest divided by that month's actual days, added up each day.
-// Advance: 100000 at 1% is given as 99000. Month 1 interest is already taken.
-// A later month collects 1000 interest, or 100000 when the principal comes back.
-// Simple: 100000 at 1% for 3 months is 3000 interest, so 103000 is receivable.
+// days, and a 31st starts on the last day of a shorter month.
+const rawReceiptsFrom = (interest) => {
+  if (Array.isArray(interest?.receipts) && interest.receipts.length) {
+    return interest.receipts
+      .map((receipt) => ({ amount: receipt.amount, date: asDate(receipt.date) }))
+      .filter((receipt) => receipt.date && receipt.amount > 0);
+  }
+  if (interest?.receivedAmount != null && interest?.receivedDate) {
+    const date = asDate(interest.receivedDate);
+    if (!date) return [];
+    return [{ amount: interest.receivedAmount, date }];
+  }
+  return [];
+};
+
+const describeLoan = (interest) => {
+  const start = asDate(interest.date);
+  const applied = applyReceiptList({
+    amount: interest.amount,
+    interestRate: interest.interestRate,
+    interestType: interest.interestType,
+    months: interest.months,
+    start,
+    receipts: rawReceiptsFrom(interest),
+  });
+  if (applied.error || !start) return applied.error ? applied : { error: 'Date must be YYYY-MM-DD' };
+
+  const receipts = applied.value.receipts;
+  const timeline = buildTimeline({
+    amount: interest.amount,
+    interestRate: interest.interestRate,
+    months: interest.months,
+    start,
+    receipts,
+  });
+  const principalReturned = roundMoney(receipts.reduce((sum, receipt) => sum + receipt.principal, 0));
+  const interestPaid = roundMoney(receipts.reduce((sum, receipt) => sum + receipt.interest, 0));
+  const accruedInterest = timeline.length ? timeline[timeline.length - 1].days.at(-1).accruedInterest : 0;
+  const principalBalance = roundMoney(Math.max(0, interest.amount - principalReturned));
+  const unpaidInterest = roundMoney(Math.max(0, accruedInterest - interestPaid));
+  const closeAmount = applied.value.closed
+    ? 0
+    : (interest.interestType === 'advance'
+      ? principalBalance
+      : roundMoney(principalBalance + unpaidInterest));
+  const closingReceipt = applied.value.closed ? receipts[receipts.length - 1] : null;
+  let returnedOnMonth = null;
+  if (closingReceipt) {
+    const termEnd = monthStartFor(start, interest.months);
+    if (closingReceipt.date.getTime() >= termEnd.getTime()) {
+      returnedOnMonth = interest.months;
+    } else {
+      returnedOnMonth = timeline.find((month) => (
+        closingReceipt.date.getTime() >= month.monthStart.getTime()
+        && closingReceipt.date.getTime() < monthStartFor(start, month.month).getTime()
+      ))?.month ?? interest.months;
+    }
+  }
+
+  return {
+    value: {
+      receipts,
+      timeline,
+      principalBalance,
+      closeAmount,
+      balance: applied.value.closed ? 0 : closeAmount,
+      closed: applied.value.closed,
+      returnedOnMonth,
+      accruedInterest,
+      receivedAmount: receipts.length
+        ? roundMoney(receipts.reduce((sum, receipt) => sum + receipt.amount, 0))
+        : null,
+      receivedDate: receipts.length ? receipts[receipts.length - 1].date : null,
+    },
+  };
+};
+
 export const presentInterest = (interest) => {
   const amount = interest.amount;
   const { months, interestType } = interest;
   const monthlyInterest = monthlyInterestOf(amount, interest.interestRate);
-  const totalInterest = roundMoney(monthlyInterest * months);
   const interestTakenInAdvance = interestType === 'advance' ? monthlyInterest : 0;
   const disbursedAmount = interestType === 'advance'
     ? roundMoney(amount - monthlyInterest)
     : amount;
-  const start = interest.date instanceof Date ? interest.date : new Date(interest.date);
-  const returnedMonths = interest.schedule
-    .filter((row) => row.amountReturned)
-    .map((row) => row.month);
-  const returnedOnMonth = returnedMonths.length ? Math.min(...returnedMonths) : null;
+  const start = asDate(interest.date);
+  const loan = describeLoan(interest);
+  const described = loan.value;
+  const returnedOnMonth = described?.returnedOnMonth ?? null;
+  const timeline = described?.timeline ?? [];
 
   const schedule = [...interest.schedule]
     .sort((left, right) => left.month - right.month)
     .map((row) => {
       const closed = returnedOnMonth != null && row.month > returnedOnMonth;
       const interestAlreadyTaken = interestType === 'advance' && row.month === 1;
-      const monthStart = monthStartFor(start, row.month - 1);
-      const dayCount = daysBetween(monthStart, monthStartFor(start, row.month));
-      const carriedInterest = roundMoney(monthlyInterest * (row.month - 1));
+      const month = timeline.find((item) => item.month === row.month);
+      const monthStart = month?.monthStart ?? monthStartFor(start, row.month - 1);
+      const dayCount = month?.dayCount ?? daysBetween(monthStart, monthStartFor(start, row.month));
+      const monthInterest = month?.monthInterest ?? 0;
+      const openingPrincipal = month?.days[0]?.principal ?? amount;
       return {
         month: row.month,
         dueDate: formatDateOnly(monthStart),
         daysInMonth: dayCount,
-        dailyInterest: closed ? 0 : roundMoney(monthlyInterest / dayCount),
-        interestAmount: closed ? 0 : monthlyInterest,
+        dailyInterest: closed || !dayCount ? 0 : roundMoney((openingPrincipal * interest.interestRate) / 100 / dayCount),
+        interestAmount: closed ? 0 : monthInterest,
         interestAlreadyTaken,
-        interestToCollect: closed || interestAlreadyTaken ? 0 : monthlyInterest,
-        principalIfReturned: closed ? 0 : amount,
+        interestToCollect: closed || interestAlreadyTaken ? 0 : monthInterest,
+        principalIfReturned: closed ? 0 : openingPrincipal,
         interestReceived: row.interestReceived,
-        amountReturned: row.amountReturned,
+        amountReturned: returnedOnMonth != null && row.month === returnedOnMonth,
         closed,
-        days: closed ? [] : buildInterestDays(monthlyInterest, monthStart, dayCount, carriedInterest),
+        days: closed ? [] : (month?.days ?? []).map(({ dateTime, ...day }) => day),
       };
     });
+
+  const totalInterest = described?.accruedInterest ?? 0;
 
   return {
     _id: interest._id,
@@ -330,8 +564,19 @@ export const presentInterest = (interest) => {
     interestType,
     months,
     date: formatDateOnly(start),
-    status: returnedOnMonth == null ? 'open' : 'closed',
+    status: described?.closed ? 'closed' : 'open',
     returnedOnMonth,
+    receivedAmount: described?.receivedAmount ?? null,
+    receivedDate: described?.receivedDate ? formatDateOnly(described.receivedDate) : null,
+    principalBalance: described?.principalBalance ?? amount,
+    closeAmount: described?.closeAmount ?? null,
+    balance: described?.balance ?? null,
+    receipts: (described?.receipts ?? []).map((receipt) => ({
+      amount: receipt.amount,
+      principal: receipt.principal,
+      interest: receipt.interest,
+      date: formatDateOnly(receipt.date),
+    })),
     calculation: {
       monthlyInterest,
       disbursedAmount,
@@ -344,6 +589,32 @@ export const presentInterest = (interest) => {
     createdAt: interest.createdAt,
     updatedAt: interest.updatedAt,
   };
+};
+
+const isBlank = (value) => (
+  value === null || value === undefined || (typeof value === 'string' && value.trim() === '')
+);
+
+const readReceipt = (body, current, has) => {
+  const amountSent = has('receivedAmount');
+  const dateSent = has('receivedDate');
+  const existing = rawReceiptsFrom(current);
+  if (!amountSent && !dateSent) return { value: existing };
+
+  const amountBlank = !amountSent || isBlank(body.receivedAmount);
+  const dateBlank = !dateSent || isBlank(body.receivedDate);
+  if (amountBlank && dateBlank) return { value: [] };
+  if (amountBlank || dateBlank) {
+    return { error: 'Received amount and received date are both required' };
+  }
+
+  const amount = parseAmount(body.receivedAmount);
+  if (amount.error) return { error: 'Received amount must be greater than 0' };
+  const date = parseDateOnly(body.receivedDate);
+  if (!date) return { error: 'Received date must be YYYY-MM-DD' };
+
+  const kept = existing.filter((receipt) => receipt.date.getTime() !== date.getTime());
+  return { value: [...kept, { amount: amount.value, date }] };
 };
 
 const findOwnedParty = (partyId, userId) => Party.findOne({ _id: partyId, createdBy: userId }).select('_id');
@@ -405,6 +676,20 @@ const readInterestInput = (body, current) => {
   const moneyError = validateMoney(next.amount, next.interestRate, next.interestType);
   if (moneyError) return { error: moneyError };
 
+  const receipt = readReceipt(body, current, has);
+  if (receipt.error) return receipt;
+
+  const settlement = applyReceiptList({
+    amount: next.amount,
+    interestRate: next.interestRate,
+    interestType: next.interestType,
+    months: next.months,
+    start: next.date,
+    receipts: receipt.value,
+  });
+  if (settlement.error) return settlement;
+
+  const savedReceipts = settlement.value.receipts;
   const schedule = buildScheduleForSave({
     months: next.months,
     interestType: next.interestType,
@@ -413,7 +698,38 @@ const readInterestInput = (body, current) => {
   });
   if (schedule.error) return schedule;
 
-  return { value: { ...next, schedule: schedule.value } };
+  const scheduleWithReturn = schedule.value.map((row) => ({
+    month: row.month,
+    interestReceived: row.interestReceived,
+    amountReturned: false,
+  }));
+  const described = describeLoan({
+    amount: next.amount,
+    interestRate: next.interestRate,
+    interestType: next.interestType,
+    months: next.months,
+    date: next.date,
+    receipts: savedReceipts,
+    schedule: scheduleWithReturn,
+  });
+  if (described.error) return described;
+
+  const settledSchedule = scheduleWithReturn.map((row) => ({
+    ...row,
+    amountReturned: described.value.returnedOnMonth != null && row.month === described.value.returnedOnMonth,
+  }));
+  const ruleError = validateScheduleRules(settledSchedule, next.interestType);
+  if (ruleError) return { error: ruleError };
+
+  return {
+    value: {
+      ...next,
+      receipts: savedReceipts,
+      receivedAmount: described.value.receivedAmount,
+      receivedDate: described.value.receivedDate,
+      schedule: settledSchedule,
+    },
+  };
 };
 
 export const createInterest = async (req, res) => {
@@ -583,7 +899,11 @@ export const updateInterest = async (req, res) => {
     current.interestType = input.value.interestType;
     current.months = input.value.months;
     current.date = input.value.date;
+    current.receipts = input.value.receipts;
+    current.receivedAmount = input.value.receivedAmount;
+    current.receivedDate = input.value.receivedDate;
     current.schedule = input.value.schedule;
+    current.markModified('receipts');
     current.markModified('schedule');
     await current.save();
 

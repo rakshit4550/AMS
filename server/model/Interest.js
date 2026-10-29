@@ -50,6 +50,39 @@ const interestSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
+  receivedAmount: {
+    type: Number,
+    default: null,
+  },
+  receivedDate: {
+    type: Date,
+    default: null,
+  },
+  receipts: {
+    type: [{
+      amount: {
+        type: Number,
+        required: true,
+        min: 0.01,
+      },
+      principal: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+      interest: {
+        type: Number,
+        required: true,
+        min: 0,
+        default: 0,
+      },
+      date: {
+        type: Date,
+        required: true,
+      },
+    }],
+    default: [],
+  },
   schedule: {
     type: [interestMonthSchema],
     required: true,
