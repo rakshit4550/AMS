@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { FaEdit } from "react-icons/fa";
-import { FiArrowLeft, FiChevronDown, FiChevronRight, FiEye } from "react-icons/fi";
+import { FiArrowLeft, FiEye } from "react-icons/fi";
 import {
   createInterest,
   fetchInterests,
@@ -39,6 +39,25 @@ const showDate = (iso) => {
 
 const typeLabel = (value) => (value === "advance" ? "Advance" : "Simple");
 
+const roundMoney = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+const closeForDate = (loan, isoDate) => {
+  if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null;
+  const days = (loan.schedule || []).flatMap((row) => row.days || []);
+  const through = days.filter((day) => day.date <= isoDate);
+  if (!through.length) return null;
+  const accrued = Number(through[through.length - 1].accruedInterest || 0);
+  const principalBefore = (loan.receipts || []).reduce((sum, item) => (
+    item.date < isoDate ? sum + Number(item.principal || 0) : sum
+  ), 0);
+  const outstanding = roundMoney(Math.max(0, Number(loan.amount) - principalBefore));
+  if (loan.interestType === "advance") return outstanding;
+  const interestPaid = (loan.receipts || []).reduce((sum, item) => (
+    item.date < isoDate ? sum + Number(item.interest || 0) : sum
+  ), 0);
+  return roundMoney(outstanding + Math.max(0, roundMoney(accrued - interestPaid)));
+};
+
 const fieldClass =
   "!h-8 !min-h-0 w-full rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#424687]/30";
 
@@ -58,7 +77,6 @@ const Interest = () => {
   const [detailError, setDetailError] = useState("");
   const [receipt, setReceipt] = useState({ amount: "", date: todayInputDate() });
   const [editingReceiptDate, setEditingReceiptDate] = useState("");
-  const [openMonth, setOpenMonth] = useState(null);
 
   useEffect(() => {
     dispatch(fetchPartyOptions());
@@ -197,7 +215,6 @@ const Interest = () => {
     setLoan(item);
     setEditOpen(false);
     setDetailError("");
-    setOpenMonth(null);
     resetReceiptForm();
   };
 
@@ -254,7 +271,6 @@ const Interest = () => {
           detailError={detailError}
           receipt={receipt}
           editingReceiptDate={editingReceiptDate}
-          openMonth={openMonth}
           parties={partyChoices(form.party)}
           onBack={() => setLoan(null)}
           onEdit={openEdit}
@@ -268,7 +284,6 @@ const Interest = () => {
           onReceipt={handleReceipt}
           onEditReceipt={startEditReceipt}
           onCancelReceiptEdit={resetReceiptForm}
-          onToggleMonth={setOpenMonth}
           onToggleReceived={toggleReceived}
         />
       ) : (
@@ -456,7 +471,6 @@ const LoanDetail = ({
   detailError,
   receipt,
   editingReceiptDate,
-  openMonth,
   parties,
   onBack,
   onEdit,
@@ -467,11 +481,12 @@ const LoanDetail = ({
   onReceipt,
   onEditReceipt,
   onCancelReceiptEdit,
-  onToggleMonth,
   onToggleReceived,
 }) => {
   const calc = loan.calculation || {};
-  const balanceTone = Number(loan.balance) < 0 ? "text-rose-600" : "text-emerald-700";
+  const closeOnDate = loan.status === "closed" && !editingReceiptDate
+    ? null
+    : closeForDate(loan, receipt.date);
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-slate-50/60">
       <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-2.5">
@@ -516,24 +531,17 @@ const LoanDetail = ({
         />
       )}
       <div className="min-h-0 flex-1 overflow-auto px-3 py-3 sm:px-4">
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
           <Stat label="Amount" value={money(loan.amount)} />
           <Stat label="Disbursed" value={money(calc.disbursedAmount)} />
           <Stat label="Monthly interest" value={money(calc.monthlyInterest)} />
-          <Stat label="Total interest" value={money(calc.totalInterest)} />
           <Stat label="Principal left" value={money(loan.principalBalance)} />
           <Stat label="Close amount" value={money(loan.closeAmount)} accent="text-[#424687]" />
-          <Stat label="Balance" value={money(loan.balance)} accent={balanceTone} />
-          <Stat label="Receivable" value={calc.totalReceivable == null ? "—" : money(calc.totalReceivable)} />
         </div>
 
         <section className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-3 py-2.5">
             <p className="text-xs font-bold uppercase tracking-wide text-[#424687]">Receipt</p>
-            <p className="mt-0.5 text-[11px] text-slate-500">
-              Principal drops from the next day. The loan closes only when the amount equals the close amount
-              {loan.interestType === "simple" ? " (principal plus interest due)." : " (remaining principal)."}
-            </p>
           </div>
           <form onSubmit={onReceipt} className="flex flex-wrap items-end gap-2 px-3 py-2.5">
             <label className="w-36">
@@ -560,6 +568,11 @@ const LoanDetail = ({
                 Cancel
               </button>
             )}
+            {closeOnDate != null && (
+              <p className="basis-full text-xs text-slate-600">
+                To close on this date: <span className="font-semibold tabular-nums text-[#424687]">{money(closeOnDate)}</span>
+              </p>
+            )}
           </form>
           {detailError && !editOpen && <p className="px-3 pb-2 text-xs text-red-600">{detailError}</p>}
           {loan.receipts?.length > 0 && (
@@ -568,8 +581,6 @@ const LoanDetail = ({
                 <tr className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2 text-right">Amount</th>
-                  <th className="px-3 py-2 text-right">Principal</th>
-                  <th className="px-3 py-2 text-right">Interest</th>
                   <th className="w-12 px-3 py-2" />
                 </tr>
               </thead>
@@ -578,8 +589,6 @@ const LoanDetail = ({
                   <tr key={item.date} className={`border-t border-slate-100 ${editingReceiptDate === item.date ? "bg-[#424687]/5" : ""}`}>
                     <td className="px-3 py-2.5">{showDate(item.date)}</td>
                     <td className="px-3 py-2.5 text-right font-medium tabular-nums">{money(item.amount)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">{money(item.principal)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">{money(item.interest)}</td>
                     <td className="px-3 py-2.5 text-right">
                       <button
                         type="button"
@@ -604,91 +613,43 @@ const LoanDetail = ({
             <p className="text-xs font-bold uppercase tracking-wide text-[#424687]">Schedule</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-sm">
+            <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="bg-gradient-to-r from-[#353a6e] to-[#424687] text-left text-[11px] font-semibold uppercase tracking-wide text-white">
                   <th className="px-3 py-2.5">Month</th>
                   <th className="px-3 py-2.5">Due</th>
-                  <th className="px-3 py-2.5 text-right">Days</th>
-                  <th className="px-3 py-2.5 text-right">Daily</th>
                   <th className="px-3 py-2.5 text-right">Interest</th>
-                  <th className="px-3 py-2.5 text-right">To collect</th>
                   <th className="px-3 py-2.5">Received</th>
                 </tr>
               </thead>
               <tbody>
                 {(loan.schedule || []).map((row) => {
                   const locked = row.interestAlreadyTaken || row.closed;
-                  const expanded = openMonth === row.month;
                   return (
-                    <React.Fragment key={row.month}>
-                      <tr className={`border-t border-slate-100 ${row.closed ? "bg-slate-50 text-slate-400" : row.amountReturned ? "bg-emerald-50/40" : "bg-white"}`}>
-                        <td className="px-3 py-2.5">
-                          <button
-                            type="button"
-                            onClick={() => onToggleMonth(expanded ? null : row.month)}
-                            className="inline-flex !h-7 !min-h-0 items-center gap-1.5 font-semibold text-[#424687]"
-                          >
-                            {expanded ? <FiChevronDown className="h-3.5 w-3.5" /> : <FiChevronRight className="h-3.5 w-3.5" />}
-                            {row.month}
-                            {row.amountReturned && (
-                              <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-                                Returned
-                              </span>
-                            )}
-                          </button>
-                        </td>
-                        <td className="px-3 py-2.5">{showDate(row.dueDate)}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums">{row.daysInMonth}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums">{money(row.dailyInterest)}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums">{money(row.interestAmount)}</td>
-                        <td className="px-3 py-2.5 text-right font-medium tabular-nums">{money(row.interestToCollect)}</td>
-                        <td className="px-3 py-2.5">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(row.interestReceived)}
-                            disabled={locked || saving}
-                            className="!h-4 !w-4 !min-h-0 accent-[#424687]"
-                            onChange={() => onToggleReceived(row.month)}
-                            aria-label={`Month ${row.month} interest received`}
-                          />
-                        </td>
-                      </tr>
-                      {expanded && (
-                        <tr className="border-t border-slate-100 bg-slate-50">
-                          <td colSpan={7} className="px-3 py-2.5">
-                            {row.days?.length ? (
-                              <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-                                <table className="w-full text-sm">
-                                  <thead>
-                                    <tr className="bg-slate-50 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                                      <th className="px-3 py-2">Day</th>
-                                      <th className="px-3 py-2">Date</th>
-                                      <th className="px-3 py-2 text-right">Principal</th>
-                                      <th className="px-3 py-2 text-right">Interest</th>
-                                      <th className="px-3 py-2 text-right">Accrued</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {row.days.map((day) => (
-                                      <tr key={day.date} className="border-t border-slate-100">
-                                        <td className="px-3 py-1.5 tabular-nums text-slate-500">{day.day}</td>
-                                        <td className="px-3 py-1.5">{showDate(day.date)}</td>
-                                        <td className="px-3 py-1.5 text-right tabular-nums">{money(day.principal)}</td>
-                                        <td className="px-3 py-1.5 text-right tabular-nums">{money(day.interest)}</td>
-                                        <td className="px-3 py-1.5 text-right font-medium tabular-nums">{money(day.accruedInterest)}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            ) : (
-                              <p className="text-xs text-slate-500">No days in this month.</p>
-                            )}
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
+                    <tr key={row.month} className={`border-t border-slate-100 ${row.closed ? "bg-slate-50 text-slate-400" : row.amountReturned ? "bg-emerald-50/40" : "bg-white"}`}>
+                      <td className="px-3 py-2.5 font-semibold text-[#424687]">
+                        <span className="inline-flex items-center gap-1.5">
+                          {row.month}
+                          {row.amountReturned && (
+                            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                              Returned
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5">{showDate(row.dueDate)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{money(row.interestAmount)}</td>
+                      <td className="px-3 py-2.5">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(row.interestReceived)}
+                          disabled={locked || saving}
+                          className="!h-4 !w-4 !min-h-0 accent-[#424687]"
+                          onChange={() => onToggleReceived(row.month)}
+                          aria-label={`Month ${row.month} interest received`}
+                        />
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
