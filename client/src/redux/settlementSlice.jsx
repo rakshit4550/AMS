@@ -160,6 +160,22 @@ export const updateSettlementEntry = createAsyncThunk(
   },
 );
 
+export const deleteSettlementEntry = createAsyncThunk(
+  'settlement/deleteEntry',
+  async ({ partyId, usernameId, entryId }, { getState, rejectWithValue }) => {
+    try {
+      const { user: { token } } = getState();
+      const response = await axios.delete(
+        `${API_URL}/${partyId}/usernames/${usernameId}/entries/${entryId}`,
+        authConfig(token),
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
+
 export const updateSettlementUsername = createAsyncThunk(
   'settlement/updateUsername',
   async ({ partyId, usernameId, ...body }, { getState, rejectWithValue }) => {

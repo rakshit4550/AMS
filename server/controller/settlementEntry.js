@@ -298,6 +298,39 @@ export const updateSettlementEntry = async (req, res) => {
   }
 };
 
+export const deleteSettlementEntry = async (req, res) => {
+  try {
+    if (!isValidId(req.params.partyId) || !isValidId(req.params.usernameId) || !isValidId(req.params.entryId)) {
+      return res.status(400).json({ message: 'Invalid id' });
+    }
+
+    const context = await findOwnedContext(req.params.partyId, req.params.usernameId, req.user.id);
+    if (context.error) {
+      return res.status(context.error.status).json({ message: context.error.message });
+    }
+
+    const entry = await SettlementEntry.findOneAndDelete({
+      _id: req.params.entryId,
+      createdBy: req.user.id,
+      settlementParty: context.party._id,
+      settlementUsername: context.username._id,
+    });
+
+    if (!entry) {
+      return res.status(404).json({ message: 'Settlement entry not found' });
+    }
+
+    const summary = await buildSummary(context.party._id, context.username._id, req.user.id);
+
+    res.status(200).json({
+      message: 'Settlement entry deleted successfully',
+      summary,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 export const getSettlementEntries = async (req, res) => {
   try {
     if (!isValidId(req.params.partyId) || !isValidId(req.params.usernameId)) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { FaEdit, FaPlus, FaTimes } from "react-icons/fa";
+import { FaEdit, FaPlus, FaTimes, FaTrash } from "react-icons/fa";
 import {
   clearSettlementError,
   createSettlementEntry,
@@ -9,6 +9,7 @@ import {
   fetchPartySettlement,
   fetchSettlementEntries,
   fetchSettlementParties,
+  deleteSettlementEntry,
   updateSettlementEntry,
   updateSettlementParty,
   updateSettlementUsername,
@@ -582,6 +583,27 @@ const Settlement = () => {
     amountRef.current?.focus();
   };
 
+  const deleteEntry = async (row) => {
+    if (!ledgerParty || !ledgerUser) return;
+    if (!window.confirm("Delete this settlement entry?")) return;
+    setLedgerError("");
+    const result = await dispatch(
+      deleteSettlementEntry({
+        partyId: ledgerParty._id,
+        usernameId: ledgerUser._id,
+        entryId: row._id,
+      }),
+    );
+    if (!deleteSettlementEntry.fulfilled.match(result)) {
+      setLedgerError(result.payload || "Failed to delete entry");
+      return;
+    }
+    if (editingEntryId === row._id) cancelEditEntry();
+    setLedgerSummary(result.payload.summary || null);
+    if (ledgerRows.length === 1 && ledgerPage > 1) setLedgerPage((page) => page - 1);
+    else setLedgerReload((value) => value + 1);
+  };
+
   return (
     <div className="z-[99] box-border flex flex-col py-1.5 sm:h-[calc(100dvh-var(--app-desktop-header-height)-2.25rem)]">
       <section className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:h-full sm:min-h-0">
@@ -838,12 +860,12 @@ const Settlement = () => {
                 <table className={`w-full min-w-[720px] table-fixed border-collapse text-sm ${ledgerRows.length === 0 ? "h-full" : ""}`}>
                   <colgroup>
                     <col className="w-[7%]" />
-                    <col className="w-[20%]" />
+                    <col className="w-[18%]" />
                     <col className="w-[14%]" />
                     <col className="w-[16%]" />
-                    <col className="w-[18%]" />
+                    <col className="w-[16%]" />
                     <col className="w-[15%]" />
-                    <col className="w-[10%]" />
+                    <col className="w-[14%]" />
                   </colgroup>
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-gradient-to-r from-[#353a6e] to-[#424687] text-white">
@@ -910,14 +932,24 @@ const Settlement = () => {
                               {rupee(row.totalAmount)}
                             </td>
                             <td className="px-3 py-2 text-right">
-                              <button
-                                type="button"
-                                onClick={() => startEditEntry(row)}
-                                className="inline-flex !h-7 !w-7 !min-h-0 items-center justify-center rounded-md text-[#424687] hover:bg-white"
-                                title="Edit entry"
-                              >
-                                <FaEdit size={12} />
-                              </button>
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => startEditEntry(row)}
+                                  className="inline-flex !h-7 !w-7 !min-h-0 items-center justify-center rounded-md bg-[#424687]/10 text-[#424687] hover:bg-[#424687]/20"
+                                  title="Edit entry"
+                                >
+                                  <FaEdit size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteEntry(row)}
+                                  className="inline-flex !h-7 !w-7 !min-h-0 items-center justify-center rounded-md bg-red-50 text-red-600 hover:bg-red-100"
+                                  title="Delete entry"
+                                >
+                                  <FaTrash size={12} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );

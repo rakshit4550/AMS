@@ -13,6 +13,7 @@ import {
   getSettlementEntries,
   getPartySettlement,
   updateSettlementEntry,
+  deleteSettlementEntry,
 } from '../controller/settlementEntry.js';
 import { verifyToken } from '../controller/user.js';
 
@@ -30,6 +31,7 @@ router.put('/:partyId/usernames/:usernameId', updateSettlementUsername);
 router.post('/:partyId/usernames/:usernameId/entries', createSettlementEntry);
 router.get('/:partyId/usernames/:usernameId/entries', getSettlementEntries);
 router.put('/:partyId/usernames/:usernameId/entries/:entryId', updateSettlementEntry);
+router.delete('/:partyId/usernames/:usernameId/entries/:entryId', deleteSettlementEntry);
 
 router.get('/:id', getSettlementPartyById);
 router.put('/:id', updateSettlementParty);
