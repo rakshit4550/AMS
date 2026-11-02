@@ -13,6 +13,7 @@ const isValidId = (id) => {
 };
 
 const roundMoney = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+const roundRupee = (value) => Math.round(Number(value) || 0);
 
 const emptyBucket = () => ({
   amount: 0,
@@ -70,11 +71,38 @@ const resolvePercentage = (party, username) => {
 };
 
 const calculateEntry = (amount, partnershipPercentage) => {
-  const percentageAmount = roundMoney((amount * partnershipPercentage) / 100);
+  const percentageAmount = roundRupee((amount * partnershipPercentage) / 100);
   return {
     percentageAmount,
     totalAmount: roundMoney(amount + percentageAmount),
   };
+};
+
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const isRealDate = (value) => {
+  if (!DATE_PATTERN.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  return utc.getUTCFullYear() === year
+    && utc.getUTCMonth() === month - 1
+    && utc.getUTCDate() === day;
+};
+
+const istStart = (value) => new Date(`${value}T00:00:00.000+05:30`);
+const istEnd = (value) => new Date(`${value}T23:59:59.999+05:30`);
+
+const toDateKey = (value) => {
+  if (!value) return null;
+  const key = new Date(value).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  return DATE_PATTERN.test(key) ? key : null;
+};
+
+const parseEntryDate = (value) => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return { error: 'Date is required' };
+  if (!isRealDate(raw)) return { error: 'Invalid date. Use YYYY-MM-DD format' };
+  return { value: istStart(raw) };
 };
 
 const toEntryResponse = (entry) => ({
@@ -83,8 +111,9 @@ const toEntryResponse = (entry) => ({
   transactionType: entry.transactionType,
   partnershipPercentage: entry.partnershipPercentage,
   percentageSource: entry.percentageSource,
-  percentageAmount: entry.percentageAmount,
-  totalAmount: entry.percentageAmount,
+  percentageAmount: roundRupee(entry.percentageAmount),
+  totalAmount: roundRupee(entry.percentageAmount),
+  date: toDateKey(entry.date),
   settlementParty: entry.settlementParty,
   settlementUsername: entry.settlementUsername,
   createdAt: entry.createdAt,
@@ -127,7 +156,7 @@ const buildSummary = async (partyId, usernameId, userId) => {
       $group: {
         _id: '$transactionType',
         amount: { $sum: '$amount' },
-        percentageAmount: { $sum: '$percentageAmount' },
+        percentageAmount: { $sum: { $round: ['$percentageAmount', 0] } },
         totalAmount: { $sum: '$totalAmount' },
       },
     },
@@ -171,6 +200,11 @@ export const createSettlementEntry = async (req, res) => {
       return res.status(400).json({ message: transactionType.error });
     }
 
+    const entryDate = parseEntryDate(req.body.date);
+    if (entryDate.error) {
+      return res.status(400).json({ message: entryDate.error });
+    }
+
     const context = await findOwnedContext(req.params.partyId, req.params.usernameId, req.user.id);
     if (context.error) {
       return res.status(context.error.status).json({ message: context.error.message });
@@ -187,6 +221,7 @@ export const createSettlementEntry = async (req, res) => {
       settlementUsername: context.username._id,
       amount: amount.value,
       transactionType: transactionType.value,
+      date: entryDate.value,
       partnershipPercentage: percentage.partnershipPercentage,
       percentageSource: percentage.percentageSource,
       percentageAmount: totals.percentageAmount,
@@ -198,6 +233,63 @@ export const createSettlementEntry = async (req, res) => {
 
     res.status(201).json({
       message: 'Settlement entry added successfully',
+      entry: toEntryResponse(entry),
+      summary,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const updateSettlementEntry = async (req, res) => {
+  try {
+    if (!isValidId(req.params.partyId) || !isValidId(req.params.usernameId) || !isValidId(req.params.entryId)) {
+      return res.status(400).json({ message: 'Invalid id' });
+    }
+
+    const amount = parseAmount(req.body.amount);
+    if (amount.error) {
+      return res.status(400).json({ message: amount.error });
+    }
+
+    const transactionType = parseTransactionType(req.body.transactionType);
+    if (transactionType.error) {
+      return res.status(400).json({ message: transactionType.error });
+    }
+
+    const entryDate = parseEntryDate(req.body.date);
+    if (entryDate.error) {
+      return res.status(400).json({ message: entryDate.error });
+    }
+
+    const context = await findOwnedContext(req.params.partyId, req.params.usernameId, req.user.id);
+    if (context.error) {
+      return res.status(context.error.status).json({ message: context.error.message });
+    }
+
+    const entry = await SettlementEntry.findOne({
+      _id: req.params.entryId,
+      createdBy: req.user.id,
+      settlementParty: context.party._id,
+      settlementUsername: context.username._id,
+    });
+
+    if (!entry) {
+      return res.status(404).json({ message: 'Settlement entry not found' });
+    }
+
+    const totals = calculateEntry(amount.value, entry.partnershipPercentage);
+    entry.amount = amount.value;
+    entry.transactionType = transactionType.value;
+    entry.date = entryDate.value;
+    entry.percentageAmount = totals.percentageAmount;
+    entry.totalAmount = totals.totalAmount;
+    await entry.save();
+
+    const summary = await buildSummary(context.party._id, context.username._id, req.user.id);
+
+    res.status(200).json({
+      message: 'Settlement entry updated successfully',
       entry: toEntryResponse(entry),
       summary,
     });
@@ -232,7 +324,7 @@ export const getSettlementEntries = async (req, res) => {
 
     const [entries, totalRecords, summary] = await Promise.all([
       SettlementEntry.find(query)
-        .sort({ createdAt: -1, _id: -1 })
+        .sort({ date: -1, createdAt: -1, _id: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
@@ -277,22 +369,8 @@ export const getSettlementEntries = async (req, res) => {
   }
 };
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
 const todayInIst = () =>
   new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-
-const isRealDate = (value) => {
-  if (!DATE_PATTERN.test(value)) return false;
-  const [year, month, day] = value.split('-').map(Number);
-  const utc = new Date(Date.UTC(year, month - 1, day));
-  return utc.getUTCFullYear() === year
-    && utc.getUTCMonth() === month - 1
-    && utc.getUTCDate() === day;
-};
-
-const istStart = (value) => new Date(`${value}T00:00:00.000+05:30`);
-const istEnd = (value) => new Date(`${value}T23:59:59.999+05:30`);
 
 const parseSettlementDateRange = (query) => {
   const rawFrom = String(query.fromDate || '').trim();
@@ -329,8 +407,9 @@ const summaryFromEntries = (entries) => {
         : null;
     if (!bucket) return;
     bucket.amount += entry.amount;
-    bucket.percentageAmount += entry.percentageAmount;
-    bucket.totalAmount += entry.percentageAmount;
+    const share = roundRupee(entry.percentageAmount);
+    bucket.percentageAmount += share;
+    bucket.totalAmount += share;
   });
 
   const roundedDeposit = {
@@ -357,8 +436,9 @@ const toPartyEntry = (entry) => ({
   amount: entry.amount,
   partnershipPercentage: entry.partnershipPercentage,
   percentageSource: entry.percentageSource,
-  percentageAmount: entry.percentageAmount,
-  totalAmount: entry.percentageAmount,
+  percentageAmount: roundRupee(entry.percentageAmount),
+  totalAmount: roundRupee(entry.percentageAmount),
+  date: toDateKey(entry.date),
   createdAt: entry.createdAt,
 });
 
@@ -399,10 +479,13 @@ export const getPartySettlement = async (req, res) => {
     const entries = await SettlementEntry.find({
       createdBy: req.user.id,
       settlementParty: party._id,
-      createdAt: range.createdAt,
+      $or: [
+        { date: range.createdAt },
+        { date: null, createdAt: range.createdAt },
+      ],
     })
-      .sort({ createdAt: 1, _id: 1 })
-      .select('amount transactionType partnershipPercentage percentageSource percentageAmount totalAmount settlementUsername createdAt')
+      .sort({ date: 1, createdAt: 1, _id: 1 })
+      .select('amount transactionType partnershipPercentage percentageSource percentageAmount totalAmount settlementUsername date createdAt')
       .lean();
 
     const entriesByUsername = new Map();

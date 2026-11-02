@@ -9,6 +9,7 @@ import {
   fetchPartySettlement,
   fetchSettlementEntries,
   fetchSettlementParties,
+  updateSettlementEntry,
   updateSettlementParty,
   updateSettlementUsername,
 } from "../redux/settlementSlice";
@@ -54,8 +55,26 @@ const roundMoney = (value) => Math.round((Number(value) + Number.EPSILON) * 100)
 
 const todayInIst = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 
+const toInputDate = (value) => {
+  if (!value) return todayInIst();
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return todayInIst();
+  return date.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+};
+
 const formatEntryDate = (value) => {
   if (!value) return "—";
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    const [year, month, day] = text.split("-").map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleString("en-IN", {
@@ -134,7 +153,12 @@ const Settlement = () => {
   const [ledgerPage, setLedgerPage] = useState(1);
   const [ledgerLimit, setLedgerLimit] = useState(20);
   const [ledgerReload, setLedgerReload] = useState(0);
-  const [ledgerForm, setLedgerForm] = useState({ amount: "", transactionType: "deposit" });
+  const [ledgerForm, setLedgerForm] = useState({
+    amount: "",
+    transactionType: "deposit",
+    date: todayInIst(),
+  });
+  const [editingEntryId, setEditingEntryId] = useState(null);
   const [ledgerError, setLedgerError] = useState("");
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [fromDate, setFromDate] = useState(todayInIst);
@@ -256,9 +280,8 @@ const Settlement = () => {
   const typed = roundMoney(String(ledgerForm.amount).trim());
   const share =
     appliedPercent && typed > 0
-      ? roundMoney((typed * Number(appliedPercent.partnershipPercentage)) / 100)
+      ? Math.round((typed * Number(appliedPercent.partnershipPercentage)) / 100)
       : null;
-  const total = share === null ? null : roundMoney(typed + share);
   const closing = Number(ledgerSummary?.closingBalance);
   const partyLines = (partySettlement?.usernames || [])
     .flatMap((item) =>
@@ -269,7 +292,7 @@ const Settlement = () => {
       })),
     )
     .sort((a, b) => {
-      const byDate = new Date(a.createdAt) - new Date(b.createdAt);
+      const byDate = new Date(a.date || a.createdAt) - new Date(b.date || b.createdAt);
       if (byDate !== 0) return byDate;
       return String(a._id).localeCompare(String(b._id));
     });
@@ -302,12 +325,14 @@ const Settlement = () => {
     setLedgerPagination(null);
     setLedgerError("");
     setLedgerPage(1);
+    setEditingEntryId(null);
   };
 
   const onPartyChange = (partyId) => {
     setSelectedPartyId(partyId);
     setSelectedUserId("");
     setLedgerForm((prev) => ({ ...prev, amount: "" }));
+    setEditingEntryId(null);
     clearLedger();
   };
 
@@ -316,6 +341,10 @@ const Settlement = () => {
     const user = party?.usernames?.find((item) => item._id === userId);
     setSelectedUserId(userId);
     setLedgerForm((prev) => ({ ...prev, amount: "" }));
+    setEditingEntryId(null);
+    setLedgerRows([]);
+    setLedgerSummary(null);
+    setLedgerPagination(null);
     setLedgerError("");
     if (!party || !user) {
       clearLedger();
@@ -494,24 +523,62 @@ const Settlement = () => {
       setLedgerError("Amount must be greater than 0");
       return;
     }
-
-    const result = await dispatch(
-      createSettlementEntry({
-        partyId: ledgerParty._id,
-        usernameId: ledgerUser._id,
-        amount,
-        transactionType: ledgerForm.transactionType,
-      }),
-    );
-    if (!createSettlementEntry.fulfilled.match(result)) {
-      setLedgerError(result.payload || "Failed to add entry");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ledgerForm.date || "")) {
+      setLedgerError("Date is required");
       return;
     }
 
-    setLedgerForm((prev) => ({ amount: "", transactionType: prev.transactionType }));
+    const payload = {
+      partyId: ledgerParty._id,
+      usernameId: ledgerUser._id,
+      amount,
+      transactionType: ledgerForm.transactionType,
+      date: ledgerForm.date,
+    };
+    const result = await dispatch(
+      editingEntryId
+        ? updateSettlementEntry({ ...payload, entryId: editingEntryId })
+        : createSettlementEntry(payload),
+    );
+    const saved = editingEntryId
+      ? updateSettlementEntry.fulfilled.match(result)
+      : createSettlementEntry.fulfilled.match(result);
+    if (!saved) {
+      setLedgerError(result.payload || (editingEntryId ? "Failed to update entry" : "Failed to add entry"));
+      return;
+    }
+
+    setEditingEntryId(null);
+    setLedgerForm((prev) => ({
+      amount: "",
+      transactionType: prev.transactionType,
+      date: prev.date || todayInIst(),
+    }));
     setLedgerSummary(result.payload.summary || null);
-    if (ledgerPage !== 1) setLedgerPage(1);
+    if (!editingEntryId && ledgerPage !== 1) setLedgerPage(1);
     setLedgerReload((value) => value + 1);
+    amountRef.current?.focus();
+  };
+
+  const startEditEntry = (row) => {
+    setEditingEntryId(row._id);
+    setLedgerError("");
+    setLedgerForm({
+      amount: String(row.amount ?? ""),
+      transactionType: row.transactionType === "withdrawal" ? "withdrawal" : "deposit",
+      date: toInputDate(row.date || row.createdAt),
+    });
+    amountRef.current?.focus();
+  };
+
+  const cancelEditEntry = () => {
+    setEditingEntryId(null);
+    setLedgerError("");
+    setLedgerForm((prev) => ({
+      amount: "",
+      transactionType: prev.transactionType,
+      date: prev.date || todayInIst(),
+    }));
     amountRef.current?.focus();
   };
 
@@ -540,8 +607,8 @@ const Settlement = () => {
         </div>
 
         <form onSubmit={handleEntrySubmit} className="shrink-0 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-3 py-2.5">
-          <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1.25fr)_auto_auto]">
-            <label className="block min-w-0">
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-end xl:flex-nowrap">
+            <label className="block w-full min-w-0 sm:w-[12.5rem] sm:shrink-0">
               <span className="mb-1 flex items-center justify-between text-[11px] font-medium text-slate-500">
                 <span>1 · Party</span>
                 <button
@@ -569,7 +636,7 @@ const Settlement = () => {
               </select>
             </label>
 
-            <div className="min-w-0">
+            <div className="w-full min-w-0 sm:w-[15.5rem] sm:shrink-0">
               <span className="mb-1 flex items-center justify-between text-[11px] font-medium text-slate-500">
                 <span>2 · Username</span>
                 <button
@@ -620,9 +687,9 @@ const Settlement = () => {
               </div>
             </div>
 
-            <div>
+            <div className="w-full sm:w-[12.5rem] sm:shrink-0">
               <span className="mb-1 block text-[11px] font-medium text-slate-500">3 · Type</span>
-              <div className="grid !h-9 !min-h-0 w-full grid-cols-2 gap-0.5 overflow-hidden rounded-lg bg-slate-100 p-0.5 lg:inline-flex lg:!h-8 lg:w-auto">
+              <div className="grid !h-9 !min-h-0 w-full grid-cols-2 gap-0.5 overflow-hidden rounded-lg bg-slate-100 p-0.5 lg:!h-8 lg:w-[12.5rem]">
                 <button
                   type="button"
                   onClick={() => setLedgerForm((prev) => ({ ...prev, transactionType: "deposit" }))}
@@ -644,18 +711,49 @@ const Settlement = () => {
               </div>
             </div>
 
-            <div>
-              <span className="mb-1 flex items-center justify-between gap-3 text-[11px] font-medium text-slate-500">
-                <span>4 · Settlement</span>
-                {appliedPercent && (
-                  <span className="font-semibold text-[#424687]">
-                    {appliedPercent.partnershipPercentage}%{" "}
-                    {appliedPercent.percentageSource === "username" ? "username" : "party"}
-                  </span>
-                )}
+            <div className="w-full sm:w-[10.5rem] sm:shrink-0">
+              <span className="mb-1 block text-[11px] font-medium text-slate-500">4 · Date</span>
+              <input
+                type="date"
+                value={ledgerForm.date}
+                onChange={(event) => setLedgerForm((prev) => ({ ...prev, date: event.target.value }))}
+                required
+                className={`${selectClass} w-full`}
+              />
+            </div>
+
+            <div className="w-full sm:w-[16rem] sm:shrink-0">
+              <span className="mb-1 flex items-center justify-between gap-2 text-[11px] font-medium text-slate-500">
+                <span className="shrink-0">5 · Settlement</span>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {editingEntryId && (
+                    <button
+                      type="button"
+                      onClick={cancelEditEntry}
+                      className="shrink-0 font-semibold text-slate-500 hover:text-slate-800"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  {share !== null && (
+                    <span
+                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                        isDeposit ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"
+                      }`}
+                    >
+                      Share {rupee(share)}
+                    </span>
+                  )}
+                  {appliedPercent && (
+                    <span className="truncate font-semibold text-[#424687]">
+                      {appliedPercent.partnershipPercentage}%{" "}
+                      {appliedPercent.percentageSource === "username" ? "username" : "party"}
+                    </span>
+                  )}
+                </span>
               </span>
               <div
-                className={`flex w-full items-stretch overflow-hidden rounded-lg border bg-white shadow-sm focus-within:ring-2 lg:!h-8 lg:w-auto ${
+                className={`flex w-full items-stretch overflow-hidden rounded-lg border bg-white shadow-sm focus-within:ring-2 lg:!h-8 ${
                   isDeposit
                     ? "border-emerald-200 focus-within:ring-emerald-500/30"
                     : "border-red-200 focus-within:ring-red-400/30"
@@ -674,39 +772,22 @@ const Settlement = () => {
                   placeholder="Settlement"
                   aria-label="Settlement"
                   disabled={!selectedUser}
-                  className={`!h-9 !min-h-0 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm font-semibold outline-none [appearance:textfield] placeholder:font-normal placeholder:text-slate-400 disabled:cursor-not-allowed lg:!h-8 lg:w-28 lg:flex-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+                  className={`!h-9 !min-h-0 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm font-semibold outline-none [appearance:textfield] placeholder:font-normal placeholder:text-slate-400 disabled:cursor-not-allowed lg:!h-8 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
                     isDeposit ? "text-emerald-700" : "text-red-600"
                   }`}
                 />
                 <button
                   type="submit"
-                  disabled={!selectedUser || !appliedPercent}
+                  disabled={!selectedUser || (!editingEntryId && !appliedPercent)}
                   className={`shrink-0 px-3.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300 ${
                     isDeposit ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"
                   }`}
                 >
-                  Save
+                  {editingEntryId ? "Update" : "Save"}
                 </button>
               </div>
             </div>
           </div>
-
-          {total !== null && (
-            <div className="mt-1.5 flex justify-end gap-1.5 text-[11px]">
-              <span className="rounded-full bg-white px-2 py-0.5 text-slate-500 shadow-sm ring-1 ring-slate-200">
-                Share <span className="font-semibold text-slate-700">{rupee(share)}</span>
-              </span>
-              <span
-                className={`rounded-full px-2 py-0.5 font-semibold shadow-sm ring-1 ${
-                  isDeposit
-                    ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
-                    : "bg-red-50 text-red-600 ring-red-100"
-                }`}
-              >
-                Total {rupee(total)}
-              </span>
-            </div>
-          )}
           {(ledgerError || (selectedUser && !appliedPercent) || (error && !partyModal && !userModal)) && (
             <p className="mt-1 text-xs text-red-600">
               {ledgerError ||
@@ -717,7 +798,7 @@ const Settlement = () => {
         </form>
 
         {selectedUser ? (
-          <>
+          <div key={selectedUserId} className="settlement-panel-in flex min-h-0 flex-1 flex-col">
             <div className="grid shrink-0 grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
               <div className="border-t-2 border-emerald-500 bg-emerald-50/50 px-3 py-1.5">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
@@ -749,29 +830,39 @@ const Settlement = () => {
               </div>
             </div>
 
-            <div className="flex flex-col sm:min-h-0 sm:flex-1">
-              {ledgerLoading && (
-                <p className="border-b border-slate-100 bg-slate-50 py-1 text-center text-xs text-[#424687]">
-                  Loading…
-                </p>
-              )}
-              <div className="min-h-[22rem] overflow-auto sm:min-h-0 sm:flex-1">
-                <table className="w-full min-w-[720px] border-collapse text-sm">
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="relative min-h-[22rem] overflow-auto sm:min-h-0 sm:flex-1">
+                {ledgerLoading && (
+                  <div className="absolute inset-x-0 top-0 z-20 h-0.5 animate-pulse bg-white/80" />
+                )}
+                <table className={`w-full min-w-[720px] table-fixed border-collapse text-sm ${ledgerRows.length === 0 ? "h-full" : ""}`}>
+                  <colgroup>
+                    <col className="w-[7%]" />
+                    <col className="w-[20%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[16%]" />
+                    <col className="w-[18%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[10%]" />
+                  </colgroup>
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-gradient-to-r from-[#353a6e] to-[#424687] text-white">
-                      <th className="w-12 px-3 py-2 text-left text-xs font-semibold">Sr</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold">Sr</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold">Date</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold">Type</th>
                       <th className="px-3 py-2 text-right text-xs font-semibold">Settlement</th>
                       <th className="px-3 py-2 text-right text-xs font-semibold">Share</th>
                       <th className="px-3 py-2 text-right text-xs font-semibold">Total</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold">Edit</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ledgerRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
-                          No entries yet. Choose Deposit or Withdraw, type the amount, and save.
+                      <tr className="h-full">
+                        <td colSpan={7} className="px-4 text-center align-middle text-sm text-slate-500">
+                          {ledgerLoading
+                            ? "Loading entries…"
+                            : "No entries yet. Choose Deposit or Withdraw, type the amount, and save."}
                         </td>
                       </tr>
                     ) : (
@@ -781,16 +872,18 @@ const Settlement = () => {
                           <tr
                             key={row._id}
                             className={`border-b border-slate-100 transition-colors ${
-                              deposit
-                                ? "bg-emerald-50/40 hover:bg-emerald-50"
-                                : "bg-red-50/40 hover:bg-red-50"
+                              editingEntryId === row._id
+                                ? "bg-indigo-50 ring-1 ring-inset ring-[#424687]/30"
+                                : deposit
+                                  ? "bg-emerald-50/40 hover:bg-emerald-50"
+                                  : "bg-red-50/40 hover:bg-red-50"
                             }`}
                           >
                             <td className="px-3 py-2 tabular-nums text-slate-500">
                               {ledgerStart + index + 1}
                             </td>
                             <td className="whitespace-nowrap px-3 py-2 text-slate-700">
-                              {formatEntryDate(row.createdAt)}
+                              {formatEntryDate(row.date || row.createdAt)}
                             </td>
                             <td className="whitespace-nowrap px-3 py-2">
                               <span
@@ -803,14 +896,11 @@ const Settlement = () => {
                                 {deposit ? "Deposit" : "Withdraw"}
                               </span>
                             </td>
-                            <td className="px-3 py-2 text-right">
+                            <td className="whitespace-nowrap px-3 py-2 text-right">
                               <SettlementFigure type={row.transactionType} value={row.amount} />
                             </td>
-                            <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-slate-600">
-                              {rupee(row.percentageAmount)}
-                              <span className="ml-1 text-[11px] text-slate-400">
-                                {formatPercent(row.partnershipPercentage)}
-                              </span>
+                            <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-slate-700">
+                              {formatPercent(row.partnershipPercentage)}
                             </td>
                             <td
                               className={`px-3 py-2 text-right font-semibold tabular-nums ${
@@ -819,16 +909,44 @@ const Settlement = () => {
                             >
                               {rupee(row.totalAmount)}
                             </td>
+                            <td className="px-3 py-2 text-right">
+                              <button
+                                type="button"
+                                onClick={() => startEditEntry(row)}
+                                className="inline-flex !h-7 !w-7 !min-h-0 items-center justify-center rounded-md text-[#424687] hover:bg-white"
+                                title="Edit entry"
+                              >
+                                <FaEdit size={12} />
+                              </button>
+                            </td>
                           </tr>
                         );
                       })
                     )}
                   </tbody>
+                  <tfoot className="sticky bottom-0 z-10">
+                    <tr className="border-t border-slate-200 bg-slate-50">
+                      <td colSpan={5} />
+                      <td className="whitespace-nowrap px-3 py-2 text-right">
+                        <span className="mr-1.5 text-xs font-medium text-slate-500">Total</span>
+                        <span
+                          className={`text-sm font-semibold tabular-nums ${
+                            closing < 0 ? "text-red-600" : "text-emerald-700"
+                          }`}
+                        >
+                          {closing < 0 ? "−" : ""}
+                          {rupee(Math.abs(Number.isFinite(closing) ? closing : 0))}
+                        </span>
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
 
-              {ledgerPagination && ledgerPagination.totalRecords > 0 && (
-                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-3 py-1.5">
+              <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-3">
+                {ledgerPagination && ledgerPagination.totalRecords > 0 ? (
+                  <>
                   <p className="text-xs text-slate-600">
                     {ledgerStart + 1}–
                     {Math.min(ledgerStart + ledgerRows.length, ledgerPagination.totalRecords)} of{" "}
@@ -872,12 +990,17 @@ const Settlement = () => {
                       Next
                     </button>
                   </div>
-                </div>
-              )}
+                  </>
+                ) : (
+                  <p className="text-xs text-slate-400">
+                    {ledgerLoading ? "Loading entries…" : "0 entries"}
+                  </p>
+                )}
+              </div>
             </div>
-          </>
+          </div>
         ) : selectedParty ? (
-          <div className="flex flex-col sm:min-h-0 sm:flex-1">
+          <div key={selectedPartyId} className="settlement-panel-in flex min-h-0 flex-1 flex-col">
             <div className="flex shrink-0 flex-wrap items-end justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-900">{selectedParty.partyname}</p>
@@ -908,18 +1031,23 @@ const Settlement = () => {
                 </label>
               </div>
             </div>
-            {partySettlementLoading && (
-              <p className="border-b border-slate-100 bg-slate-50 py-1 text-center text-xs text-[#424687]">
-                Loading…
-              </p>
-            )}
-            {partySettlementError && (
-              <p className="border-b border-red-100 bg-red-50 py-1 text-center text-xs text-red-600">
-                {partySettlementError}
-              </p>
-            )}
-            <div className="min-h-[22rem] overflow-auto sm:min-h-0 sm:flex-1">
-              <table className="w-full min-w-[760px] border-collapse text-sm">
+            <div className="relative min-h-[22rem] overflow-auto sm:min-h-0 sm:flex-1">
+              {partySettlementLoading && (
+                <div className="absolute inset-x-0 top-0 z-20 h-0.5 animate-pulse bg-white/80" />
+              )}
+              {partySettlementError && (
+                <p className="border-b border-red-100 bg-red-50 py-1 text-center text-xs text-red-600">
+                  {partySettlementError}
+                </p>
+              )}
+              <table className={`w-full min-w-[760px] table-fixed border-collapse text-sm ${partyLines.length === 0 ? "h-full" : ""}`}>
+                <colgroup>
+                  <col className="w-[18%]" />
+                  <col className="w-[28%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[16%]" />
+                  <col className="w-[20%]" />
+                </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-gradient-to-r from-[#353a6e] to-[#424687] text-white">
                     <th className="px-3 py-2 text-left text-xs font-semibold">Date</th>
@@ -931,8 +1059,8 @@ const Settlement = () => {
                 </thead>
                 <tbody>
                   {partyLines.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500">
+                    <tr className="h-full">
+                      <td colSpan={5} className="px-4 text-center align-middle text-sm text-slate-500">
                         {partySettlementLoading
                           ? "Loading party settlement…"
                           : "No entries in this date range."}
@@ -949,7 +1077,7 @@ const Settlement = () => {
                         }`}
                       >
                         <td className="whitespace-nowrap px-3 py-2 text-slate-700">
-                          {formatEntryDate(entry.createdAt)}
+                          {formatEntryDate(entry.date || entry.createdAt)}
                         </td>
                         <td className="px-3 py-2">
                           <button
@@ -974,19 +1102,20 @@ const Settlement = () => {
                   )}
                 </tbody>
                 <tfoot className="sticky bottom-0 z-10">
-                  <tr className="border-t border-slate-200 bg-slate-50">
-                    <td colSpan={4} className="px-3 py-2 text-xs font-medium text-slate-500">
-                      Total share amount
-                    </td>
-                    <td
-                      className={`px-3 py-2 text-right text-sm font-semibold tabular-nums ${
-                        partyShareTotal < 0 ? "text-red-600" : "text-emerald-700"
-                      }`}
-                    >
-                      {partyShareTotal < 0 ? "−" : ""}
-                      {rupee(Math.abs(partyShareTotal))}
-                    </td>
-                  </tr>
+                    <tr className="border-t border-slate-200 bg-slate-50">
+                      <td colSpan={4} />
+                      <td className="whitespace-nowrap px-3 py-2 text-right">
+                        <span className="mr-1.5 text-xs font-medium text-slate-500">Total</span>
+                        <span
+                          className={`text-sm font-semibold tabular-nums ${
+                            partyShareTotal < 0 ? "text-red-600" : "text-emerald-700"
+                          }`}
+                        >
+                          {partyShareTotal < 0 ? "−" : ""}
+                          {rupee(Math.abs(partyShareTotal))}
+                        </span>
+                      </td>
+                    </tr>
                 </tfoot>
               </table>
             </div>

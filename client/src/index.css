@@ -441,6 +441,22 @@
   }
 }
 
+@keyframes settlement-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settlement-panel-in {
+  animation: settlement-panel-in 0.28s ease;
+}
+
 @media (max-width: 640px) {
   main input,
   main select,

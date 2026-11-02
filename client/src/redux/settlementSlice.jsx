@@ -128,12 +128,29 @@ export const fetchSettlementEntries = createAsyncThunk(
 
 export const createSettlementEntry = createAsyncThunk(
   'settlement/createEntry',
-  async ({ partyId, usernameId, amount, transactionType }, { getState, rejectWithValue }) => {
+  async ({ partyId, usernameId, amount, transactionType, date }, { getState, rejectWithValue }) => {
     try {
       const { user: { token } } = getState();
       const response = await axios.post(
         `${API_URL}/${partyId}/usernames/${usernameId}/entries`,
-        { amount, transactionType },
+        { amount, transactionType, date },
+        authConfig(token),
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
+
+export const updateSettlementEntry = createAsyncThunk(
+  'settlement/updateEntry',
+  async ({ partyId, usernameId, entryId, amount, transactionType, date }, { getState, rejectWithValue }) => {
+    try {
+      const { user: { token } } = getState();
+      const response = await axios.put(
+        `${API_URL}/${partyId}/usernames/${usernameId}/entries/${entryId}`,
+        { amount, transactionType, date },
         authConfig(token),
       );
       return response.data;

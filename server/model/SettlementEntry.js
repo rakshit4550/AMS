@@ -21,6 +21,9 @@ const settlementEntrySchema = new mongoose.Schema({
     enum: ['deposit', 'withdrawal'],
     required: true,
   },
+  date: {
+    type: Date,
+  },
   partnershipPercentage: {
     type: Number,
     required: true,

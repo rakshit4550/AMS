@@ -12,6 +12,7 @@ import {
   createSettlementEntry,
   getSettlementEntries,
   getPartySettlement,
+  updateSettlementEntry,
 } from '../controller/settlementEntry.js';
 import { verifyToken } from '../controller/user.js';
 
@@ -28,6 +29,7 @@ router.get('/:partyId/settlement', getPartySettlement);
 router.put('/:partyId/usernames/:usernameId', updateSettlementUsername);
 router.post('/:partyId/usernames/:usernameId/entries', createSettlementEntry);
 router.get('/:partyId/usernames/:usernameId/entries', getSettlementEntries);
+router.put('/:partyId/usernames/:usernameId/entries/:entryId', updateSettlementEntry);
 
 router.get('/:id', getSettlementPartyById);
 router.put('/:id', updateSettlementParty);
